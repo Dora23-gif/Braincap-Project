@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 280" width="240" height="280" fill="none">
+  <!-- Outer Shield Border -->
+  <path d="M120 12 L216 48 C216 160 172 232 120 264 C68 232 24 160 24 48 Z" fill="#0A1128" stroke="#D4AF37" stroke-width="6" stroke-linejoin="round"/>
+  <!-- Inner Shield Inset -->
+  <path d="M120 24 L204 56 C204 154 164 220 120 250 C76 220 36 154 36 56 Z" fill="#0F172A" stroke="#E2C15E" stroke-width="2" stroke-opacity="0.6"/>
+  
+  <!-- Subtle Quartering Line -->
+  <path d="M120 24 L120 250" stroke="#D4AF37" stroke-width="1.5" stroke-opacity="0.3"/>
+  <path d="M38 120 L202 120" stroke="#D4AF37" stroke-width="1.5" stroke-opacity="0.3"/>
+
+  <!-- Mountain Peak (Everest) in Upper Right/Center -->
+  <polygon points="120,44 148,96 92,96" fill="#D4AF37" opacity="0.9"/>
+  <polygon points="120,44 148,96 120,96" fill="#E8D18D"/>
+  <polygon points="120,44 130,64 110,64" fill="#FFFFFF"/>
+
+  <!-- Open Book in Center Lower -->
+  <!-- Left Page -->
+  <path d="M120 148 C105 142 85 142 70 148 L70 188 C85 182 105 182 120 188 Z" fill="#F8FAFC" stroke="#D4AF37" stroke-width="2"/>
+  <!-- Right Page -->
+  <path d="M120 148 C135 142 155 142 170 148 L170 188 C155 182 135 182 120 188 Z" fill="#F8FAFC" stroke="#D4AF37" stroke-width="2"/>
+  <!-- Spine -->
+  <line x1="120" y1="148" x2="120" y2="188" stroke="#D4AF37" stroke-width="3"/>
+  <!-- Book Text Lines -->
+  <line x1="78" y1="158" x2="110" y2="155" stroke="#0F172A" stroke-width="1.5" opacity="0.5"/>
+  <line x1="78" y1="166" x2="110" y2="163" stroke="#0F172A" stroke-width="1.5" opacity="0.5"/>
+  <line x1="78" y1="174" x2="105" y2="171" stroke="#0F172A" stroke-width="1.5" opacity="0.5"/>
+  <line x1="130" y1="155" x2="162" y2="158" stroke="#0F172A" stroke-width="1.5" opacity="0.5"/>
+  <line x1="130" y1="163" x2="162" y2="166" stroke="#0F172A" stroke-width="1.5" opacity="0.5"/>
+  <line x1="135" y1="171" x2="162" y2="174" stroke="#0F172A" stroke-width="1.5" opacity="0.5"/>
+
+  <!-- Three Golden Stars (Excellence, Character, Leadership) -->
+  <g fill="#D4AF37">
+    <!-- Star Left -->
+    <polygon points="62,76 65,84 74,84 67,89 69,97 62,92 55,97 57,89 50,84 59,84"/>
+    <!-- Star Center -->
+    <polygon points="120,104 123,112 132,112 125,117 127,125 120,120 113,125 115,117 108,112 117,112"/>
+    <!-- Star Right -->
+    <polygon points="178,76 181,84 190,84 183,89 185,97 178,92 171,97 173,89 166,84 175,84"/>
+  </g>
+
+  <!-- Laurel Wreath Base -->
+  <path d="M96 210 C104 216 112 218 120 218 C128 218 136 216 144 210" stroke="#D4AF37" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="120" cy="218" r="3" fill="#D4AF37"/>
+
+  <!-- School Name Ribbon Banner at Bottom -->
+  <path d="M30 240 Q120 262 210 240 L216 260 Q120 282 24 260 Z" fill="#D4AF37"/>
+  <text x="120" y="254" font-family="'Plus Jakarta Sans', sans-serif" font-size="10" font-weight="800" fill="#0A1128" text-anchor="middle" letter-spacing="2">EVEREST</text>
+</svg>

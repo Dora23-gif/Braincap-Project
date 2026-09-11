@@ -1,0 +1,300 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-serif: 'Cinzel', Georgia, serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --spring-easing: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  html {
+    min-height: 100dvh;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    min-height: 100dvh;
+    background-color: #F8FAFC;
+    color: #0F172A;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    transition: background-color 0.3s var(--spring-easing), color 0.3s var(--spring-easing);
+  }
+
+  .dark body {
+    background-color: #070B14;
+    color: #F8FAFC;
+  }
+
+  /* Universal form control contrast enforcement */
+  input, select, textarea {
+    color: #0F172A;
+  }
+  .dark input, .dark select, .dark textarea {
+    color: #F8FAFC !important;
+  }
+
+  /* Active Typing & Focus State - Immunizes against rogue focus:bg-white */
+  input:focus, textarea:focus, select:focus {
+    color: #0F172A !important;
+    background-color: #FFFFFF !important;
+  }
+  .dark input:focus, .dark textarea:focus, .dark select:focus {
+    color: #F8FAFC !important;
+    background-color: #0E1526 !important;
+    border-color: #6366F1 !important;
+  }
+
+  /* Universal Table Row Hover Safeguard */
+  tbody tr {
+    transition: background-color 0.15s ease-in-out;
+  }
+  tbody tr:hover {
+    background-color: rgba(241, 245, 249, 0.75);
+  }
+  .dark tbody tr:hover {
+    background-color: rgba(30, 41, 59, 0.75) !important;
+  }
+
+  /* Guarantee option text visibility in native browser popup dropdowns */
+  select option {
+    background-color: #FFFFFF;
+    color: #0F172A;
+  }
+  .dark select option {
+    background-color: #0B1329;
+    color: #F8FAFC;
+  }
+
+  /* Date Picker Hardware Color-Scheme Normalization */
+  input[type="date"] {
+    color-scheme: light;
+    color: #0F172A !important;
+  }
+  .dark input[type="date"] {
+    color-scheme: dark;
+    color: #F8FAFC !important;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.85;
+  }
+  .dark input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    opacity: 0.95;
+  }
+}
+
+.font-serif-title {
+  font-family: var(--font-serif);
+}
+
+.font-mono-tabular {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Ambient Cyber Mesh Gradient for Futuristic Dark Mode */
+.cyber-canvas {
+  background-color: #F8FAFC;
+  background-image: radial-gradient(at 100% 0%, rgba(245, 158, 11, 0.04) 0px, transparent 50%),
+                    radial-gradient(at 0% 100%, rgba(59, 130, 246, 0.04) 0px, transparent 50%);
+}
+
+.dark .cyber-canvas {
+  background-color: #070B14;
+  background-image: radial-gradient(circle at 50% -20%, rgba(99, 102, 241, 0.15), transparent 70%),
+                    radial-gradient(circle at 90% 60%, rgba(6, 182, 212, 0.08), transparent 50%),
+                    radial-gradient(circle at 10% 80%, rgba(16, 185, 129, 0.06), transparent 50%);
+}
+
+/* Hardware-Grade Double-Bezel Architecture (Concentric Radii) */
+.double-bezel {
+  background: rgba(15, 23, 42, 0.03);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  padding: 0.25rem;
+  border-radius: 1.5rem;
+  transition: all 0.3s var(--spring-easing);
+}
+
+@media (min-width: 640px) {
+  .double-bezel {
+    padding: 0.375rem;
+  }
+}
+
+.dark .double-bezel {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+}
+
+.double-bezel-inner {
+  background: #ffffff;
+  border-radius: calc(1.5rem - 0.25rem);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02), 0 8px 24px -4px rgba(15, 23, 42, 0.04);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.dark .double-bezel-inner {
+  background: #0E1526;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 12px 30px -4px rgba(0, 0, 0, 0.6), inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+}
+
+/* Translucent Glass Panels */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.dark .glass-panel {
+  background: rgba(14, 21, 38, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Keyframe Animations */
+@keyframes fadeSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes shimmerSweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-fade-slide-up {
+  animation: fadeSlideUp 0.4s var(--spring-easing) forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2.4s ease-in-out infinite;
+}
+
+/* Touch-friendly Minimum Tap Target */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Custom Scrollbars for dense tables */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+.dark ::-webkit-scrollbar-track {
+  background: #0F172A;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Custom Sleek Horizontal Scrollbar */
+.custom-horizontal-scrollbar::-webkit-scrollbar {
+  height: 6px;
+}
+.custom-horizontal-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-horizontal-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 9999px;
+}
+.custom-horizontal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+.dark .custom-horizontal-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.2);
+}
+.dark .custom-horizontal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.4);
+}
+
+/* Print Stylesheet for Browser-Native A4 Report Cards */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 8mm;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11pt;
+  }
+
+  /* Hide all dashboard chrome: sidebar, top nav, buttons, action bars */
+  header,
+  aside,
+  nav,
+  button,
+  .no-print {
+    display: none !important;
+  }
+
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+
+  .print-only-container {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .page-break-avoid {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+
