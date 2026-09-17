@@ -1,11 +1,16 @@
 from pathlib import Path
 from decouple import config, Csv
+import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config("SECRET_KEY", default="django-insecure-change-me-before-deploying")
 DEBUG = config("DEBUG", default=True, cast=bool)
-ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1,testserver", cast=Csv())
+ALLOWED_HOSTS = config(
+    "ALLOWED_HOSTS",
+    default="localhost,127.0.0.1,testserver,.onrender.com,.netlify.app,*",
+    cast=Csv(),
+)
 
 DJANGO_APPS = [
     "django.contrib.admin",
@@ -37,6 +42,7 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -66,9 +72,19 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
+# Database Configuration (supports PostgreSQL via DATABASE_URL or SQLite default)
+DATABASE_URL = config("DATABASE_URL", default="")
 DB_ENGINE = config("DB_ENGINE", default="django.db.backends.sqlite3")
 
-if DB_ENGINE == "django.db.backends.sqlite3":
+if DATABASE_URL:
+    DATABASES = {
+        "default": dj_database_url.config(
+            default=DATABASE_URL,
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
+    }
+elif DB_ENGINE == "django.db.backends.sqlite3":
     DATABASES = {"default": {"ENGINE": DB_ENGINE, "NAME": BASE_DIR / "db.sqlite3"}}
 else:
     DATABASES = {
@@ -97,6 +113,7 @@ USE_TZ = True
 STATIC_URL  = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 MEDIA_URL  = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
@@ -128,15 +145,28 @@ CORS_ALLOWED_ORIGINS = config(
     default="http://localhost:5173,http://127.0.0.1:5173",
     cast=Csv(),
 )
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https:\/\/.*\.onrender\.com$",
+    r"^https:\/\/.*\.netlify\.app$",
+    r"^http:\/\/localhost:\d+$",
+]
 CORS_ALLOW_CREDENTIALS = config("CORS_ALLOW_CREDENTIALS", default=True, cast=bool)
+
 CSRF_TRUSTED_ORIGINS = config(
     "CSRF_TRUSTED_ORIGINS",
-    default="http://localhost:5173,http://127.0.0.1:5173",
+    default="http://localhost:5173,http://127.0.0.1:5173,https://*.onrender.com,https://*.netlify.app",
     cast=Csv(),
 )
 CSRF_COOKIE_HTTPONLY = False
-CSRF_COOKIE_SAMESITE = "Lax"
 
+if not DEBUG:
+    CSRF_COOKIE_SAMESITE = "None"
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SAMESITE = "None"
+    SESSION_COOKIE_SECURE = True
+else:
+    CSRF_COOKIE_SAMESITE = "Lax"
+    CSRF_COOKIE_SECURE = False
 
 # Frontend URL (used to generate activation links)
 FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:5173")
