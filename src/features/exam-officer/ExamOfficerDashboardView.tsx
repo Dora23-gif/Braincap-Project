@@ -41,6 +41,7 @@ import {
 } from 'lucide-react';
 
 import { FuturisticPageShell } from '../../components/common/FuturisticPageShell';
+import { getWelcomeMessage } from '../../lib/userDisplay';
 import { FuturisticKPICard } from '../../components/common/FuturisticKPICard';
 import { DoubleBezelCard } from '../../components/common/DoubleBezelCard';
 import { SegmentedControl, SegmentedControlOption } from '../../components/common/SegmentedControl';
@@ -322,13 +323,13 @@ export const ExamOfficerDashboardView: React.FC = () => {
   return (
     <FuturisticPageShell
       title="EXAMINATION COUNCIL & MODERATION HUB"
-      subtitle="Live continuous assessment collation, master broadsheet statutory sealing, WAEC/NECO/BECE registry, and examination halls."
+      subtitle={`${getWelcomeMessage(user?.name || 'Exam Officer')}. Live continuous assessment collation, master broadsheet statutory sealing, WAEC/NECO/BECE registry, and examination halls.`}
       icon={Award}
       badgeText={activeTerm.isResultsPublished ? 'Broadsheets Published' : 'Moderation In Progress'}
       badgeVariant={activeTerm.isResultsPublished ? 'success' : 'warning'}
     >
       {/* 4 Metric Summary Bento Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 gap-2.5 sm:gap-4">
         <FuturisticKPICard
           title="Overall Collation Rate"
           value={`${overallCollationRate}%`}

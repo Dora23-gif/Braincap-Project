@@ -24,7 +24,7 @@ export const DoubleBezelCard: React.FC<DoubleBezelCardProps> = ({
     >
       <div
         className={clsx(
-          'rounded-[calc(1.5rem-0.25rem)] bg-white dark:bg-[#0E1526] border border-slate-200/80 dark:border-white/5 shadow-sm p-4 sm:p-6 transition-colors duration-300',
+          'rounded-[calc(1.5rem-0.25rem)] bg-white dark:bg-[#0E1526] border border-slate-200/80 dark:border-white/5 shadow-sm p-4 sm:p-6 transition-colors duration-300 overflow-hidden',
           innerClassName
         )}
       >

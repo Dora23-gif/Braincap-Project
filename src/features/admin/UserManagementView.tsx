@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useSchoolData } from '../../context/SchoolDataContext';
+import { useAuth } from '../../context/AuthContext';
+import { getWelcomeMessage } from '../../lib/userDisplay';
 import { StaffMember, UserRole } from '../../types';
 import {
   Users,
@@ -27,21 +29,78 @@ import { DoubleBezelCard } from '../../components/common/DoubleBezelCard';
 import { FuturisticKPICard } from '../../components/common/FuturisticKPICard';
 import { FuturisticPageShell } from '../../components/common/FuturisticPageShell';
 import { ModalPortal } from '../../components/common/ModalPortal';
+import { PaginationControls } from '../../components/common/PaginationControls';
+import { api, PaginatedResponse, adaptStaffFromBackend } from '../../lib/api';
+
 
 export const UserManagementView: React.FC = () => {
-  const { staff, classArms, subjects, addStaff, updateStaff, toggleStaffStatus, resetStaffPin } = useSchoolData();
+  const { user } = useAuth();
+  const { staff, classArms, subjects, allocations, addStaff, updateStaff, toggleStaffStatus, resetStaffPin } = useSchoolData();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(20);
+  const [serverStaff, setServerStaff] = useState<StaffMember[] | null>(null);
+  const [serverTotalCount, setServerTotalCount] = useState<number | null>(null);
+  const [serverTotalPages, setServerTotalPages] = useState<number | null>(null);
+  const [isLoadingPage, setIsLoadingPage] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Fetch paginated staff from backend
+  React.useEffect(() => {
+    let isCancelled = false;
+    const timer = setTimeout(async () => {
+      setIsLoadingPage(true);
+      try {
+        const queryParams: Record<string, any> = {
+          page,
+          page_size: pageSize,
+        };
+        if (searchTerm.trim()) {
+          queryParams.search = searchTerm.trim();
+        }
+        if (roleFilter !== 'ALL') {
+          queryParams.active_role = roleFilter;
+        }
+        if (statusFilter !== 'ALL') {
+          queryParams.is_active = statusFilter === 'ACTIVE';
+        }
+
+        const res = await api.get<PaginatedResponse<any>>('/accounts/users/', queryParams);
+        if (!isCancelled && res && Array.isArray(res.results)) {
+          const adapted = res.results.map(adaptStaffFromBackend);
+          setServerStaff(adapted);
+          setServerTotalCount(res.count);
+          setServerTotalPages(res.total_pages || Math.ceil(res.count / pageSize));
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          setServerStaff(null);
+          setServerTotalCount(null);
+          setServerTotalPages(null);
+        }
+      } finally {
+        if (!isCancelled) setIsLoadingPage(false);
+      }
+    }, 200);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
+  }, [page, pageSize, searchTerm, roleFilter, statusFilter, refreshTrigger]);
 
   // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
   const [confirmToggleStaff, setConfirmToggleStaff] = useState<StaffMember | null>(null);
   const [suspensionReason, setSuspensionReason] = useState('');
-  const [revealedPinStaffId, setRevealedPinStaffId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
 
   // Add/Edit Form State
   const [formName, setFormName] = useState('');
@@ -54,6 +113,8 @@ export const UserManagementView: React.FC = () => {
   const [formClassArmId, setFormClassArmId] = useState('');
   const [formSubjectIds, setFormSubjectIds] = useState<string[]>([]);
   const [formTeachingArmIds, setFormTeachingArmIds] = useState<string[]>([]);
+  const [formPassword, setFormPassword] = useState('');
+  const [editPassword, setEditPassword] = useState('');
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -106,24 +167,38 @@ export const UserManagementView: React.FC = () => {
     setFormTeachingArmIds([]);
   };
 
-  // Filtered staff
-  const filteredStaff = staff.filter(member => {
-    const memberStaffId = member.staffId || member.identifier || '';
-    const matchesSearch =
-      member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      memberStaffId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.email.toLowerCase().includes(searchTerm.toLowerCase());
+  // Filtered staff (client fallback)
+  const clientFilteredStaff = React.useMemo(() => {
+    return staff.filter(member => {
+      const memberStaffId = member.staffId || member.identifier || '';
+      const matchesSearch =
+        member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        memberStaffId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        member.email.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesRole =
-      roleFilter === 'ALL' ||
-      member.role === roleFilter ||
-      (member.roles && member.roles.includes(roleFilter as UserRole));
+      const matchesRole =
+        roleFilter === 'ALL' ||
+        member.role === roleFilter ||
+        (member.roles && member.roles.includes(roleFilter as UserRole));
 
-    const matchesStatus =
-      statusFilter === 'ALL' || member.status === statusFilter;
+      const matchesStatus =
+        statusFilter === 'ALL' || member.status === statusFilter;
 
-    return matchesSearch && matchesRole && matchesStatus;
-  });
+      return matchesSearch && matchesRole && matchesStatus;
+    });
+  }, [staff, searchTerm, roleFilter, statusFilter]);
+
+  const displayedStaff = React.useMemo(() => {
+    if (serverStaff !== null) {
+      return serverStaff;
+    }
+    const start = (page - 1) * pageSize;
+    return clientFilteredStaff.slice(start, start + pageSize);
+  }, [serverStaff, clientFilteredStaff, page, pageSize]);
+
+  const totalCount = serverTotalCount !== null ? serverTotalCount : clientFilteredStaff.length;
+  const totalPages = serverTotalPages !== null ? serverTotalPages : Math.max(1, Math.ceil(clientFilteredStaff.length / pageSize));
+
 
   // Quick stats
   const totalStaff = staff.length;
@@ -142,6 +217,7 @@ export const UserManagementView: React.FC = () => {
     setFormClassArmId('');
     setFormSubjectIds([]);
     setFormTeachingArmIds([]);
+    setFormPassword(`EIS-${Math.floor(1000 + Math.random() * 9000)}`);
     setIsAddModalOpen(true);
   };
 
@@ -155,8 +231,20 @@ export const UserManagementView: React.FC = () => {
     setFormPrimaryRole(member.role || member.roles[0] || 'SUBJECT_TEACHER');
     setFormRoles(member.roles && member.roles.length > 0 ? member.roles : (member.role ? [member.role] : ['SUBJECT_TEACHER']));
     setFormClassArmId(member.formMasterClassArmId || member.formMasterArmId || '');
-    setFormSubjectIds(member.assignedSubjectIds || []);
-    setFormTeachingArmIds(member.assignedClassArms || []);
+
+    const teacherAllocs = allocations.filter(
+      a => a.teacherId === member.id || a.teacherId === member.staffId || a.teacherId === member.identifier
+    );
+    const existingSubjectIds = (member.assignedSubjectIds && member.assignedSubjectIds.length > 0)
+      ? member.assignedSubjectIds
+      : Array.from(new Set(teacherAllocs.map(a => a.subjectId)));
+    const existingArmIds = (member.assignedClassArms && member.assignedClassArms.length > 0)
+      ? member.assignedClassArms
+      : Array.from(new Set(teacherAllocs.map(a => a.classArmId)));
+
+    setFormSubjectIds(existingSubjectIds);
+    setFormTeachingArmIds(existingArmIds);
+    setEditPassword('');
   };
 
   const handleRoleToggle = (role: UserRole) => {
@@ -182,16 +270,19 @@ export const UserManagementView: React.FC = () => {
     const armObj = classArms.find(a => a.id === formClassArmId);
     const staffCode = `STF/2026/${String(staff.length + 1).padStart(3, '0')}`;
 
-    // Combine teaching class arms with form master class arm if applicable
-    const allAssignedArms = Array.from(new Set([
-      ...formTeachingArmIds,
-      ...(isFormMaster && formClassArmId ? [formClassArmId] : [])
-    ]));
-
     // Generate allocated subjects matrix
     const allocated = formSubjectIds.flatMap(subId => {
       const subObj = subjects.find(s => s.id === subId);
-      return formTeachingArmIds.map(armId => {
+      const effectiveArms = formTeachingArmIds.length > 0
+        ? formTeachingArmIds
+        : classArms.filter(a => {
+            const isJunior = (a.fullName || a.name).toLowerCase().includes('jss');
+            if (subObj?.applicableTo === 'JUNIOR') return isJunior;
+            if (subObj?.applicableTo === 'SENIOR') return !isJunior;
+            return true;
+          }).map(a => a.id);
+
+      return effectiveArms.map(armId => {
         const aObj = classArms.find(a => a.id === armId);
         return {
           classArmId: armId,
@@ -201,6 +292,18 @@ export const UserManagementView: React.FC = () => {
         };
       });
     });
+
+    const effectiveTeachingArms = formTeachingArmIds.length > 0
+      ? formTeachingArmIds
+      : Array.from(new Set(allocated.map(a => a.classArmId)));
+
+    // Combine teaching class arms with form master class arm if applicable
+    const allAssignedArms = Array.from(new Set([
+      ...effectiveTeachingArms,
+      ...(isFormMaster && formClassArmId ? [formClassArmId] : [])
+    ]));
+
+    const initialPin = formPassword.trim() || `EIS-${Math.floor(1000 + Math.random() * 9000)}`;
 
     const newStaff = addStaff({
       name: formName.trim(),
@@ -223,11 +326,13 @@ export const UserManagementView: React.FC = () => {
       assignedSubjectIds: formSubjectIds,
       allocatedSubjects: allocated,
       formMasterClassArmId: isFormMaster ? formClassArmId : undefined,
-      formMasterClassArmName: isFormMaster && armObj ? armObj.fullName : undefined
+      formMasterClassArmName: isFormMaster && armObj ? armObj.fullName : undefined,
+      defaultPin: initialPin,
     });
 
     setIsAddModalOpen(false);
-    showToast(`Staff account for ${newStaff.name} created! Default PIN: ${newStaff.defaultPin}`);
+    setRefreshTrigger(prev => prev + 1);
+    showToast(`Staff account for ${newStaff.name} created! Password/PIN: ${newStaff.defaultPin}`);
   };
 
   const handleSaveEdit = (e: React.FormEvent) => {
@@ -239,14 +344,18 @@ export const UserManagementView: React.FC = () => {
 
     const armObj = classArms.find(a => a.id === formClassArmId);
 
-    const allAssignedArms = Array.from(new Set([
-      ...formTeachingArmIds,
-      ...(isFormMaster && formClassArmId ? [formClassArmId] : [])
-    ]));
-
     const allocated = formSubjectIds.flatMap(subId => {
       const subObj = subjects.find(s => s.id === subId);
-      return formTeachingArmIds.map(armId => {
+      const effectiveArms = formTeachingArmIds.length > 0
+        ? formTeachingArmIds
+        : classArms.filter(a => {
+            const isJunior = (a.fullName || a.name).toLowerCase().includes('jss');
+            if (subObj?.applicableTo === 'JUNIOR') return isJunior;
+            if (subObj?.applicableTo === 'SENIOR') return !isJunior;
+            return true;
+          }).map(a => a.id);
+
+      return effectiveArms.map(armId => {
         const aObj = classArms.find(a => a.id === armId);
         return {
           classArmId: armId,
@@ -257,7 +366,16 @@ export const UserManagementView: React.FC = () => {
       });
     });
 
-    updateStaff(editingStaff.id, {
+    const effectiveTeachingArms = formTeachingArmIds.length > 0
+      ? formTeachingArmIds
+      : Array.from(new Set(allocated.map(a => a.classArmId)));
+
+    const allAssignedArms = Array.from(new Set([
+      ...effectiveTeachingArms,
+      ...(isFormMaster && formClassArmId ? [formClassArmId] : [])
+    ]));
+
+    const updates: Partial<StaffMember> = {
       name: formName.trim(),
       email: formEmail.trim().toLowerCase(),
       phoneNumber: formPhone.trim(),
@@ -270,10 +388,17 @@ export const UserManagementView: React.FC = () => {
       allocatedSubjects: allocated,
       formMasterClassArmId: isFormMaster ? formClassArmId : undefined,
       formMasterClassArmName: isFormMaster && armObj ? armObj.fullName : undefined
-    });
+    };
+
+    if (editPassword.trim()) {
+      updates.defaultPin = editPassword.trim();
+    }
+
+    updateStaff(editingStaff.id, updates);
 
     setEditingStaff(null);
-    showToast(`Updated profile for ${formName}`);
+    setRefreshTrigger(prev => prev + 1);
+    showToast(`Updated profile for ${formName}${editPassword.trim() ? ' and password changed!' : ''}`);
   };
 
   const handleConfirmToggle = () => {
@@ -290,6 +415,7 @@ export const UserManagementView: React.FC = () => {
     );
     setConfirmToggleStaff(null);
     setSuspensionReason('');
+    setRefreshTrigger(prev => prev + 1);
   };
 
   const handleResetPin = (member: StaffMember) => {
@@ -298,7 +424,7 @@ export const UserManagementView: React.FC = () => {
       name: 'Dr. Kenneth Balogun',
       role: 'SUPER_ADMIN'
     });
-    setRevealedPinStaffId(member.id);
+    setRefreshTrigger(prev => prev + 1);
     copyToClipboard(pin, `New PIN for ${member.name}`);
   };
 
@@ -327,7 +453,7 @@ export const UserManagementView: React.FC = () => {
   return (
     <FuturisticPageShell
       title="USER MANAGEMENT CONSOLE"
-      subtitle="Super Administrator identity & access management. Configure multi-roles, generate PINs, and enforce instant account containment."
+      subtitle={`${getWelcomeMessage(user?.name || 'Administrator')}. Super Administrator identity & access management. Configure multi-roles, generate PINs, and enforce instant account containment.`}
       icon={ShieldCheck}
       badgeText={`${activeStaff} Active Staff`}
       badgeVariant="cyber"
@@ -350,7 +476,7 @@ export const UserManagementView: React.FC = () => {
       )}
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         <FuturisticKPICard
           title="Total Staff"
           value={totalStaff}
@@ -390,13 +516,16 @@ export const UserManagementView: React.FC = () => {
       {/* Control Filters */}
       <DoubleBezelCard innerClassName="p-4">
         <div className="flex flex-col md:flex-row items-center justify-between gap-3">
-          <div className="relative w-full md:w-80">
+          <div className="relative w-full md:w-96">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               placeholder="Search name, staff ID, or email..."
               value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
+              onChange={e => {
+                setSearchTerm(e.target.value);
+                setPage(1);
+              }}
               className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-slate-900 transition-all"
             />
           </div>
@@ -404,7 +533,10 @@ export const UserManagementView: React.FC = () => {
           <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
             <select
               value={roleFilter}
-              onChange={e => setRoleFilter(e.target.value)}
+              onChange={e => {
+                setRoleFilter(e.target.value);
+                setPage(1);
+              }}
               className="px-3 py-2.5 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
             >
               <option value="ALL">All Roles</option>
@@ -418,7 +550,10 @@ export const UserManagementView: React.FC = () => {
 
             <select
               value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
+              onChange={e => {
+                setStatusFilter(e.target.value);
+                setPage(1);
+              }}
               className="px-3 py-2.5 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
             >
               <option value="ALL">All Statuses</option>
@@ -444,14 +579,14 @@ export const UserManagementView: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
-              {filteredStaff.length === 0 ? (
+              {displayedStaff.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-8 text-center text-slate-400 dark:text-slate-500 italic">
                     No staff members match the selected criteria.
                   </td>
                 </tr>
               ) : (
-                filteredStaff.map(member => {
+                displayedStaff.map(member => {
                   const effectiveRoles: UserRole[] = member.roles && member.roles.length > 0
                     ? member.roles
                     : (member.role ? [member.role] : ['SUBJECT_TEACHER']);
@@ -571,30 +706,12 @@ export const UserManagementView: React.FC = () => {
                             <Mail className="w-3 h-3 text-slate-400" />
                             <span className="truncate max-w-[140px]">{member.email}</span>
                           </div>
-                          <div className="flex items-center gap-2 text-[11px]">
-                            <KeyRound className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-                            <span className="font-mono-tabular font-semibold text-slate-700 dark:text-slate-300">
-                              {revealedPinStaffId === member.id ? (member.defaultPin || '••••••') : '••••••'}
+                          <div className="flex items-center gap-1.5 text-[11px]">
+                            <KeyRound className="w-3 h-3 text-slate-400" />
+                            <span className="font-mono-tabular text-slate-400 dark:text-slate-500 tracking-wider">••••••••</span>
+                            <span className="text-[9px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200/60 dark:border-emerald-800/60">
+                              Encrypted
                             </span>
-                            <button
-                              onClick={() => {
-                                if (revealedPinStaffId === member.id) {
-                                  setRevealedPinStaffId(null);
-                                } else {
-                                  setRevealedPinStaffId(member.id);
-                                }
-                              }}
-                              className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-bold underline cursor-pointer"
-                            >
-                              {revealedPinStaffId === member.id ? 'Hide' : 'Show'}
-                            </button>
-                            <button
-                              onClick={() => copyToClipboard(member.defaultPin || 'EIS-0000', `PIN for ${member.name}`)}
-                              title="Copy PIN"
-                              className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
-                            >
-                              <Copy className="w-3 h-3" />
-                            </button>
                           </div>
                         </div>
                       </td>
@@ -662,6 +779,19 @@ export const UserManagementView: React.FC = () => {
           </table>
         </div>
       </DoubleBezelCard>
+
+      {/* Pagination Controls */}
+      <PaginationControls
+        currentPage={page}
+        totalPages={totalPages}
+        totalCount={totalCount}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        isLoading={isLoadingPage}
+        itemLabel="staff accounts"
+        className="mt-4"
+      />
+
 
       {/* Add Staff Modal */}
       <ModalPortal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} maxWidthClass="max-w-2xl">
@@ -789,7 +919,7 @@ export const UserManagementView: React.FC = () => {
                   Multi-Role Assignments (Select all that apply)
                 </label>
                 <div className="grid grid-cols-2 gap-2 text-slate-700 dark:text-slate-300">
-                  {(['SUBJECT_TEACHER', 'FORM_MASTER', 'EXAM_OFFICER', 'VICE_PRINCIPAL'] as UserRole[]).map(r => (
+                  {(['SUPER_ADMIN', 'PRINCIPAL', 'VICE_PRINCIPAL', 'EXAM_OFFICER', 'FORM_MASTER', 'SUBJECT_TEACHER'] as UserRole[]).map(r => (
                     <label key={r} className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
@@ -930,14 +1060,33 @@ export const UserManagementView: React.FC = () => {
                 </div>
               )}
 
-              <div className="p-3 bg-indigo-50/70 dark:bg-indigo-950/40 rounded-xl border border-indigo-100 dark:border-indigo-800/50 flex items-center justify-between">
-                <div>
-                  <span className="font-bold text-indigo-900 dark:text-indigo-200 block">Default Authentication PIN</span>
-                  <span className="text-[10px] text-indigo-700 dark:text-indigo-400">Auto-generated for initial portal login</span>
+              <div className="p-3.5 bg-indigo-50/70 dark:bg-indigo-950/40 rounded-xl border border-indigo-100 dark:border-indigo-800/50 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="font-bold text-indigo-900 dark:text-indigo-200 block text-xs flex items-center gap-1.5">
+                      <KeyRound className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                      <span>Initial Access Password / Security PIN</span>
+                    </span>
+                    <span className="text-[10px] text-indigo-700 dark:text-indigo-400">
+                      Type a custom password or auto-generate a PIN for their initial login
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFormPassword(`EIS-${Math.floor(1000 + Math.random() * 9000)}`)}
+                    className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-800 transition flex items-center gap-1 cursor-pointer"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>Auto-PIN</span>
+                  </button>
                 </div>
-                <span className="font-mono-tabular font-bold text-sm bg-white dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-indigo-200 dark:border-indigo-700 text-indigo-800 dark:text-indigo-300">
-                  EIS-{Math.floor(1000 + Math.random() * 9000)}
-                </span>
+                <input
+                  type="text"
+                  value={formPassword}
+                  onChange={e => setFormPassword(e.target.value)}
+                  placeholder="e.g. Everest2026! or Password123!"
+                  className="w-full p-2.5 bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800 text-slate-900 dark:text-white font-mono-tabular rounded-xl text-xs font-semibold focus:outline-none focus:border-indigo-500"
+                />
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
@@ -1207,6 +1356,35 @@ export const UserManagementView: React.FC = () => {
                 </div>
               )}
 
+              <div className="p-3.5 bg-amber-50/70 dark:bg-amber-950/40 rounded-xl border border-amber-200 dark:border-amber-800/50 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="font-bold text-amber-900 dark:text-amber-200 block text-xs flex items-center gap-1.5">
+                      <KeyRound className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                      <span>Reset / Change Access Password (Optional)</span>
+                    </span>
+                    <span className="text-[10px] text-amber-700 dark:text-amber-400">
+                      Leave blank to keep existing password, or enter a new credential
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditPassword(`EIS-${Math.floor(1000 + Math.random() * 9000)}`)}
+                    className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800 transition flex items-center gap-1 cursor-pointer"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>Auto-PIN</span>
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={editPassword}
+                  onChange={e => setEditPassword(e.target.value)}
+                  placeholder="Enter new password (e.g. Everest2026!) or leave blank"
+                  className="w-full p-2.5 bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800 text-slate-900 dark:text-white font-mono-tabular rounded-xl text-xs font-semibold focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
@@ -1258,7 +1436,7 @@ export const UserManagementView: React.FC = () => {
 
           {confirmToggleStaff?.status === 'ACTIVE' && (
             <div className="space-y-1">
-              <label className="font-bold text-slate-700 dark:text-slate-300 text-[11px]">Reason for Suspension (Audit Log Record)</label>
+              <label className="font-bold text-slate-700 dark:text-slate-300 text-[11px]">Reason for Suspension (Recorded in Activity History)</label>
               <input
                 type="text"
                 placeholder="e.g. Account audit, study leave, or security containment"

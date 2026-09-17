@@ -5,6 +5,8 @@ import { UserCheck, Shield, BookOpen, Plus, Trash2, Search, Filter, AlertTriangl
 import { FuturisticPageShell } from '../../components/common/FuturisticPageShell';
 import { DoubleBezelCard } from '../../components/common/DoubleBezelCard';
 import { ModalPortal } from '../../components/common/ModalPortal';
+import { PaginationControls } from '../../components/common/PaginationControls';
+import { api, PaginatedResponse } from '../../lib/api';
 
 export const SubjectAllocationView: React.FC = () => {
   const { allocations, staff, classArms, subjects, allocateTeacher, removeTeacherAllocation } = useSchoolData();
@@ -17,6 +19,65 @@ export const SubjectAllocationView: React.FC = () => {
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
   const [filterArmId, setFilterArmId] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(20);
+  const [serverAllocations, setServerAllocations] = useState<any[] | null>(null);
+  const [serverTotalCount, setServerTotalCount] = useState<number | null>(null);
+  const [serverTotalPages, setServerTotalPages] = useState<number | null>(null);
+  const [isLoadingPage, setIsLoadingPage] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Fetch paginated allocations from backend
+  React.useEffect(() => {
+    let isCancelled = false;
+    const timer = setTimeout(async () => {
+      setIsLoadingPage(true);
+      try {
+        const queryParams: Record<string, any> = {
+          page,
+          page_size: pageSize,
+        };
+        if (searchQuery.trim()) {
+          queryParams.search = searchQuery.trim();
+        }
+        if (filterArmId !== 'ALL') {
+          queryParams.class_arm = filterArmId;
+        }
+
+        const res = await api.get<PaginatedResponse<any>>('/academics/teacher-allocations/', queryParams);
+        if (!isCancelled && res && Array.isArray(res.results)) {
+          setServerAllocations(
+            res.results.map(r => ({
+              id: r.id,
+              teacherId: String(r.teacher || ''),
+              teacherName: r.teacher_name || '',
+              classArmId: String(r.class_arm || ''),
+              classArmName: r.class_arm_name || '',
+              subjectId: String(r.subject || ''),
+              subjectName: r.subject_name || '',
+            }))
+          );
+          setServerTotalCount(res.count);
+          setServerTotalPages(res.total_pages || Math.ceil(res.count / pageSize));
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          setServerAllocations(null);
+          setServerTotalCount(null);
+          setServerTotalPages(null);
+        }
+      } finally {
+        if (!isCancelled) setIsLoadingPage(false);
+      }
+    }, 200);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
+  }, [page, pageSize, searchQuery, filterArmId, refreshTrigger]);
 
   const eligibleTeachers = useMemo(() => {
     return staff.filter(s => s.status === 'ACTIVE');
@@ -38,6 +99,17 @@ export const SubjectAllocationView: React.FC = () => {
     });
   }, [allocations, filterArmId, searchQuery]);
 
+  const displayedAllocations = useMemo(() => {
+    if (serverAllocations !== null) {
+      return serverAllocations;
+    }
+    const start = (page - 1) * pageSize;
+    return filteredAllocations.slice(start, start + pageSize);
+  }, [serverAllocations, filteredAllocations, page, pageSize]);
+
+  const totalCount = serverTotalCount !== null ? serverTotalCount : filteredAllocations.length;
+  const totalPages = serverTotalPages !== null ? serverTotalPages : Math.max(1, Math.ceil(filteredAllocations.length / pageSize));
+
   const handleAllocate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedArmId || !selectedSubjectId || !selectedTeacherId) return;
@@ -52,6 +124,7 @@ export const SubjectAllocationView: React.FC = () => {
     setSelectedArmId('');
     setSelectedSubjectId('');
     setSelectedTeacherId('');
+    setRefreshTrigger(prev => prev + 1);
   };
 
   return (
@@ -59,19 +132,22 @@ export const SubjectAllocationView: React.FC = () => {
       title="TEACHER ALLOCATION MATRIX"
       subtitle="Subject-to-Teacher assignments across class arms. Dictates live marksheet access and score entry privileges."
       icon={BookOpen}
-      badgeText={`${allocations.length} Active Teaching Allocations`}
+      badgeText={`${totalCount} Active Teaching Allocations`}
       badgeVariant="cyber"
     >
       {/* Controls Bar: Search, Arm Filter, and Allocate Button */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm mb-6">
-        <div className="flex flex-1 items-center gap-3">
-          <div className="relative flex-1 max-w-sm">
+        <div className="flex flex-col sm:flex-row flex-1 items-stretch sm:items-center gap-3">
+          <div className="relative flex-1 max-w-full sm:max-w-sm">
             <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
             <input
               type="text"
               placeholder="Search teacher, subject, arm..."
               value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
+              onChange={e => {
+                setSearchQuery(e.target.value);
+                setPage(1);
+              }}
               className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
@@ -80,7 +156,10 @@ export const SubjectAllocationView: React.FC = () => {
             <Filter className="w-4 h-4 text-slate-400" />
             <select
               value={filterArmId}
-              onChange={e => setFilterArmId(e.target.value)}
+              onChange={e => {
+                setFilterArmId(e.target.value);
+                setPage(1);
+              }}
               className="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
             >
               <option value="ALL">All Class Arms</option>
@@ -122,16 +201,18 @@ export const SubjectAllocationView: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
-              {filteredAllocations.length === 0 ? (
+              {displayedAllocations.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-8 text-center text-slate-400">
                     No matching teacher allocations found.
                   </td>
                 </tr>
               ) : (
-                filteredAllocations.map((alloc, idx) => (
+                displayedAllocations.map((alloc, idx) => (
                   <tr key={alloc.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
-                    <td className="py-3.5 pl-4 pr-1 text-center text-slate-400 dark:text-slate-500 font-mono-tabular">{idx + 1}</td>
+                    <td className="py-3.5 pl-4 pr-1 text-center text-slate-400 dark:text-slate-500 font-mono-tabular">
+                      {(page - 1) * pageSize + idx + 1}
+                    </td>
                     <td className="py-3.5 pl-1 pr-4 font-bold text-slate-900 dark:text-white">
                       <div className="flex items-center gap-2">
                         <UserCheck className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
@@ -162,6 +243,19 @@ export const SubjectAllocationView: React.FC = () => {
           </table>
         </div>
       </DoubleBezelCard>
+
+      {/* Pagination Controls */}
+      <PaginationControls
+        currentPage={page}
+        totalPages={totalPages}
+        totalCount={totalCount}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        isLoading={isLoadingPage}
+        itemLabel="teaching allocations"
+        className="mt-4"
+      />
+
 
       {/* Allocate Teacher Modal */}
       <ModalPortal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} maxWidthClass="max-w-md">
@@ -282,6 +376,7 @@ export const SubjectAllocationView: React.FC = () => {
                     role: user?.activeRole || 'SUPER_ADMIN'
                   });
                   setAllocationToDelete(null);
+                  setRefreshTrigger(prev => prev + 1);
                 }
               }}
               className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white transition-colors cursor-pointer shadow-xs"

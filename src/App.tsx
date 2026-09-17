@@ -5,56 +5,60 @@ import { LoginGate } from './features/auth/LoginGate';
 import { AppHeader } from './components/layout/AppHeader';
 import { AppSidebar, ActiveNavView } from './components/layout/AppSidebar';
 import { ShieldAlert } from 'lucide-react';
+import { ViewLoadingSkeleton } from './components/common/ViewLoadingSkeleton';
+import { RootErrorBoundary } from './components/common/RootErrorBoundary';
+import { ChangePasswordModal } from './components/common/ChangePasswordModal';
 
-// Admin views
-import { SessionsTermsView } from './features/admin/SessionsTermsView';
-import { ClassesArmsView } from './features/admin/ClassesArmsView';
-import { SubjectAllocationView } from './features/admin/SubjectAllocationView';
-import { UserManagementView } from './features/admin/UserManagementView';
-import { AcademicRolloverView } from './features/admin/AcademicRolloverView';
-import { AuditLogView } from './features/admin/AuditLogView';
-import { SchoolSettingsView } from './features/admin/SchoolSettingsView';
+// Admin views (Lazy-loaded on demand)
+const SessionsTermsView = React.lazy(() => import('./features/admin/SessionsTermsView').then(m => ({ default: m.SessionsTermsView })));
+const ClassesArmsView = React.lazy(() => import('./features/admin/ClassesArmsView').then(m => ({ default: m.ClassesArmsView })));
+const SubjectManagementView = React.lazy(() => import('./features/admin/SubjectManagementView').then(m => ({ default: m.SubjectManagementView })));
+const SubjectAllocationView = React.lazy(() => import('./features/admin/SubjectAllocationView').then(m => ({ default: m.SubjectAllocationView })));
+const UserManagementView = React.lazy(() => import('./features/admin/UserManagementView').then(m => ({ default: m.UserManagementView })));
+const AcademicRolloverView = React.lazy(() => import('./features/admin/AcademicRolloverView').then(m => ({ default: m.AcademicRolloverView })));
+const AuditLogView = React.lazy(() => import('./features/admin/AuditLogView').then(m => ({ default: m.AuditLogView })));
+const SchoolSettingsView = React.lazy(() => import('./features/admin/SchoolSettingsView').then(m => ({ default: m.SchoolSettingsView })));
 
-// Student views
-import { StudentDirectoryView } from './features/students/StudentDirectoryView';
-import { AdmissionsWizard } from './features/students/AdmissionsWizard';
-import { AttendanceRegisterView } from './features/students/AttendanceRegisterView';
-import { PsychomotorRatingView } from './features/students/PsychomotorRatingView';
+// Student views (Lazy-loaded on demand)
+const StudentDirectoryView = React.lazy(() => import('./features/students/StudentDirectoryView').then(m => ({ default: m.StudentDirectoryView })));
+const AdmissionsWizard = React.lazy(() => import('./features/students/AdmissionsWizard').then(m => ({ default: m.AdmissionsWizard })));
+const AttendanceRegisterView = React.lazy(() => import('./features/students/AttendanceRegisterView').then(m => ({ default: m.AttendanceRegisterView })));
+const PsychomotorRatingView = React.lazy(() => import('./features/students/PsychomotorRatingView').then(m => ({ default: m.PsychomotorRatingView })));
 
-// Grading views
-import { ScoreEntryGridView } from './features/grading/ScoreEntryGridView';
-import { BroadsheetView } from './features/grading/BroadsheetView';
-import { PrintableReportCard } from './features/reports/PrintableReportCard';
+// Grading views (Lazy-loaded on demand)
+const ScoreEntryGridView = React.lazy(() => import('./features/grading/ScoreEntryGridView').then(m => ({ default: m.ScoreEntryGridView })));
+const BroadsheetView = React.lazy(() => import('./features/grading/BroadsheetView').then(m => ({ default: m.BroadsheetView })));
+const PrintableReportCard = React.lazy(() => import('./features/reports/PrintableReportCard').then(m => ({ default: m.PrintableReportCard })));
 
-// Portal views
-import { ParentDashboard } from './features/portal/ParentDashboard';
-import { StudentDashboard } from './features/portal/StudentDashboard';
+// Portal views (Lazy-loaded on demand)
+const ParentDashboard = React.lazy(() => import('./features/portal/ParentDashboard').then(m => ({ default: m.ParentDashboard })));
+const StudentDashboard = React.lazy(() => import('./features/portal/StudentDashboard').then(m => ({ default: m.StudentDashboard })));
 
-// Principal Executive views
-import { PrincipalDashboardView } from './features/principal/PrincipalDashboardView';
-import { PrincipalRemarkingView } from './features/principal/PrincipalRemarkingView';
-import { PrincipalHonorsProbationView } from './features/principal/PrincipalHonorsProbationView';
+// Principal Executive views (Lazy-loaded on demand)
+const PrincipalDashboardView = React.lazy(() => import('./features/principal/PrincipalDashboardView').then(m => ({ default: m.PrincipalDashboardView })));
+const PrincipalRemarkingView = React.lazy(() => import('./features/principal/PrincipalRemarkingView').then(m => ({ default: m.PrincipalRemarkingView })));
+const PrincipalHonorsProbationView = React.lazy(() => import('./features/principal/PrincipalHonorsProbationView').then(m => ({ default: m.PrincipalHonorsProbationView })));
 
-// Vice Principal views
-import { VPAcademicsDashboardView } from './features/vice-principal/VPAcademicsDashboardView';
-import { VPAdminDashboardView } from './features/vice-principal/VPAdminDashboardView';
+// Vice Principal views (Lazy-loaded on demand)
+const VPAcademicsDashboardView = React.lazy(() => import('./features/vice-principal/VPAcademicsDashboardView').then(m => ({ default: m.VPAcademicsDashboardView })));
+const VPAdminDashboardView = React.lazy(() => import('./features/vice-principal/VPAdminDashboardView').then(m => ({ default: m.VPAdminDashboardView })));
 
-// Examination Officer views
-import { ExamOfficerDashboardView } from './features/exam-officer/ExamOfficerDashboardView';
+// Examination Officer views (Lazy-loaded on demand)
+const ExamOfficerDashboardView = React.lazy(() => import('./features/exam-officer/ExamOfficerDashboardView').then(m => ({ default: m.ExamOfficerDashboardView })));
 
-// Form Master views
-import { FormMasterDashboardView } from './features/form-master/FormMasterDashboardView';
+// Form Master views (Lazy-loaded on demand)
+const FormMasterDashboardView = React.lazy(() => import('./features/form-master/FormMasterDashboardView').then(m => ({ default: m.FormMasterDashboardView })));
 
-// Subject Teacher views
-import { SubjectTeacherDashboardView } from './features/teacher/SubjectTeacherDashboardView';
+// Subject Teacher views (Lazy-loaded on demand)
+const SubjectTeacherDashboardView = React.lazy(() => import('./features/teacher/SubjectTeacherDashboardView').then(m => ({ default: m.SubjectTeacherDashboardView })));
 
-// Communications & Directives view
-import { CommunicationsHubView } from './features/communications/CommunicationsHubView';
+// Communications & Directives view (Lazy-loaded on demand)
+const CommunicationsHubView = React.lazy(() => import('./features/communications/CommunicationsHubView').then(m => ({ default: m.CommunicationsHubView })));
 
 const ROLE_PERMISSIONS: Record<string, ActiveNavView[]> = {
   SUPER_ADMIN: [
     'user-management', 'academic-rollover', 'audit-log', 'school-settings',
-    'sessions-terms', 'classes-arms', 'subject-allocations', 'student-directory',
+    'sessions-terms', 'classes-arms', 'subject-management', 'subject-allocations', 'student-directory',
     'admissions-wizard', 'score-entry', 'master-broadsheet', 'attendance-register',
     'psychomotor-matrix', 'report-card', 'parent-portal', 'student-portal',
     'principal-dashboard', 'principal-remarks', 'honors-probation',
@@ -73,15 +77,15 @@ const ROLE_PERMISSIONS: Record<string, ActiveNavView[]> = {
   ],
   VICE_PRINCIPAL_ADMIN: [
     'vp-admin-dashboard', 'attendance-register', 'student-directory', 'admissions-wizard',
-    'classes-arms', 'audit-log', 'report-card', 'communications'
+    'classes-arms', 'subject-management', 'audit-log', 'report-card', 'communications'
   ],
   VICE_PRINCIPAL: [
     'vp-admin-dashboard', 'attendance-register', 'student-directory', 'admissions-wizard',
-    'classes-arms', 'audit-log', 'report-card', 'communications'
+    'classes-arms', 'subject-management', 'audit-log', 'report-card', 'communications'
   ],
   VICE_PRINCIPAL_STUDENT_AFFAIRS: [
     'vp-admin-dashboard', 'attendance-register', 'student-directory', 'classes-arms',
-    'report-card', 'communications'
+    'subject-management', 'report-card', 'communications'
   ],
   EXAM_OFFICER: [
     'exam-officer-dashboard', 'master-broadsheet', 'score-entry', 'report-card',
@@ -93,13 +97,13 @@ const ROLE_PERMISSIONS: Record<string, ActiveNavView[]> = {
   ],
   FORM_MASTER: [
     'form-master-dashboard', 'attendance-register', 'psychomotor-matrix',
-    'master-broadsheet', 'report-card', 'student-directory', 'communications'
+    'master-broadsheet', 'report-card', 'student-directory', 'score-entry', 'communications'
   ],
   SUBJECT_TEACHER: [
-    'teacher-dashboard', 'score-entry', 'master-broadsheet', 'communications'
+    'teacher-dashboard', 'score-entry', 'master-broadsheet', 'report-card', 'communications'
   ],
   TEACHER: [
-    'teacher-dashboard', 'score-entry', 'master-broadsheet', 'communications'
+    'teacher-dashboard', 'score-entry', 'master-broadsheet', 'report-card', 'communications'
   ],
   ADMISSIONS_OFFICER: [
     'admissions-wizard', 'student-directory', 'classes-arms', 'communications'
@@ -115,6 +119,7 @@ const ROLE_PERMISSIONS: Record<string, ActiveNavView[]> = {
 const AppContent: React.FC = () => {
   const { user } = useAuth();
   const [isOpenMobile, setIsOpenMobile] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   // Set default view depending on active role
   const getDefaultView = (role: string): ActiveNavView => {
@@ -147,7 +152,10 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const [activeView, setActiveView] = useState<ActiveNavView>('user-management');
+  const [activeView, setActiveView] = useState<ActiveNavView>(() => (user ? getDefaultView(user.activeRole) : 'user-management'));
+  const [selectedReportCardStudentId, setSelectedReportCardStudentId] = useState<string>('');
+  const [scoreEntryClassArmId, setScoreEntryClassArmId] = useState<string | undefined>(undefined);
+  const [scoreEntrySubjectId, setScoreEntrySubjectId] = useState<string | undefined>(undefined);
 
   // React when user or activeRole changes (e.g. role switcher clicked)
   useEffect(() => {
@@ -201,11 +209,21 @@ const AppContent: React.FC = () => {
       case 'exam-officer-dashboard':
         return <ExamOfficerDashboardView />;
       case 'form-master-dashboard':
-        return <FormMasterDashboardView />;
+        return (
+          <FormMasterDashboardView
+            onNavigateView={(view, studentId) => {
+              if (studentId) setSelectedReportCardStudentId(studentId);
+              setActiveView(view as any);
+            }}
+          />
+        );
       case 'teacher-dashboard':
         return (
           <SubjectTeacherDashboardView
-            onNavigateToScores={() => {
+            onNavigateView={view => setActiveView(view as any)}
+            onNavigateToScores={(classArmId, subjectId) => {
+              setScoreEntryClassArmId(classArmId);
+              setScoreEntrySubjectId(subjectId);
               setActiveView('score-entry');
             }}
           />
@@ -220,13 +238,19 @@ const AppContent: React.FC = () => {
         return <SessionsTermsView />;
       case 'classes-arms':
         return <ClassesArmsView />;
+      case 'subject-management':
+        return <SubjectManagementView />;
       case 'subject-allocations':
         return <SubjectAllocationView />;
       case 'student-directory':
         return (
           <StudentDirectoryView
-            onSelectStudent={() => {
+            onSelectStudent={(studentId) => {
+              setSelectedReportCardStudentId(studentId);
               setActiveView('report-card');
+            }}
+            onNavigateToAdmissions={() => {
+              setActiveView('admissions-wizard');
             }}
           />
         );
@@ -239,7 +263,12 @@ const AppContent: React.FC = () => {
           />
         );
       case 'score-entry':
-        return <ScoreEntryGridView />;
+        return (
+          <ScoreEntryGridView
+            initialClassArmId={scoreEntryClassArmId}
+            initialSubjectId={scoreEntrySubjectId}
+          />
+        );
       case 'master-broadsheet':
         return <BroadsheetView />;
       case 'attendance-register':
@@ -247,12 +276,28 @@ const AppContent: React.FC = () => {
       case 'psychomotor-matrix':
         return <PsychomotorRatingView />;
       case 'report-card':
-        return <PrintableReportCard />;
-      case 'parent-portal':
+        return <PrintableReportCard initialStudentId={selectedReportCardStudentId} />;
       case 'student-portal':
+        return user.activeRole === 'STUDENT' ? (
+          <StudentDashboard
+            onViewReportCard={(studentId) => {
+              setSelectedReportCardStudentId(studentId);
+              setActiveView('report-card');
+            }}
+          />
+        ) : (
+          <ParentDashboard
+            onViewReportCard={(studentId) => {
+              setSelectedReportCardStudentId(studentId);
+              setActiveView('report-card');
+            }}
+          />
+        );
+      case 'parent-portal':
         return (
           <ParentDashboard
-            onViewReportCard={() => {
+            onViewReportCard={(studentId) => {
+              setSelectedReportCardStudentId(studentId);
               setActiveView('report-card');
             }}
           />
@@ -262,7 +307,8 @@ const AppContent: React.FC = () => {
       default:
         return (
           <ParentDashboard
-            onViewReportCard={() => {
+            onViewReportCard={(studentId) => {
+              setSelectedReportCardStudentId(studentId);
               setActiveView('report-card');
             }}
           />
@@ -271,34 +317,45 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-[100dvh] cyber-canvas text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-300">
+    <div className="min-h-screen w-full cyber-canvas text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-300">
       <AppHeader
         onToggleSidebar={() => setIsOpenMobile(!isOpenMobile)}
         onNavigate={view => setActiveView(view as any)}
+        onOpenChangePassword={() => setIsChangePasswordOpen(true)}
       />
 
-      <div className="flex-1 flex max-w-7xl w-full mx-auto">
+      <div className="flex-1 flex flex-row w-full min-w-0 items-start">
         <AppSidebar
           activeView={activeView}
           onSelectView={view => setActiveView(view)}
           isOpenMobile={isOpenMobile}
           onCloseMobile={() => setIsOpenMobile(false)}
+          onOpenChangePassword={() => setIsChangePasswordOpen(true)}
         />
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0 overflow-x-hidden">
-          {renderActiveView()}
+        <main className="flex-1 min-w-0 p-4 sm:p-5 md:p-6 lg:p-6 xl:p-8">
+          <React.Suspense fallback={<ViewLoadingSkeleton />}>
+            {renderActiveView()}
+          </React.Suspense>
         </main>
       </div>
+
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
+      />
     </div>
   );
 };
 
 export default function App() {
   return (
-    <AuthProvider>
-      <SchoolDataProvider>
-        <AppContent />
-      </SchoolDataProvider>
-    </AuthProvider>
+    <RootErrorBoundary>
+      <AuthProvider>
+        <SchoolDataProvider>
+          <AppContent />
+        </SchoolDataProvider>
+      </AuthProvider>
+    </RootErrorBoundary>
   );
 }

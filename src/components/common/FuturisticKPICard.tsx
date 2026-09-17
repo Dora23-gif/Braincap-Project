@@ -73,35 +73,35 @@ export const FuturisticKPICard: React.FC<FuturisticKPICardProps> = ({
     <div
       onClick={onClick}
       className={clsx(
-        'group relative rounded-3xl p-1 bg-slate-900/[0.03] dark:bg-white/[0.03] border border-slate-900/5 dark:border-white/10 transition-all duration-300',
+        'group relative rounded-2xl sm:rounded-3xl p-1 bg-slate-900/[0.03] dark:bg-white/[0.03] border border-slate-900/5 dark:border-white/10 transition-all duration-300',
         'hover:-translate-y-1 hover:shadow-xl hover:border-slate-300 dark:hover:border-white/20',
         onClick ? 'cursor-pointer active:scale-98' : 'cursor-default',
         className
       )}
     >
-      <div className="rounded-[calc(1.5rem-0.25rem)] bg-white dark:bg-[#0E1526] border border-slate-200/80 dark:border-white/5 p-4 sm:p-5 flex flex-col justify-between h-full transition-all duration-300 group-hover:border-slate-300/80 dark:group-hover:border-white/15">
+      <div className="rounded-[calc(1rem-0.25rem)] sm:rounded-[calc(1.5rem-0.25rem)] bg-white dark:bg-[#0E1526] border border-slate-200/80 dark:border-white/5 p-3 sm:p-5 flex flex-col justify-between h-full transition-all duration-300 group-hover:border-slate-300/80 dark:group-hover:border-white/15">
         
         {/* Top Header Strip */}
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
+        <div className="flex items-center justify-between gap-1.5 sm:gap-2 mb-2 sm:mb-3">
+          <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
             {title}
           </span>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1 sm:gap-1.5">
             {badge && (
-              <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+              <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[8px] sm:text-[9px] font-extrabold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                 {badge}
               </span>
             )}
-            <div className={clsx('w-8 h-8 rounded-xl flex items-center justify-center border shadow-2xs shrink-0 transition-transform duration-300 group-hover:scale-110', iconBg)}>
-              <Icon className="w-4 h-4" />
+            <div className={clsx('w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl flex items-center justify-center border shadow-2xs shrink-0 transition-transform duration-300 group-hover:scale-110', iconBg)}>
+              <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
         </div>
 
         {/* Main Number & Sparkline Row */}
-        <div className="flex items-baseline justify-between gap-2 my-1">
-          <div className="text-2xl sm:text-3xl font-bold font-mono-tabular text-slate-900 dark:text-white tracking-tight">
+        <div className="flex items-baseline justify-between gap-2 my-0.5 sm:my-1">
+          <div className="text-xl sm:text-3xl font-bold font-mono-tabular text-slate-900 dark:text-white tracking-tight">
             {value}
           </div>
 
@@ -113,9 +113,9 @@ export const FuturisticKPICard: React.FC<FuturisticKPICardProps> = ({
         </div>
 
         {/* Bottom Subtitle / Trend Badge */}
-        <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-[11px] mt-2">
+        <div className="flex items-center justify-between gap-1.5 sm:gap-2 pt-1.5 sm:pt-2 border-t border-slate-100 dark:border-slate-800/80 text-[10px] sm:text-[11px] mt-1.5 sm:mt-2">
           {subtitle && (
-            <span className="text-slate-500 dark:text-slate-400 truncate">
+            <span className="text-slate-500 dark:text-slate-400 truncate text-[10px] sm:text-[11px]">
               {subtitle}
             </span>
           )}
@@ -123,14 +123,14 @@ export const FuturisticKPICard: React.FC<FuturisticKPICardProps> = ({
           {trend && (
             <div
               className={clsx(
-                'inline-flex items-center gap-1 font-bold font-mono-tabular shrink-0',
+                'inline-flex items-center gap-0.5 sm:gap-1 font-bold font-mono-tabular shrink-0 text-[10px] sm:text-[11px]',
                 trend.isPositive !== false ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
               )}
             >
               {trend.isPositive !== false ? (
-                <TrendingUp className="w-3 h-3" />
+                <TrendingUp className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
               ) : (
-                <TrendingDown className="w-3 h-3" />
+                <TrendingDown className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
               )}
               <span>{trend.value}</span>
             </div>

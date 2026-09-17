@@ -43,7 +43,7 @@ export const FuturisticPageShell: React.FC<FuturisticPageShellProps> = ({
   };
 
   return (
-    <div className={clsx('space-y-6 animate-fade-slide-up', className)}>
+    <div className={clsx('w-full space-y-6 animate-fade-slide-up', className)}>
       {/* Universal Futuristic Header Shell */}
       <div className="relative rounded-3xl p-1 bg-slate-900/[0.03] dark:bg-white/[0.03] border border-slate-900/5 dark:border-white/10 shadow-xs transition-all duration-300">
         <div className="rounded-[calc(1.5rem-0.25rem)] bg-white/95 dark:bg-[#0E1526]/90 backdrop-blur-xl border border-slate-200/80 dark:border-white/5 p-4 sm:p-6 transition-colors duration-300">
@@ -74,7 +74,7 @@ export const FuturisticPageShell: React.FC<FuturisticPageShellProps> = ({
                 </div>
 
                 {subtitle && (
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-3xl lg:max-w-5xl leading-relaxed">
                     {subtitle}
                   </p>
                 )}
@@ -82,7 +82,7 @@ export const FuturisticPageShell: React.FC<FuturisticPageShellProps> = ({
             </div>
 
             {/* Actions & Session/Term Indicators */}
-            <div className="flex flex-wrap items-center gap-2.5 sm:self-auto">
+            <div className="flex flex-wrap items-center gap-2.5 sm:self-auto w-full lg:w-auto min-w-0">
               {showTermPill && (
                 <div className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/60 text-xs font-semibold text-slate-700 dark:text-slate-300">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse-glow" />
@@ -93,7 +93,7 @@ export const FuturisticPageShell: React.FC<FuturisticPageShellProps> = ({
               )}
 
               {actions && (
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto min-w-0">
                   {actions}
                 </div>
               )}

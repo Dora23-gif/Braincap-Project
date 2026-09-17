@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useSchoolData } from '../../context/SchoolDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { FuturisticPageShell } from '../../components/common/FuturisticPageShell';
+import { getWelcomeMessage } from '../../lib/userDisplay';
 import { FuturisticKPICard } from '../../components/common/FuturisticKPICard';
 import { DoubleBezelCard } from '../../components/common/DoubleBezelCard';
 import {
@@ -194,8 +195,15 @@ export const PrincipalDashboardView: React.FC<PrincipalDashboardViewProps> = ({ 
 
   const armDistributionData = classArms.slice(0, 6).map((arm, i) => {
     const aAvg = i % 2 === 0 ? 71.4 + i : 68.2 + i;
+    const full = arm.fullName || arm.name;
+    const short = full.replace('JSS ', 'J').replace('SSS ', 'S');
     return {
-      label: arm.fullName || arm.name,
+      label: (
+        <>
+          <span className="hidden sm:inline">{full}</span>
+          <span className="sm:hidden">{short}</span>
+        </>
+      ),
       value: Number(aAvg.toFixed(1)),
       highlight: i === 2
     };
@@ -204,7 +212,7 @@ export const PrincipalDashboardView: React.FC<PrincipalDashboardViewProps> = ({ 
   return (
     <FuturisticPageShell
       title="OFFICE OF THE PRINCIPAL • EXECUTIVE COMMAND"
-      subtitle={`Institutional academic intelligence, cohort health indices, and Continuous Assessment submission compliance for ${activeSession.name} • ${activeTerm.name}.`}
+      subtitle={`${getWelcomeMessage(user?.name || 'Principal')}. Institutional academic intelligence, cohort health indices, and Continuous Assessment submission compliance for ${activeSession.name} • ${activeTerm.name}.`}
       icon={ShieldCheck}
       badgeText={activeTerm.isResultsApprovedByPrincipal ? 'Executive Clearance Active' : 'Pending Executive Assent'}
       badgeVariant={activeTerm.isResultsApprovedByPrincipal ? 'success' : 'warning'}
@@ -236,7 +244,7 @@ export const PrincipalDashboardView: React.FC<PrincipalDashboardViewProps> = ({ 
       )}
 
       {/* Macro Institutional KPIs Bento Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 gap-2.5 sm:gap-4">
         <FuturisticKPICard
           title="Total Enrollment"
           value={totalStudents}
@@ -260,22 +268,27 @@ export const PrincipalDashboardView: React.FC<PrincipalDashboardViewProps> = ({ 
         />
 
         <FuturisticKPICard
-          title="Honors Roll (≥75%)"
-          value={`${honorsCandidatesCount} Scholars`}
-          subtitle="Eligible for Commendation"
+          title="Honors Students (≥75%)"
+          value={`${honorsCandidatesCount} Students`}
+          subtitle="Average of 75% or higher"
           icon={Award}
           glowColor="amber"
-          badge="Dean's List"
+          badge="Honors"
           onClick={() => onNavigateView && onNavigateView('honors-probation')}
         />
 
         <FuturisticKPICard
-          title="Academic Probation"
-          value={`${probationCandidatesCount} Students`}
-          subtitle="Sub-benchmark (<45%)"
+          title="Students Needing Support"
+          value={`${probationCandidatesCount || students.filter(student => {
+            const sScores = termScores.filter(s => s.studentId === student.id || (student.admissionNumber && s.admissionNumber === student.admissionNumber));
+            if (sScores.length === 0) return false;
+            const avg = sScores.reduce((acc, s) => acc + s.total, 0) / sScores.length;
+            return avg < 77 || sScores.some(s => s.total < 70);
+          }).length} Students`}
+          subtitle="Need academic support"
           icon={AlertTriangle}
           glowColor="rose"
-          badge="Intervention"
+          badge="Support"
           onClick={() => onNavigateView && onNavigateView('honors-probation')}
         />
       </div>

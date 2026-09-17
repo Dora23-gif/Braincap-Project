@@ -30,6 +30,7 @@ export interface UserSession {
   staffId?: string;
   studentId?: string;
   parentId?: string;
+  wardIds?: string[];
   allocatedSubjects?: {
     classArmId: string;
     classArmName: string;
@@ -93,6 +94,7 @@ export interface Subject {
   group: SubjectGroup;
   isCompulsorySeniorScience?: boolean;
   isCompulsoryJunior?: boolean;
+  backendId?: number;
 }
 
 export interface TeacherAllocation {
@@ -143,7 +145,7 @@ export interface Student {
   house: 'Emerald' | 'Sapphire' | 'Ruby' | 'Diamond';
   bloodGroup: 'A+' | 'A-' | 'B+' | 'B-' | 'O+' | 'O-' | 'AB+' | 'AB-';
   genotype: 'AA' | 'AS' | 'AC' | 'SS';
-  parentId: string;
+  parentId?: string;
   parentName: string;
   parentPhone: string;
   parentEmail: string;
@@ -152,6 +154,7 @@ export interface Student {
   isBoarder: boolean;
   status: 'ACTIVE' | 'GRADUATED' | 'TRANSFERRED';
   registeredSubjectIds: string[];
+  registeredSubjectCodes?: string[];
   droppedSubjects?: DroppedSubjectRecord[];
   address?: string;
 }
@@ -234,6 +237,7 @@ export type AuditLogAction =
   | 'CLASS_ARM_ENDORSED'
   | 'PASTORAL_NOTE_LOGGED'
   | 'SUBJECT_MARKSHEET_SUBMITTED'
+  | 'SUBJECT_MARKSHEET_RETRACTED'
   | 'CLASS_ARM_CREATED'
   | 'CLASS_LEVEL_CREATED'
   | 'STUDENT_UPDATED'

@@ -124,7 +124,7 @@ export const ScoreOverrideModal: React.FC<ScoreOverrideModalProps> = ({
           <div className="space-y-0.5">
             <span className="font-bold block">Super Administrator High-Integrity Protocol</span>
             <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
-              This score sheet is locked. Overriding marks bypasses standard departmental moderation and will brand this record with an immutable <strong>[OV]</strong> badge in all student dossiers and generate an audit log entry.
+              This score sheet is locked. Overriding marks bypasses standard departmental moderation and will brand this record with an <strong>[OV]</strong> badge in all student dossiers and record an entry in Activity History.
             </p>
           </div>
         </div>

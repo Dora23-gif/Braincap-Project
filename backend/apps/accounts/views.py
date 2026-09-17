@@ -1,0 +1,209 @@
+# pyright: reportMissingImports=false, reportAttributeAccessIssue=false
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.encoding import force_str
+from django.utils.http import urlsafe_base64_decode
+from rest_framework import generics, permissions, status, viewsets, filters
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from django_filters.rest_framework import DjangoFilterBackend
+from .models import CustomUser
+from .serializers import (
+    CustomUserSerializer,
+    UserSessionSerializer,
+    SetPasswordSerializer,
+    LoginSerializer,
+)
+
+
+class CurrentUserView(generics.RetrieveUpdateAPIView):
+    """Returns the currently authenticated user's session profile."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_serializer_class(self):
+        return UserSessionSerializer
+
+    def get_object(self):
+        return self.request.user
+
+
+class ChangePasswordView(APIView):
+    """
+    POST /api/v1/accounts/change-password/
+    Allows an authenticated user to change their own password.
+    Accepts { old_password, new_password }.
+    Validates old_password, updates to new_password, updates default_pin, and preserves session.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        old_password = request.data.get("old_password", "").strip()
+        new_password = request.data.get("new_password", "").strip()
+
+        if not new_password or len(new_password) < 6:
+            return Response(
+                {"detail": "New password must be at least 6 characters."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = request.user
+        if not user.check_password(old_password):
+            return Response(
+                {"detail": "Current password does not match."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user.set_password(new_password)
+        user.default_pin = ""
+        user.save(update_fields=["password", "default_pin"])
+
+        if hasattr(request, "session") and request.session is not None:
+            try:
+                from django.contrib.auth import update_session_auth_hash
+                update_session_auth_hash(request, user)
+            except Exception:
+                pass
+
+        return Response(
+            {
+                "detail": "Password changed successfully.",
+                "user": UserSessionSerializer(user).data,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class SetPasswordView(APIView):
+    """
+    POST /api/v1/accounts/set-password/
+    Used by parents clicking their invitation link:
+    Accepts { uid, token, password }.
+    Validates token, sets secure password, and logs them in immediately.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = SetPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        uid_b64 = serializer.validated_data["uid"]
+        token = serializer.validated_data["token"]
+        new_password = serializer.validated_data["password"]
+
+        try:
+            uid = force_str(urlsafe_base64_decode(uid_b64))
+            user = CustomUser.objects.filter(pk=uid).first()
+        except (ValueError, TypeError, OverflowError):
+            user = None
+
+        if not user:
+            return Response(
+                {"detail": "Invalid or expired user identification."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not default_token_generator.check_token(user, token):
+            return Response(
+                {"detail": "This activation link is invalid or has expired. Please request a new invitation."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Set new password and activate
+        user.set_password(new_password)
+        user.is_active = True
+        user.save()
+
+        # Log user into session automatically
+        login(request, user)
+
+        return Response(
+            {
+                "detail": "Password successfully created. Your account is active!",
+                "user": UserSessionSerializer(user).data,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class LoginView(APIView):
+    """
+    POST /api/v1/accounts/login/
+    Accepts { identifier, password } where identifier can be:
+    - Email (e.g. parent@gmail.com)
+    - Username (e.g. admin or parent_prt_002)
+    - Staff/Student ID (e.g. EIS/2026/001)
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        identifier = serializer.validated_data["identifier"].strip()
+        password = serializer.validated_data["password"]
+
+        # 1. Lookup user by email, username, or identifier
+        user = CustomUser.objects.filter(
+            username__iexact=identifier
+        ).first() or CustomUser.objects.filter(
+            email__iexact=identifier
+        ).first() or CustomUser.objects.filter(
+            identifier__iexact=identifier
+        ).first()
+
+        # 2. Verify existence
+        if not user:
+            return Response(
+                {"detail": "Invalid credentials. Please verify your identifier and password."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        # 3. Verify password against the actual database
+        if not user.check_password(password) and not user.check_password(password.strip()):
+            return Response(
+                {"detail": "Incorrect password"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        if not user.is_active:
+            return Response(
+                {"detail": "This account is inactive or pending activation."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # 3. Log user into session
+        login(request, user)
+
+        return Response(
+            {
+                "detail": "Login successful.",
+                "user": UserSessionSerializer(user).data,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class LogoutView(APIView):
+    """POST /api/v1/accounts/logout/ — End current session."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        logout(request)
+        return Response({"detail": "Logged out successfully."}, status=status.HTTP_200_OK)
+
+
+class UserViewSet(viewsets.ModelViewSet):
+    """
+    CRUD for User / Staff accounts.
+    Allows listing staff members, registering new staff profiles,
+    and updating status (ACTIVE/SUSPENDED) or roles.
+    """
+    queryset = CustomUser.objects.all()
+    serializer_class = CustomUserSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ["active_role", "is_active"]
+    search_fields = ["username", "first_name", "last_name", "email", "identifier"]
+    ordering_fields = ["date_joined", "last_name", "first_name", "username"]
+    ordering = ["last_name", "first_name"]
+

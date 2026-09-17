@@ -10,14 +10,18 @@
   }
 
   html {
-    min-height: 100dvh;
+    min-height: 100%;
+    width: 100%;
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
   }
 
   body {
     font-family: var(--font-sans);
-    min-height: 100dvh;
+    min-height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
     background-color: #F8FAFC;
     color: #0F172A;
     -webkit-font-smoothing: antialiased;

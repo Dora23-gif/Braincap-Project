@@ -27,6 +27,7 @@ import {
   Stamp
 } from 'lucide-react';
 import { FuturisticPageShell } from '../../components/common/FuturisticPageShell';
+import { getWelcomeMessage } from '../../lib/userDisplay';
 import { FuturisticKPICard } from '../../components/common/FuturisticKPICard';
 import { SegmentedControl, SegmentedControlOption } from '../../components/common/SegmentedControl';
 
@@ -194,15 +195,15 @@ export const VPAdminDashboardView: React.FC = () => {
   };
 
   const VP_ADMIN_TABS: SegmentedControlOption<'DISCIPLINE' | 'ABSENTEEISM' | 'EXEATS'>[] = [
-    { id: 'DISCIPLINE', label: 'Disciplinary Ledger & Demerits', icon: ShieldAlert, count: disciplinaryIncidents.length },
-    { id: 'ABSENTEEISM', label: 'Chronic Truancy & Parent Summons', icon: UserX, count: chronicAbsenteeismList.length },
+    { id: 'DISCIPLINE', label: 'Discipline Cases', icon: ShieldAlert, count: disciplinaryIncidents.length },
+    { id: 'ABSENTEEISM', label: 'Frequent Absences and Parents Summons', icon: UserX, count: chronicAbsenteeismList.length },
     { id: 'EXEATS', label: 'Campus Exeat & Gate Passes', icon: Clock, count: campusExeats.length }
   ];
 
   return (
     <FuturisticPageShell
       title="VICE PRINCIPAL (ADMINISTRATION) COMMAND"
-      subtitle={`Student discipline, demerit points registry, campus exeat authorization passes, and chronic absenteeism intervention (<85% attendance). Registered: ${students.length} Pupils.`}
+      subtitle={`${getWelcomeMessage(user?.name || 'Vice-Principal')}. Student discipline, demerit points registry, campus exeat authorization passes, and chronic absenteeism intervention (<85% attendance). Registered: ${students.length} Pupils.`}
       icon={ShieldAlert}
       badgeText={openIncidentsCount > 0 ? `${openIncidentsCount} Open Incidents` : 'Discipline In Order'}
       badgeVariant={openIncidentsCount > 0 ? 'warning' : 'success'}
@@ -216,12 +217,12 @@ export const VPAdminDashboardView: React.FC = () => {
         </button>
       }
     >
-      {/* 4 Key Metric Tiles */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      {/* 2 Key Metric Tiles */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 gap-2.5 sm:gap-4">
         <FuturisticKPICard
-          title="Open Demerit Cases"
+          title="Discipline Cases"
           value={`${openIncidentsCount}`}
-          subtitle="Pending hearing / action"
+          subtitle="unresolved student discipline cases"
           icon={AlertTriangle}
           sparklineData={[8, 7, 6, 5, 4, openIncidentsCount]}
           glowColor="amber"
@@ -229,33 +230,13 @@ export const VPAdminDashboardView: React.FC = () => {
         />
 
         <FuturisticKPICard
-          title="Demerit Points Total"
-          value={`${totalDemeritsAccumulated} Pts`}
-          subtitle="Recorded across 12 arms"
-          icon={ShieldAlert}
-          sparklineData={[120, 110, 95, 80, 70, totalDemeritsAccumulated]}
-          glowColor="rose"
-          trend={{ value: '-12% this month', isPositive: true }}
-        />
-
-        <FuturisticKPICard
-          title="Active Campus Exeats"
-          value={`${activeExeatsCount}`}
-          subtitle="Authorized gate passes"
-          icon={Clock}
-          sparklineData={[3, 5, 4, 6, 5, activeExeatsCount]}
-          glowColor="cyan"
-          trend={{ value: 'All Verified', isPositive: true }}
-        />
-
-        <FuturisticKPICard
-          title="Chronic Truancy Flag"
+          title="Frequent Absences"
           value={`${chronicAbsenteeismList.length}`}
-          subtitle="Attendance < 85%"
+          subtitle="repeated or excessive absences"
           icon={UserX}
           sparklineData={[6, 5, 4, 3, 2, chronicAbsenteeismList.length]}
           glowColor="rose"
-          trend={{ value: `${chronicAbsenteeismList.length} Pupils Flagged`, isPositive: chronicAbsenteeismList.length === 0 }}
+          trend={{ value: `${chronicAbsenteeismList.length} Flagged`, isPositive: chronicAbsenteeismList.length === 0 }}
         />
       </div>
 

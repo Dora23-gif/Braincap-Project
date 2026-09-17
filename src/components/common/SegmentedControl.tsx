@@ -3,7 +3,7 @@ import { clsx } from 'clsx';
 
 export interface SegmentedControlOption<T extends string = string> {
   id: T;
-  label: string;
+  label: React.ReactNode;
   icon?: React.ComponentType<{ className?: string }>;
   count?: number;
   badge?: string;
@@ -39,7 +39,7 @@ export const SegmentedControl = <T extends string = string>({
             type="button"
             onClick={() => onChange(option.id)}
             className={clsx(
-              'relative flex-1 min-w-max flex items-center justify-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer select-none touch-target',
+              'relative flex-1 min-w-max flex items-center justify-center gap-1.5 sm:gap-2 px-2.5 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer select-none touch-target',
               isActive
                 ? 'bg-white dark:bg-[#0E1526] text-slate-950 dark:text-white shadow-sm border border-slate-200/80 dark:border-white/10 dark:shadow-[0_0_12px_rgba(255,255,255,0.06)]'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-white/5'

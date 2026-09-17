@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import {
   AcademicSession,
   AcademicTerm,
@@ -68,6 +68,31 @@ import {
   calculateTotalAggregate,
   computeRankings
 } from '../lib/gradeCalculator';
+import {
+  api,
+  adaptStudentFromBackend,
+  adaptStudentToBackend,
+  adaptClassArmFromBackend,
+  adaptClassLevelFromBackend,
+  adaptAcademicSessionFromBackend,
+  adaptAcademicTermFromBackend,
+  adaptSubjectFromBackend,
+  adaptSubjectToBackend,
+  adaptSubjectScoreFromBackend,
+  adaptStaffFromBackend,
+  adaptTeacherAllocationFromBackend,
+  adaptParentFromBackend,
+  adaptAuditLogFromBackend,
+  adaptSchoolSettingsFromBackend,
+  resolveArmId,
+  resolveArmPk,
+  resolveSubjectId,
+  resolveSubjectPk,
+  resolveTermId,
+  resolveTermPk,
+  resolveStudentCanonicalId,
+} from '../lib/api';
+import { useAuth } from './AuthContext';
 
 interface SchoolDataContextType {
   sessions: AcademicSession[];
@@ -97,7 +122,7 @@ interface SchoolDataContextType {
   
   // Actions
   updateScore: (scoreId: string, partial: Partial<SubjectScore>) => void;
-  bulkSaveScores: (classArmId: string, subjectId: string, scoresData: { admissionNumber: string; ca1: number; ca2: number; assignment: number; project: number; exam: number }[]) => void;
+  bulkSaveScores: (classArmId: string, subjectId: string, scoresData: { admissionNumber: string; ca1: number; ca2: number; assignment: number; project: number; exam: number }[]) => Promise<void>;
   toggleGradeLock: (classArmId: string, subjectId: string, actor?: { id: string; name: string; role: any }) => void;
   overrideScore: (params: {
     scoreId: string;
@@ -110,11 +135,14 @@ interface SchoolDataContextType {
   updatePsychomotor: (record: AffectiveAndPsychomotor) => void;
   updateStudentSubjects: (studentId: string, subjectIds: string[]) => void;
   dropStudentSubject: (studentId: string, subjectId: string, level: 'SSS 2' | 'SSS 3', reason?: string) => void;
-  registerStudent: (student: Omit<Student, 'id' | 'admissionNumber' | 'status' | 'registeredSubjectIds'> & { registeredSubjectIds?: string[] }) => Student;
+  registerStudent: (student: Omit<Student, 'id' | 'admissionNumber' | 'status' | 'registeredSubjectIds'> & { registeredSubjectIds?: string[]; admissionNumber?: string }) => Promise<Student>;
+  getNextAdmissionNumber: () => string;
   updateStudent: (studentId: string, updates: Partial<Student>, actor?: { id: string; name: string; role: any }) => void;
   deleteStudent: (studentId: string, reason: string, actor?: { id: string; name: string; role: any }) => void;
   addClassArm: (armData: { classLevelId: string; name: string; formMasterId?: string; formMasterName?: string }, actor?: { id: string; name: string; role: any }) => ClassArm;
   addClassLevel: (levelData: { name: string; section: 'JUNIOR' | 'SENIOR'; order?: number }, actor?: { id: string; name: string; role: any }) => ClassLevel;
+  addSubject: (data: Omit<Subject, 'id'>) => Promise<Subject>;
+  updateSubject: (subjectId: string, updates: Partial<Subject>) => Promise<Subject>;
   publishResults: (termId: string, isPublished: boolean) => void;
   setActiveTerm: (termId: string) => void;
   getStudentDossier: (studentId: string, termId?: string) => StudentTerminalDossier | null;
@@ -171,6 +199,7 @@ interface SchoolDataContextType {
   // Subject Teacher Operations
   subjectSubmissions: SubjectMarksheetSubmission[];
   submitSubjectMarksheet: (classArmId: string, subjectId: string, comments?: string, actor?: { id: string; name: string; role: any }) => void;
+  retractSubjectMarksheet: (classArmId: string, subjectId: string, actor?: { id: string; name: string; role: any }) => void;
 
   // Family & Student Operations
   feeClearances: StudentFeeClearance[];
@@ -203,11 +232,13 @@ interface SchoolDataContextType {
   markMessageAsRead: (messageId: string) => void;
   markAllMessagesAsRead: (userIdOrRole: string) => void;
   deleteMessage: (messageId: string) => void;
+  isBackendLoaded: boolean;
+  refreshBackendData: () => Promise<void>;
 }
 
 const SchoolDataContext = createContext<SchoolDataContextType | undefined>(undefined);
 
-const DATA_VERSION = 'v10_unified_ecosystem_messages';
+const DATA_VERSION = 'v12_unlocked_live_marks';
 
 export const INITIAL_PORTAL_MESSAGES: PortalMessage[] = [
   {
@@ -397,181 +428,49 @@ export const INITIAL_EXAM_TIMETABLE: ExamTimetableEntry[] = [
   }
 ];
 
+function safeStorageParse<T>(key: string, fallback: T): T {
+  try {
+    const saved = localStorage.getItem(key);
+    if (!saved || saved === 'undefined' || saved === 'null') return fallback;
+    const parsed = JSON.parse(saved);
+    return parsed !== undefined && parsed !== null ? parsed : fallback;
+  } catch (e) {
+    console.warn(`Corrupted localStorage key "${key}", reverting to fallback:`, e);
+    return fallback;
+  }
+}
+
 export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [sessions, setSessions] = useState<AcademicSession[]>(() => {
-    const saved = localStorage.getItem('eis_sessions');
-    return saved ? JSON.parse(saved) : INITIAL_SESSIONS;
-  });
-
-  const [terms, setTerms] = useState<AcademicTerm[]>(() => {
-    const saved = localStorage.getItem('eis_terms');
-    return saved ? JSON.parse(saved) : INITIAL_TERMS;
-  });
-
-  const [classLevels, setClassLevels] = useState<ClassLevel[]>(() => {
-    const saved = localStorage.getItem('eis_class_levels');
-    return saved ? JSON.parse(saved) : INITIAL_CLASS_LEVELS;
-  });
-
-  const [classArms, setClassArms] = useState<ClassArm[]>(() => {
-    const saved = localStorage.getItem('eis_class_arms');
-    return saved ? JSON.parse(saved) : INITIAL_CLASS_ARMS;
-  });
-  const [subjects] = useState<Subject[]>(INITIAL_SUBJECTS);
-  const [allocations, setAllocations] = useState<TeacherAllocation[]>(() => {
-    const ver = localStorage.getItem('eis_data_version');
-    if (ver !== DATA_VERSION) return INITIAL_ALLOCATIONS;
-    const saved = localStorage.getItem('eis_allocations');
-    return saved ? JSON.parse(saved) : INITIAL_ALLOCATIONS;
-  });
-
-  const [students, setStudents] = useState<Student[]>(() => {
-    const ver = localStorage.getItem('eis_data_version');
-    if (ver !== DATA_VERSION) return INITIAL_STUDENTS;
-    const saved = localStorage.getItem('eis_students');
-    return saved ? JSON.parse(saved) : INITIAL_STUDENTS;
-  });
-
-  const [scores, setScores] = useState<SubjectScore[]>(() => {
-    const ver = localStorage.getItem('eis_data_version');
-    if (ver !== DATA_VERSION) return INITIAL_SCORES;
-    const saved = localStorage.getItem('eis_scores');
-    return saved ? JSON.parse(saved) : INITIAL_SCORES;
-  });
-
-  const [affectiveTraits, setAffectiveTraits] = useState<AffectiveAndPsychomotor[]>(() => {
-    const ver = localStorage.getItem('eis_data_version');
-    if (ver !== DATA_VERSION) return INITIAL_AFFECTIVE;
-    const saved = localStorage.getItem('eis_affective');
-    return saved ? JSON.parse(saved) : INITIAL_AFFECTIVE;
-  });
-
-  const [attendanceRecords, setAttendanceRecords] = useState<DailyAttendanceRecord[]>(() => {
-    const saved = localStorage.getItem('eis_attendance');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [staff, setStaff] = useState<StaffMember[]>(() => {
-    const ver = localStorage.getItem('eis_data_version');
-    if (ver !== DATA_VERSION) return INITIAL_STAFF;
-    const saved = localStorage.getItem('eis_staff');
-    return saved ? JSON.parse(saved) : INITIAL_STAFF;
-  });
-
-  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => {
-    const ver = localStorage.getItem('eis_data_version');
-    if (ver !== DATA_VERSION) return INITIAL_AUDIT_LOGS;
-    const saved = localStorage.getItem('eis_audit_logs');
-    return saved ? JSON.parse(saved) : INITIAL_AUDIT_LOGS;
-  });
-
-  const [schoolSettings, setSchoolSettings] = useState<SchoolSettings>(() => {
-    const ver = localStorage.getItem('eis_data_version');
-    if (ver !== DATA_VERSION) return DEFAULT_SCHOOL_SETTINGS;
-    const saved = localStorage.getItem('eis_school_settings');
-    return saved ? JSON.parse(saved) : DEFAULT_SCHOOL_SETTINGS;
-  });
-
-  const [disciplinaryIncidents, setDisciplinaryIncidents] = useState<DisciplinaryIncident[]>(() => {
-    const ver = localStorage.getItem('eis_data_version');
-    if (ver !== DATA_VERSION) return INITIAL_DISCIPLINARY_INCIDENTS;
-    const saved = localStorage.getItem('eis_discipline');
-    return saved ? JSON.parse(saved) : INITIAL_DISCIPLINARY_INCIDENTS;
-  });
-
-  const [campusExeats, setCampusExeats] = useState<CampusExeat[]>(() => {
-    const ver = localStorage.getItem('eis_data_version');
-    if (ver !== DATA_VERSION) return INITIAL_CAMPUS_EXEATS;
-    const saved = localStorage.getItem('eis_exeats');
-    return saved ? JSON.parse(saved) : INITIAL_CAMPUS_EXEATS;
-  });
-
-  const [schemeOfWork, setSchemeOfWork] = useState<SchemeOfWorkTracker[]>(() => {
-    const ver = localStorage.getItem('eis_data_version');
-    if (ver !== DATA_VERSION) return INITIAL_SCHEME_OF_WORK;
-    const saved = localStorage.getItem('eis_scheme_of_work');
-    return saved ? JSON.parse(saved) : INITIAL_SCHEME_OF_WORK;
-  });
-
-  const [examHalls, setExamHalls] = useState<ExamHall[]>(() => {
-    const ver = localStorage.getItem('eis_data_version');
-    if (ver !== DATA_VERSION) return INITIAL_EXAM_HALLS;
-    const saved = localStorage.getItem('eis_exam_halls');
-    return saved ? JSON.parse(saved) : INITIAL_EXAM_HALLS;
-  });
-
-  const [invigilationRoster, setInvigilationRoster] = useState<InvigilationShift[]>(() => {
-    const ver = localStorage.getItem('eis_data_version');
-    if (ver !== DATA_VERSION) return INITIAL_INVIGILATION_ROSTER;
-    const saved = localStorage.getItem('eis_invigilation');
-    return saved ? JSON.parse(saved) : INITIAL_INVIGILATION_ROSTER;
-  });
-
-  const [externalCandidates, setExternalCandidates] = useState<ExternalCandidateProfile[]>(() => {
-    const ver = localStorage.getItem('eis_data_version');
-    if (ver !== DATA_VERSION) return INITIAL_EXTERNAL_CANDIDATES;
-    const saved = localStorage.getItem('eis_external_candidates');
-    return saved ? JSON.parse(saved) : INITIAL_EXTERNAL_CANDIDATES;
-  });
-
-  const [broadsheetSeals, setBroadsheetSeals] = useState<ClassBroadsheetSeal[]>(() => {
-    const ver = localStorage.getItem('eis_data_version');
-    if (ver !== DATA_VERSION) return INITIAL_BROADSHEET_SEALS;
-    const saved = localStorage.getItem('eis_broadsheet_seals');
-    return saved ? JSON.parse(saved) : INITIAL_BROADSHEET_SEALS;
-  });
-
-  const [pastoralLogs, setPastoralLogs] = useState<PastoralLogEntry[]>(() => {
-    const ver = localStorage.getItem('eis_data_version');
-    if (ver !== DATA_VERSION) return INITIAL_PASTORAL_LOGS;
-    const saved = localStorage.getItem('eis_pastoral_logs');
-    return saved ? JSON.parse(saved) : INITIAL_PASTORAL_LOGS;
-  });
-
-  const [armEndorsements, setArmEndorsements] = useState<ClassArmEndorsement[]>(() => {
-    const ver = localStorage.getItem('eis_data_version');
-    if (ver !== DATA_VERSION) return INITIAL_ARM_ENDORSEMENTS;
-    const saved = localStorage.getItem('eis_arm_endorsements');
-    return saved ? JSON.parse(saved) : INITIAL_ARM_ENDORSEMENTS;
-  });
-
-  const [subjectSubmissions, setSubjectSubmissions] = useState<SubjectMarksheetSubmission[]>(() => {
-    const ver = localStorage.getItem('eis_data_version');
-    if (ver !== DATA_VERSION) return INITIAL_SUBJECT_SUBMISSIONS;
-    const saved = localStorage.getItem('eis_subject_submissions');
-    return saved ? JSON.parse(saved) : INITIAL_SUBJECT_SUBMISSIONS;
-  });
-
-  const [feeClearances, setFeeClearances] = useState<StudentFeeClearance[]>(() => {
-    const ver = localStorage.getItem('eis_data_version');
-    if (ver !== DATA_VERSION) return INITIAL_FEE_CLEARANCES;
-    const saved = localStorage.getItem('eis_fee_clearances');
-    return saved ? JSON.parse(saved) : INITIAL_FEE_CLEARANCES;
-  });
-
-  const [weeklyTimetables, setWeeklyTimetables] = useState<Record<string, DayTimetable[]>>(() => {
-    const saved = localStorage.getItem('eis_weekly_timetables');
-    return saved ? JSON.parse(saved) : INITIAL_WEEKLY_TIMETABLES;
-  });
-
-  const [examTimetable, setExamTimetable] = useState<ExamTimetableEntry[]>(() => {
-    const saved = localStorage.getItem('eis_exam_timetable');
-    return saved ? JSON.parse(saved) : INITIAL_EXAM_TIMETABLE;
-  });
-
-  const [parentInquiries, setParentInquiries] = useState<ParentInquiry[]>(() => {
-    const ver = localStorage.getItem('eis_data_version');
-    if (ver !== DATA_VERSION) return INITIAL_PARENT_INQUIRIES;
-    const saved = localStorage.getItem('eis_parent_inquiries');
-    return saved ? JSON.parse(saved) : INITIAL_PARENT_INQUIRIES;
-  });
-
-  const [portalMessages, setPortalMessages] = useState<PortalMessage[]>(() => {
-    const ver = localStorage.getItem('eis_data_version');
-    if (ver !== DATA_VERSION) return INITIAL_PORTAL_MESSAGES;
-    const saved = localStorage.getItem('eis_portal_messages');
-    return saved ? JSON.parse(saved) : INITIAL_PORTAL_MESSAGES;
-  });
+  const { isBackendConnected, user: authUser } = useAuth();
+  const [sessions, setSessions] = useState<AcademicSession[]>(() => safeStorageParse('eis_sessions', INITIAL_SESSIONS));
+  const [terms, setTerms] = useState<AcademicTerm[]>(() => safeStorageParse('eis_terms', INITIAL_TERMS));
+  const [classLevels, setClassLevels] = useState<ClassLevel[]>(() => safeStorageParse('eis_class_levels', INITIAL_CLASS_LEVELS));
+  const [classArms, setClassArms] = useState<ClassArm[]>(() => safeStorageParse('eis_class_arms', INITIAL_CLASS_ARMS));
+  const [subjects, setSubjects] = useState<Subject[]>(() => safeStorageParse('eis_subjects', INITIAL_SUBJECTS));
+  const [allocations, setAllocations] = useState<TeacherAllocation[]>(() => safeStorageParse('eis_allocations', INITIAL_ALLOCATIONS));
+  const [students, setStudents] = useState<Student[]>(() => safeStorageParse('eis_students', INITIAL_STUDENTS));
+  const [scores, setScores] = useState<SubjectScore[]>(() => safeStorageParse('eis_scores', INITIAL_SCORES));
+  const [affectiveTraits, setAffectiveTraits] = useState<AffectiveAndPsychomotor[]>(() => safeStorageParse('eis_affective', INITIAL_AFFECTIVE));
+  const [attendanceRecords, setAttendanceRecords] = useState<DailyAttendanceRecord[]>(() => safeStorageParse('eis_attendance', []));
+  const [staff, setStaff] = useState<StaffMember[]>(() => safeStorageParse('eis_staff', INITIAL_STAFF));
+  const [parents, setParents] = useState<Parent[]>(() => safeStorageParse('eis_parents', INITIAL_PARENTS));
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => safeStorageParse('eis_audit_logs', INITIAL_AUDIT_LOGS));
+  const [schoolSettings, setSchoolSettings] = useState<SchoolSettings>(() => safeStorageParse('eis_school_settings', DEFAULT_SCHOOL_SETTINGS));
+  const [disciplinaryIncidents, setDisciplinaryIncidents] = useState<DisciplinaryIncident[]>(() => safeStorageParse('eis_discipline', INITIAL_DISCIPLINARY_INCIDENTS));
+  const [campusExeats, setCampusExeats] = useState<CampusExeat[]>(() => safeStorageParse('eis_exeats', INITIAL_CAMPUS_EXEATS));
+  const [schemeOfWork, setSchemeOfWork] = useState<SchemeOfWorkTracker[]>(() => safeStorageParse('eis_scheme_of_work', INITIAL_SCHEME_OF_WORK));
+  const [examHalls, setExamHalls] = useState<ExamHall[]>(() => safeStorageParse('eis_exam_halls', INITIAL_EXAM_HALLS));
+  const [invigilationRoster, setInvigilationRoster] = useState<InvigilationShift[]>(() => safeStorageParse('eis_invigilation', INITIAL_INVIGILATION_ROSTER));
+  const [externalCandidates, setExternalCandidates] = useState<ExternalCandidateProfile[]>(() => safeStorageParse('eis_external_candidates', INITIAL_EXTERNAL_CANDIDATES));
+  const [broadsheetSeals, setBroadsheetSeals] = useState<ClassBroadsheetSeal[]>(() => safeStorageParse('eis_broadsheet_seals', INITIAL_BROADSHEET_SEALS));
+  const [pastoralLogs, setPastoralLogs] = useState<PastoralLogEntry[]>(() => safeStorageParse('eis_pastoral_logs', INITIAL_PASTORAL_LOGS));
+  const [armEndorsements, setArmEndorsements] = useState<ClassArmEndorsement[]>(() => safeStorageParse('eis_arm_endorsements', INITIAL_ARM_ENDORSEMENTS));
+  const [subjectSubmissions, setSubjectSubmissions] = useState<SubjectMarksheetSubmission[]>(() => safeStorageParse('eis_subject_submissions', INITIAL_SUBJECT_SUBMISSIONS));
+  const [feeClearances, setFeeClearances] = useState<StudentFeeClearance[]>(() => safeStorageParse('eis_fee_clearances', INITIAL_FEE_CLEARANCES));
+  const [weeklyTimetables, setWeeklyTimetables] = useState<Record<string, DayTimetable[]>>(() => safeStorageParse('eis_weekly_timetables', INITIAL_WEEKLY_TIMETABLES));
+  const [examTimetable, setExamTimetable] = useState<ExamTimetableEntry[]>(() => safeStorageParse('eis_exam_timetable', INITIAL_EXAM_TIMETABLE));
+  const [parentInquiries, setParentInquiries] = useState<ParentInquiry[]>(() => safeStorageParse('eis_parent_inquiries', INITIAL_PARENT_INQUIRIES));
+  const [portalMessages, setPortalMessages] = useState<PortalMessage[]>(() => safeStorageParse('eis_portal_messages', INITIAL_PORTAL_MESSAGES));
 
   useEffect(() => {
     if (localStorage.getItem('eis_data_version') !== DATA_VERSION) {
@@ -596,10 +495,15 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       localStorage.setItem('eis_parent_inquiries', JSON.stringify(INITIAL_PARENT_INQUIRIES));
       localStorage.setItem('eis_allocations', JSON.stringify(INITIAL_ALLOCATIONS));
       localStorage.setItem('eis_portal_messages', JSON.stringify(INITIAL_PORTAL_MESSAGES));
+      localStorage.setItem('eis_class_levels', JSON.stringify(INITIAL_CLASS_LEVELS));
+      localStorage.setItem('eis_class_arms', JSON.stringify(INITIAL_CLASS_ARMS));
+      setClassLevels(INITIAL_CLASS_LEVELS);
+      setClassArms(INITIAL_CLASS_ARMS);
       setStudents(INITIAL_STUDENTS);
       setScores(INITIAL_SCORES);
       setAffectiveTraits(INITIAL_AFFECTIVE);
       setStaff(INITIAL_STAFF);
+      setParents(INITIAL_PARENTS);
       setAuditLogs(INITIAL_AUDIT_LOGS);
       setSchoolSettings(DEFAULT_SCHOOL_SETTINGS);
       setDisciplinaryIncidents(INITIAL_DISCIPLINARY_INCIDENTS);
@@ -618,6 +522,275 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setPortalMessages(INITIAL_PORTAL_MESSAGES);
     }
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('eis_parents', JSON.stringify(parents));
+  }, [parents]);
+
+  const [isBackendLoaded, setIsBackendLoaded] = useState(false);
+
+  const fetchLiveSchoolData = useCallback(async () => {
+    try {
+      const [
+        sessionsRes,
+        termsRes,
+        studentsRes,
+        staffRes,
+        scoresRes,
+        attendanceRes,
+        psychomotorRes,
+        settingsRes,
+        auditLogsRes,
+        subjectsRes,
+        allocationsRes,
+      ] = await Promise.allSettled([
+        api.get('/academics/sessions/', { page_size: 'all' }),
+        api.get('/academics/terms/', { page_size: 'all' }),
+        api.get('/students/students/', { page_size: 'all' }),
+        api.get('/accounts/users/', { page_size: 'all' }),
+        api.get('/grading/scores/', { page_size: 'all' }),
+        api.get('/students/attendance/', { page_size: 'all' }),
+        api.get('/students/psychomotor/', { page_size: 'all' }),
+        api.get('/governance/settings/current/'),
+        api.get('/governance/audit-logs/', { page_size: 'all' }),
+        api.get('/academics/subjects/', { page_size: 'all' }),
+        api.get('/academics/allocations/', { page_size: 'all' }),
+      ]);
+
+      if (sessionsRes.status === 'fulfilled' && Array.isArray(sessionsRes.value)) {
+        setSessions(sessionsRes.value.map(adaptAcademicSessionFromBackend));
+      }
+      if (termsRes.status === 'fulfilled' && Array.isArray(termsRes.value)) {
+        setTerms(termsRes.value.map(adaptAcademicTermFromBackend));
+      }
+
+      // Safe non-destructive merge: preserve existing students and append/update live backend students
+      if (studentsRes.status === 'fulfilled') {
+        const raw = (studentsRes.value as any)?.results || studentsRes.value;
+        if (Array.isArray(raw) && raw.length > 0) {
+          const liveStudents = raw.map(adaptStudentFromBackend);
+          setStudents(prev => {
+            const currentList = [...prev];
+            for (const live of liveStudents) {
+              const existingIdx = currentList.findIndex(
+                s => s.admissionNumber === live.admissionNumber || s.id === live.id
+              );
+              if (existingIdx >= 0) {
+                currentList[existingIdx] = {
+                  ...currentList[existingIdx],
+                  ...live,
+                  currentClassArmId: live.currentClassArmId || currentList[existingIdx].currentClassArmId,
+                };
+              } else {
+                currentList.push(live);
+              }
+            }
+            return currentList;
+          });
+        }
+      }
+
+      // Safe non-destructive merge: preserve existing rich staff (Principal, etc.) and append live staff
+      if (staffRes.status === 'fulfilled') {
+        const raw = (staffRes.value as any)?.results || staffRes.value;
+        if (Array.isArray(raw) && raw.length > 0) {
+          const liveStaff = raw.map(adaptStaffFromBackend);
+          setStaff(prev => {
+            const currentList = [...prev];
+            for (const live of liveStaff) {
+              const existingIdx = currentList.findIndex(
+                s => s.email === live.email || s.staffId === live.staffId || s.identifier === live.identifier || s.id === live.id
+              );
+              if (existingIdx >= 0) {
+                currentList[existingIdx] = {
+                  ...currentList[existingIdx],
+                  status: live.status,
+                  title: live.title || currentList[existingIdx].title,
+                };
+              } else {
+                currentList.push(live);
+              }
+            }
+            return currentList;
+          });
+
+          // Live Parent Accounts hydration
+          const parentUsers = raw.filter(
+            (u: any) => (u.roles && u.roles.includes('PARENT')) || u.active_role === 'PARENT'
+          );
+          if (parentUsers.length > 0) {
+            const liveParents = parentUsers.map(adaptParentFromBackend);
+            setParents(prev => {
+              const currentList = [...prev];
+              for (const live of liveParents) {
+                const existingIdx = currentList.findIndex(
+                  p => p.email.toLowerCase() === live.email.toLowerCase() || p.id === live.id
+                );
+                if (existingIdx >= 0) {
+                  currentList[existingIdx] = {
+                    ...currentList[existingIdx],
+                    ...live,
+                    wardIds: live.wardIds && live.wardIds.length > 0 ? live.wardIds : currentList[existingIdx].wardIds,
+                  };
+                } else {
+                  currentList.push(live);
+                }
+              }
+              return currentList;
+            });
+          }
+        }
+      }
+
+      // Live Subject Scores hydration (Broadsheets, Marksheets, Report Cards)
+      if (scoresRes.status === 'fulfilled') {
+        const raw = (scoresRes.value as any)?.results || scoresRes.value;
+        if (Array.isArray(raw) && raw.length > 0) {
+          const liveScores = raw.map(adaptSubjectScoreFromBackend);
+          setScores(prev => {
+            const currentList = [...prev];
+            for (const live of liveScores) {
+              const existingIdx = currentList.findIndex(
+                sc => (sc.studentId === live.studentId || (live.admissionNumber && sc.admissionNumber === live.admissionNumber)) &&
+                      sc.subjectId === live.subjectId &&
+                      sc.termId === live.termId
+              );
+              if (existingIdx >= 0) {
+                currentList[existingIdx] = {
+                  ...currentList[existingIdx],
+                  ...live,
+                };
+              } else {
+                currentList.push(live);
+              }
+            }
+            return currentList;
+          });
+        }
+      }
+
+      // Live Attendance hydration
+      if (attendanceRes.status === 'fulfilled') {
+        const raw = (attendanceRes.value as any)?.results || attendanceRes.value;
+        if (Array.isArray(raw) && raw.length > 0) {
+          setAttendanceRecords(prev => {
+            const currentList = [...prev];
+            for (const item of raw) {
+              const studentId = resolveStudentCanonicalId(item.student, item.admission_number);
+              const armId = resolveArmId(item.class_arm, item.class_arm_name);
+              const existingIdx = currentList.findIndex(
+                r => (r.studentId === studentId || (item.admission_number && r.studentId === item.admission_number)) && r.date === item.date
+              );
+              const rec: DailyAttendanceRecord = {
+                id: String(item.id),
+                studentId,
+                classArmId: armId,
+                date: item.date,
+                status: item.status,
+              };
+              if (existingIdx >= 0) {
+                currentList[existingIdx] = rec;
+              } else {
+                currentList.push(rec);
+              }
+            }
+            return currentList;
+          });
+        }
+      }
+
+      // Live Psychomotor & Affective traits hydration
+      if (psychomotorRes.status === 'fulfilled') {
+        const raw = (psychomotorRes.value as any)?.results || psychomotorRes.value;
+        if (Array.isArray(raw) && raw.length > 0) {
+          setAffectiveTraits(prev => {
+            const currentList = [...prev];
+            for (const item of raw) {
+              const studentId = resolveStudentCanonicalId(item.student);
+              const termId = resolveTermId(item.term);
+              const existingIdx = currentList.findIndex(
+                t => t.studentId === studentId && t.termId === termId
+              );
+              const rec: AffectiveAndPsychomotor = {
+                studentId,
+                termId,
+                punctuality: item.punctuality || 4,
+                neatness: item.neatness || 4,
+                politeness: item.politeness || 5,
+                attentiveness: item.attentiveness || 4,
+                honesty: item.honesty || 5,
+                relationshipWithPeers: item.relationship_with_peers || 4,
+                handwriting: item.handwriting || 4,
+                sportsAndGames: item.sports_and_games || 4,
+                craftsmanship: item.craftsmanship || 3,
+                musicalArtisticSkill: item.musical_artistic_skill || 4,
+                formMasterRemark: item.form_master_remark || '',
+                principalRemark: item.principal_remark || '',
+                daysPresent: item.days_present || 0,
+                daysAbsent: item.days_absent || 0,
+                totalSchoolDays: item.total_school_days || 65,
+              };
+              if (existingIdx >= 0) {
+                currentList[existingIdx] = rec;
+              } else {
+                currentList.push(rec);
+              }
+            }
+            return currentList;
+          });
+        }
+      }
+
+      if (settingsRes.status === 'fulfilled' && settingsRes.value) {
+        setSchoolSettings(adaptSchoolSettingsFromBackend(settingsRes.value));
+      }
+      if (auditLogsRes.status === 'fulfilled') {
+        const raw = (auditLogsRes.value as any)?.results || auditLogsRes.value;
+        if (Array.isArray(raw)) {
+          setAuditLogs(raw.map(adaptAuditLogFromBackend));
+        }
+      }
+      if (subjectsRes.status === 'fulfilled') {
+        const raw = (subjectsRes.value as any)?.results || subjectsRes.value;
+        if (Array.isArray(raw) && raw.length > 0) {
+          const liveSubjects = raw.map(adaptSubjectFromBackend);
+          setSubjects(prev => {
+            const currentList = [...prev];
+            for (const live of liveSubjects) {
+              const existingIdx = currentList.findIndex(
+                s => s.code.toUpperCase() === live.code.toUpperCase() || s.id === live.id || (live.backendId && s.backendId === live.backendId)
+              );
+              if (existingIdx >= 0) {
+                currentList[existingIdx] = {
+                  ...currentList[existingIdx],
+                  ...live,
+                };
+              } else {
+                currentList.push(live);
+              }
+            }
+            return currentList;
+          });
+        }
+      }
+
+      if (allocationsRes.status === 'fulfilled') {
+        const raw = (allocationsRes.value as any)?.results || allocationsRes.value;
+        if (Array.isArray(raw)) {
+          const liveAllocs = raw.map(adaptTeacherAllocationFromBackend);
+          setAllocations(liveAllocs);
+        }
+      }
+
+      setIsBackendLoaded(true);
+    } catch (err) {
+      console.warn('Live backend data hydration skipped:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLiveSchoolData();
+  }, [fetchLiveSchoolData, isBackendConnected, authUser?.id]);
 
   const resetToDefaultData = () => {
     localStorage.setItem('eis_data_version', DATA_VERSION);
@@ -685,6 +858,10 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   useEffect(() => {
     localStorage.setItem('eis_class_arms', JSON.stringify(classArms));
   }, [classArms]);
+
+  useEffect(() => {
+    localStorage.setItem('eis_subjects', JSON.stringify(subjects));
+  }, [subjects]);
 
   useEffect(() => {
     localStorage.setItem('eis_students', JSON.stringify(students));
@@ -807,7 +984,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
 
       // 2. If temporary ID or not found by ID, try matching studentId + subjectId + termId
-      const targetStudentId = partial.studentId;
+      const targetStudentId = partial.studentId || (scoreId.startsWith('sc-temp-') ? scoreId.replace('sc-temp-', '') : undefined);
       const targetSubjectId = partial.subjectId;
       const targetTermId = partial.termId || activeTerm.id;
 
@@ -880,11 +1057,11 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     });
   };
 
-  const bulkSaveScores = (
+  const bulkSaveScores = async (
     classArmId: string,
     subjectId: string,
     scoresData: { admissionNumber: string; ca1: number; ca2: number; assignment: number; project: number; exam: number }[]
-  ) => {
+  ): Promise<void> => {
     setScores(prev => {
       const updated = [...prev];
 
@@ -937,6 +1114,38 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
       return updated;
     });
+
+    // Live asynchronous bulk score save to Django backend
+    const resolvedArm = resolveArmPk(classArmId) || classArmId;
+    const resolvedSub = resolveSubjectPk(subjectId) || subjectId;
+    const resolvedTerm = resolveTermPk(activeTerm.id);
+
+    const backendRecords = scoresData.map(item => ({
+      student: item.admissionNumber,
+      subject: resolvedSub,
+      class_arm: resolvedArm,
+      term: resolvedTerm,
+      ca1: item.ca1,
+      ca2: item.ca2,
+      assignment: item.assignment,
+      project: item.project,
+      exam: item.exam,
+    }));
+
+    try {
+      const res = await api.post('/grading/scores/bulk/', { records: backendRecords });
+      if (Array.isArray(res)) {
+        const liveScores = res.map(adaptSubjectScoreFromBackend);
+        setScores(prev => {
+          const map = new Map(prev.map(s => [s.id, s]));
+          liveScores.forEach((ls: SubjectScore) => map.set(ls.id, ls));
+          return Array.from(map.values());
+        });
+      }
+    } catch (err) {
+      console.warn('Backend bulk score save fallback:', err);
+      throw err; // re-throw so callers can show an error
+    }
   };
 
   const addAuditLog = (entry: Omit<AuditLogEntry, 'id' | 'timestamp'>) => {
@@ -951,17 +1160,39 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const toggleGradeLock = (classArmId: string, subjectId: string, actor?: { id: string; name: string; role: any }) => {
     let willLock = false;
     setScores(prev => {
+      // Find current lock status with resilient matching across slugs and PKs
+      const existing = prev.find(s => {
+        const armMatches = s.classArmId === classArmId || resolveArmId(s.classArmId) === resolveArmId(classArmId);
+        const subMatches = s.subjectId === subjectId || resolveSubjectId(s.subjectId) === resolveSubjectId(subjectId);
+        const termMatches = s.termId === activeTerm.id || resolveTermId(s.termId) === resolveTermId(activeTerm.id);
+        return armMatches && subMatches && termMatches;
+      });
+      willLock = existing ? !existing.isLocked : true;
+
       return prev.map(s => {
-        if (s.classArmId === classArmId && s.subjectId === subjectId && s.termId === activeTerm.id) {
-          willLock = !s.isLocked;
+        const armMatches = s.classArmId === classArmId || resolveArmId(s.classArmId) === resolveArmId(classArmId);
+        const subMatches = s.subjectId === subjectId || resolveSubjectId(s.subjectId) === resolveSubjectId(subjectId);
+        const termMatches = s.termId === activeTerm.id || resolveTermId(s.termId) === resolveTermId(activeTerm.id);
+        if (armMatches && subMatches && termMatches) {
           return { ...s, isLocked: willLock };
         }
         return s;
       });
     });
 
-    const arm = classArms.find(a => a.id === classArmId);
-    const sub = subjects.find(s => s.id === subjectId);
+    // Synchronize lock state with Django backend
+    const armPk = resolveArmPk(classArmId);
+    const subPk = resolveSubjectPk(subjectId);
+    const termPk = resolveTermPk(activeTerm.id);
+    api.post('/grading/scores/bulk-lock/', {
+      class_arm: armPk !== undefined ? armPk : classArmId,
+      subject: subPk !== undefined ? subPk : subjectId,
+      term: termPk,
+      lock: willLock,
+    }).catch(err => console.warn('Could not persist lock toggle to backend:', err));
+
+    const arm = classArms.find(a => a.id === classArmId || resolveArmId(a.id) === resolveArmId(classArmId));
+    const sub = subjects.find(s => s.id === subjectId || resolveSubjectId(s.id) === resolveSubjectId(subjectId));
     if (actor) {
       addAuditLog({
         userId: actor.id,
@@ -1078,6 +1309,19 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }));
       return [...filtered, ...newItems];
     });
+
+    // Live asynchronous POST to Django backend
+    const backendRecords = records.map(r => {
+      const student = students.find(s => s.id === r.studentId);
+      return {
+        student: student ? student.admissionNumber : r.studentId,
+        class_arm: resolveArmPk(r.classArmId) || r.classArmId,
+        date,
+        status: r.status,
+      };
+    });
+    api.post('/students/attendance/bulk/', { records: backendRecords })
+      .catch(err => console.warn('Backend attendance sync fallback:', err));
   };
 
   const updatePsychomotor = (record: AffectiveAndPsychomotor) => {
@@ -1090,9 +1334,31 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
       return [...prev, record];
     });
+
+    const student = students.find(s => s.id === record.studentId);
+    api.post('/students/psychomotor/', {
+      student: student ? student.admissionNumber : record.studentId,
+      term: resolveTermPk(record.termId),
+      punctuality: record.punctuality,
+      neatness: record.neatness,
+      politeness: record.politeness,
+      attentiveness: record.attentiveness,
+      honesty: record.honesty,
+      relationship_with_peers: record.relationshipWithPeers,
+      handwriting: record.handwriting,
+      sports_and_games: record.sportsAndGames,
+      craftsmanship: record.craftsmanship,
+      musical_artistic_skill: record.musicalArtisticSkill,
+      form_master_remark: record.formMasterRemark,
+      principal_remark: record.principalRemark,
+      days_present: record.daysPresent,
+      days_absent: record.daysAbsent,
+      total_school_days: record.totalSchoolDays,
+    }).catch(err => console.warn('Backend psychomotor sync fallback:', err));
   };
 
-  const updateStudentSubjects = (studentId: string, subjectIds: string[]) => {
+  const updateStudentSubjects = async (studentId: string, subjectIds: string[]) => {
+    // 1. Optimistically update local React state
     setStudents(prev => prev.map(s => {
       if (s.id === studentId) {
         return {
@@ -1102,30 +1368,52 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
       return s;
     }));
+
+    // 2. Identify student and extract subject codes
+    const targetStudent = students.find(s => s.id === studentId);
+    const lookupId = studentId;
+    const subjectCodes = subjectIds.map(id => {
+      const sub = subjects.find(s => s.id === id);
+      return sub ? sub.code : id.replace(/^subj-/, '').toUpperCase();
+    });
+
+    try {
+      const res = await api.post(`/students/students/${lookupId}/set-subjects/`, {
+        subject_codes: subjectCodes,
+      });
+      if (res) {
+        const updated = adaptStudentFromBackend(res);
+        setStudents(prev => prev.map(s => (s.id === studentId ? { ...s, ...updated, registeredSubjectIds: updated.registeredSubjectIds } : s)));
+      }
+    } catch (err) {
+      console.warn('Backend student subject update sync fallback:', err);
+    }
   };
 
-  const dropStudentSubject = (
+  const dropStudentSubject = async (
     studentId: string,
     subjectId: string,
     level: 'SSS 2' | 'SSS 3',
     reason?: string
   ) => {
+    const targetStudent = students.find(s => s.id === studentId);
+    if (targetStudent?.currentClassArmName?.includes('JSS')) {
+      return;
+    }
+
+    const subObj = subjects.find(sub => sub.id === subjectId);
+    const remainingSubjects = (targetStudent?.registeredSubjectIds || []).filter(id => id !== subjectId);
+    const droppedRecord = {
+      subjectId,
+      subjectName: subObj ? subObj.name : subjectId,
+      level,
+      academicSession: activeSession.name,
+      date: new Date().toISOString().split('T')[0],
+      reason: reason || `Subject dropped upon transition to ${level}`
+    };
+
     setStudents(prev => prev.map(s => {
       if (s.id === studentId) {
-        // Disallow dropping subjects for Junior Secondary students (all 13 are mandatory)
-        if (s.currentClassArmName.includes('JSS')) {
-          return s;
-        }
-        const subObj = subjects.find(sub => sub.id === subjectId);
-        const remainingSubjects = (s.registeredSubjectIds || []).filter(id => id !== subjectId);
-        const droppedRecord = {
-          subjectId,
-          subjectName: subObj ? subObj.name : subjectId,
-          level,
-          academicSession: activeSession.name,
-          date: new Date().toISOString().split('T')[0],
-          reason: reason || `Subject dropped upon transition to ${level}`
-        };
         const existingDrops = s.droppedSubjects || [];
         return {
           ...s,
@@ -1135,13 +1423,41 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
       return s;
     }));
+
+    const lookupId = studentId;
+    const backendSubjectPk = subObj?.backendId || resolveSubjectPk(subjectId);
+    const cleanCode = subObj?.code || subjectId.replace(/^subj-/, '').toUpperCase();
+
+    try {
+      await api.post(`/students/students/${lookupId}/drop-subject/`, {
+        subject: backendSubjectPk || cleanCode,
+        level,
+        reason: reason || `Subject dropped upon transition to ${level}`,
+      });
+    } catch (err) {
+      console.warn('Backend drop subject sync fallback:', err);
+    }
   };
 
-  const registerStudent = (studentData: Omit<Student, 'id' | 'admissionNumber' | 'status' | 'registeredSubjectIds'> & { registeredSubjectIds?: string[] }): Student => {
+  const getNextAdmissionNumber = useCallback((): string => {
     const year = new Date().getFullYear();
-    const count = students.length + 1;
-    const padded = String(count).padStart(4, '0');
-    const admissionNumber = `EIS/${year}/${padded}`;
+    let highestSerial = 0;
+    students.forEach(s => {
+      const m = s.admissionNumber?.match(/EIS\/\d{4}\/0*(\d+)/i);
+      if (m) {
+        const val = parseInt(m[1], 10);
+        if (val > highestSerial) {
+          highestSerial = val;
+        }
+      }
+    });
+    if (highestSerial === 0) highestSerial = students.length;
+    const nextNum = highestSerial + 1;
+    return `EIS/${year}/${String(nextNum).padStart(4, '0')}`;
+  }, [students]);
+
+  const registerStudent = async (studentData: Omit<Student, 'id' | 'admissionNumber' | 'status' | 'registeredSubjectIds'> & { registeredSubjectIds?: string[]; admissionNumber?: string }): Promise<Student> => {
+    const admissionNumber = studentData.admissionNumber || getNextAdmissionNumber();
 
     const isJunior = studentData.currentClassArmName?.includes('JSS');
     const defaultJssSubjects = [
@@ -1153,7 +1469,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       'subj-yor', 'subj-dp', 'subj-cmp', 'subj-agr', 'subj-fmth'
     ];
     
-    const newStudent: Student = {
+    let newStudent: Student = {
       ...studentData,
       id: `std-${Date.now()}`,
       admissionNumber,
@@ -1163,7 +1479,39 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         : (isJunior ? defaultJssSubjects : defaultSssSubjects)
     };
 
-    setStudents(prev => [newStudent, ...prev]);
+    // Live asynchronous POST to Django backend
+    try {
+      const saved = await api.post('/students/students/', adaptStudentToBackend(newStudent));
+      if (saved && (saved.id || saved.admission_number)) {
+        newStudent = adaptStudentFromBackend(saved);
+      }
+    } catch (err: any) {
+      console.warn('Backend student registration error:', err);
+      const errMsg =
+        (typeof err?.message === 'string' && err.message) ||
+        (typeof err?.detail === 'string' && err.detail) ||
+        (err?.detail && typeof err.detail === 'object' ? Object.entries(err.detail).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : v}`).join(' | ') : null) ||
+        'Failed to save student record to backend database.';
+      throw new Error(errMsg);
+    }
+
+    setStudents(prev => [newStudent, ...prev.filter(s => s.id !== newStudent.id && s.admissionNumber !== newStudent.admissionNumber)]);
+
+    // Update parent's ward list in state
+    if (newStudent.parentId) {
+      setParents(prev =>
+        prev.map(p => {
+          if (p.id === newStudent.parentId || p.email.toLowerCase() === newStudent.parentEmail.toLowerCase()) {
+            const wards = p.wardIds || [];
+            return {
+              ...p,
+              wardIds: wards.includes(newStudent.id) ? wards : [...wards, newStudent.id],
+            };
+          }
+          return p;
+        })
+      );
+    }
 
     // Automatically seed score ledger entries for this student in the active term
     // so teachers, form masters, and broadsheets immediately reflect them
@@ -1194,6 +1542,10 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const updateStudent = (studentId: string, updates: Partial<Student>, actor?: { id: string; name: string; role: any }) => {
     const existing = students.find(s => s.id === studentId);
     if (!existing) return;
+
+    // Live asynchronous PATCH to Django backend
+    api.patch(`/students/students/${studentId}/`, adaptStudentToBackend(updates))
+      .catch(err => console.warn('Backend student update fallback:', err));
 
     const newFirstName = updates.firstName ?? existing.firstName;
     const newLastName = updates.lastName ?? existing.lastName;
@@ -1303,6 +1655,10 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const existing = students.find(s => s.id === studentId);
     if (!existing) return;
 
+    // Live asynchronous DELETE to Django backend
+    api.delete(`/students/students/${studentId}/`)
+      .catch(err => console.warn('Backend student delete fallback:', err));
+
     const studentName = existing.name || `${existing.firstName} ${existing.lastName}`;
     setStudents(prev => prev.filter(s => s.id !== studentId));
     setScores(prev => prev.filter(s => s.studentId !== studentId));
@@ -1382,6 +1738,94 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return newArm;
   };
 
+  const addSubject = async (data: Omit<Subject, 'id'>): Promise<Subject> => {
+    const normCode = data.code.trim().toUpperCase();
+    const newId = `subj-${normCode.toLowerCase()}`;
+    const newSubject: Subject = {
+      id: newId,
+      name: data.name.trim(),
+      code: normCode,
+      category: data.category || 'GENERAL',
+      applicableTo: data.applicableTo || 'ALL',
+      group: data.group || 'GENERAL_ELECTIVE',
+      isCompulsoryJunior: Boolean(data.isCompulsoryJunior),
+      isCompulsorySeniorScience: Boolean(data.isCompulsorySeniorScience),
+    };
+
+    // Optimistically update state
+    setSubjects(prev => {
+      const filtered = prev.filter(s => s.code.toUpperCase() !== normCode && s.id !== newId);
+      return [...filtered, newSubject];
+    });
+
+    try {
+      const payload = adaptSubjectToBackend(newSubject);
+      const saved = await api.post('/academics/subjects/', payload);
+      const live = adaptSubjectFromBackend(saved);
+      setSubjects(prev => {
+        const filtered = prev.filter(s => s.code.toUpperCase() !== normCode && s.id !== newId);
+        return [...filtered, live];
+      });
+      addAuditLog({
+        userId: authUser?.id || 'admin',
+        userIdentifier: authUser?.identifier || 'ADMIN',
+        userName: authUser?.name || 'Administrator',
+        userRole: authUser?.activeRole || 'SUPER_ADMIN',
+        action: 'SETTINGS_UPDATED',
+        targetEntity: `Subject: ${live.name} (${live.code})`,
+        details: `Created new academic subject "${live.name}" with code ${live.code}.`,
+      });
+      return live;
+    } catch (err) {
+      console.warn('Backend subject creation error, keeping local fallback:', err);
+      return newSubject;
+    }
+  };
+
+  const updateSubject = async (subjectId: string, updates: Partial<Subject>): Promise<Subject> => {
+    const existing = subjects.find(
+      s => s.id === subjectId || s.code === subjectId || (s.backendId && String(s.backendId) === String(subjectId))
+    );
+    if (!existing) {
+      throw new Error(`Subject with identifier "${subjectId}" not found.`);
+    }
+
+    const updatedSubject: Subject = {
+      ...existing,
+      ...updates,
+      code: updates.code ? updates.code.trim().toUpperCase() : existing.code,
+      name: updates.name ? updates.name.trim() : existing.name,
+    };
+
+    // Optimistically update state (preserving the frontend ID so references are not severed)
+    setSubjects(prev => prev.map(s => s.id === existing.id ? updatedSubject : s));
+
+    const targetPk = existing.backendId || resolveSubjectPk(existing.code) || resolveSubjectPk(existing.id);
+
+    try {
+      if (targetPk) {
+        const payload = adaptSubjectToBackend(updatedSubject);
+        const saved = await api.patch(`/academics/subjects/${targetPk}/`, payload);
+        const live = adaptSubjectFromBackend(saved);
+        setSubjects(prev => prev.map(s => s.id === existing.id ? { ...live, id: existing.id } : s));
+        addAuditLog({
+          userId: authUser?.id || 'admin',
+          userIdentifier: authUser?.identifier || 'ADMIN',
+          userName: authUser?.name || 'Administrator',
+          userRole: authUser?.activeRole || 'SUPER_ADMIN',
+          action: 'SETTINGS_UPDATED',
+          targetEntity: `Subject: ${live.name} (${live.code})`,
+          details: `Updated subject "${existing.name}" -> "${live.name}" (Code: ${live.code}).`,
+        });
+        return { ...live, id: existing.id };
+      }
+      return updatedSubject;
+    } catch (err) {
+      console.warn('Backend subject update error, keeping local fallback:', err);
+      return updatedSubject;
+    }
+  };
+
   const publishResults = (termId: string, isPublished: boolean) => {
     setTerms(prev => prev.map(t => t.id === termId ? { ...t, isResultsPublished: isPublished } : t));
   };
@@ -1392,21 +1836,30 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const getStudentDossier = (studentId: string, termId?: string): StudentTerminalDossier | null => {
     const targetTermId = termId || activeTerm.id;
-    const student = students.find(s => s.id === studentId);
+    const student =
+      students.find(s => String(s.id) === String(studentId)) ||
+      students.find(s => s.admissionNumber === studentId) ||
+      students[0];
     if (!student) return null;
 
-    const term = terms.find(t => t.id === targetTermId) || activeTerm;
-    const session = sessions.find(s => s.id === term.sessionId) || activeSession;
+    const term = terms.find(t => String(t.id) === String(targetTermId) || t.name === targetTermId) || activeTerm;
+    const session = sessions.find(s => String(s.id) === String(term.sessionId)) || activeSession;
 
     // Student's registered subjects list
     const registeredIds = student.registeredSubjectIds || [];
 
     // Filter student's scores to ONLY those registered for this student
-    const studentScores = scores.filter(
-      s => s.studentId === studentId && s.termId === targetTermId && (registeredIds.length === 0 || registeredIds.includes(s.subjectId))
+    let studentScores = scores.filter(
+      s =>
+        String(s.studentId) === String(student.id) &&
+        (String(s.termId) === String(targetTermId) || String(s.termId) === String(term.id) || s.termId === term.name) &&
+        (registeredIds.length === 0 || registeredIds.includes(s.subjectId))
     );
+    if (studentScores.length === 0) {
+      studentScores = scores.filter(s => String(s.studentId) === String(student.id));
+    }
     const totalAggregateScore = calculateTotalAggregate(studentScores);
-    const maxPossibleAggregate = studentScores.length * 100;
+    const maxPossibleAggregate = (studentScores.length || 1) * 100;
     const percentageAverage = studentScores.length > 0 ? Number((totalAggregateScore / studentScores.length).toFixed(1)) : 0;
 
     // Calculate Arm Rank (among peers in same classArm)
@@ -1419,7 +1872,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return { studentId: s.id, totalAggregate: calculateTotalAggregate(pScores) };
     });
     const armRanks = computeRankings(armStudentTotals);
-    const armPosition = armRanks.get(studentId) || 1;
+    const armPosition = armRanks.get(student.id) || armRanks.get(studentId) || 1;
 
     // Calculate Set Rank (among peers in same ClassLevel, e.g. SSS 2 Gold + SSS 2 Diamond)
     const studentArm = classArms.find(a => a.id === student.currentClassArmId);
@@ -1433,11 +1886,11 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return { studentId: s.id, totalAggregate: calculateTotalAggregate(pScores) };
     });
     const setRanks = computeRankings(setStudentTotals);
-    const setPosition = setRanks.get(studentId) || 1;
+    const setPosition = setRanks.get(student.id) || setRanks.get(studentId) || 1;
 
     // Affective & Psychomotor traits
     const defaultTraits: AffectiveAndPsychomotor = {
-      studentId,
+      studentId: student.id,
       termId: targetTermId,
       punctuality: 4,
       neatness: 4,
@@ -1456,7 +1909,12 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       totalSchoolDays: 65
     };
 
-    const traits = affectiveTraits.find(t => t.studentId === studentId && t.termId === targetTermId) || defaultTraits;
+    const traits =
+      affectiveTraits.find(
+        t =>
+          (String(t.studentId) === String(student.id) || String(t.studentId) === String(studentId)) &&
+          (String(t.termId) === String(targetTermId) || String(t.termId) === String(term.id) || t.termId === term.name)
+      ) || defaultTraits;
 
     return {
       student,
@@ -1477,33 +1935,56 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   // Staff Management Actions
   const addStaff = (memberData: Omit<StaffMember, 'id' | 'status' | 'joinedDate'>): StaffMember => {
     const newId = `stf-${String(staff.length + 1).padStart(3, '0')}`;
+    const initialPin = memberData.defaultPin || `EIS-${Math.floor(1000 + Math.random() * 9000)}`;
     const newMember: StaffMember = {
       ...memberData,
       id: newId,
       status: 'ACTIVE',
       joinedDate: new Date().toISOString().split('T')[0],
-      defaultPin: memberData.defaultPin || `EIS-${Math.floor(1000 + Math.random() * 9000)}`
+      defaultPin: initialPin
     };
     setStaff(prev => [newMember, ...prev]);
+
+    // Live asynchronous POST to Django backend
+    api.post('/accounts/users/', {
+      username: (memberData.identifier || memberData.staffId || newId).replace(/[\/\s]/g, '_').toLowerCase(),
+      first_name: memberData.name.split(' ')[0] || '',
+      last_name: memberData.name.split(' ').slice(1).join(' ') || 'Staff',
+      email: memberData.email,
+      phone_number: memberData.phoneNumber || '',
+      identifier: memberData.identifier || memberData.staffId || newId,
+      active_role: memberData.roles[0] || 'TEACHER',
+      roles: memberData.roles,
+      password: initialPin,
+      default_pin: initialPin,
+      address: memberData.address || '',
+    })
+    .then(saved => {
+      if (saved && saved.id) {
+        const live = adaptStaffFromBackend(saved);
+        setStaff(prev => prev.map(m => m.id === newId ? live : m));
+      }
+    })
+    .catch(err => console.error('Backend staff add error:', err));
+
     return newMember;
   };
 
   const updateStaff = (staffId: string, updates: Partial<StaffMember>) => {
     setStaff(prev => prev.map(m => m.id === staffId ? { ...m, ...updates } : m));
 
+    const currentStaff = staff.find(s => s.id === staffId);
+
     // Synchronize Form Master assignments with classArms
     if (updates.formMasterArmId !== undefined || updates.name !== undefined) {
       setClassArms(prev => prev.map(arm => {
-        // If this arm was assigned to this staff member
         if (updates.formMasterArmId && arm.id === updates.formMasterArmId) {
-          const currentStaff = staff.find(s => s.id === staffId);
           return {
             ...arm,
             formMasterId: staffId,
             formMasterName: updates.name || (currentStaff?.name || arm.formMasterName)
           };
         }
-        // If this arm previously had this staff member but the assignment was reassigned
         if (arm.formMasterId === staffId && updates.formMasterArmId !== undefined && updates.formMasterArmId !== arm.id) {
           return {
             ...arm,
@@ -1511,7 +1992,6 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             formMasterName: undefined
           };
         }
-        // If the staff member's name changed and they are the form master of this arm
         if (arm.formMasterId === staffId && updates.name) {
           return {
             ...arm,
@@ -1521,6 +2001,67 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         return arm;
       }));
     }
+
+    // Synchronize Teacher Allocations in React state if allocatedSubjects is provided
+    if (updates.allocatedSubjects !== undefined) {
+      setAllocations(prev => {
+        const filtered = prev.filter(
+          a => a.teacherId !== staffId &&
+               a.teacherId !== currentStaff?.staffId &&
+               a.teacherId !== currentStaff?.identifier
+        );
+        const newAllocations: TeacherAllocation[] = (updates.allocatedSubjects || []).map((alloc, idx) => ({
+          id: `alloc-live-${staffId}-${alloc.classArmId}-${alloc.subjectId}-${idx}`,
+          classArmId: alloc.classArmId,
+          classArmName: alloc.classArmName,
+          subjectId: alloc.subjectId,
+          subjectName: alloc.subjectName,
+          teacherId: staffId,
+          teacherName: updates.name || currentStaff?.name || '',
+        }));
+        return [...filtered, ...newAllocations];
+      });
+    }
+
+    if (/^\d+$/.test(staffId)) {
+      const payload: any = {};
+      if (updates.name) {
+        const parts = updates.name.split(' ');
+        payload.first_name = parts[0];
+        payload.last_name = parts.slice(1).join(' ');
+      }
+      if (updates.email !== undefined) payload.email = updates.email;
+      if (updates.phoneNumber !== undefined) payload.phone_number = updates.phoneNumber;
+      if (updates.roles !== undefined) payload.roles = updates.roles;
+      if (updates.role !== undefined) payload.active_role = updates.role;
+      if (updates.defaultPin !== undefined && updates.defaultPin.trim()) {
+        payload.password = updates.defaultPin.trim();
+        payload.default_pin = updates.defaultPin.trim();
+      }
+      if (updates.allocatedSubjects !== undefined) {
+        payload.allocated_subjects = updates.allocatedSubjects.map(a => ({
+          class_arm: resolveArmPk(a.classArmId) || a.classArmId,
+          subject: resolveSubjectPk(a.subjectId) || a.subjectId,
+          classArmId: a.classArmId,
+          classArmName: a.classArmName,
+          subjectId: a.subjectId,
+          subjectName: a.subjectName,
+        }));
+      }
+      api.patch(`/accounts/users/${staffId}/`, payload)
+        .then(() => {
+          // Re-sync allocations from backend SQLite truth
+          api.get<any>('/academics/allocations/', { page_size: 'all' })
+            .then(res => {
+              const raw = res?.results || res;
+              if (Array.isArray(raw)) {
+                setAllocations(raw.map(adaptTeacherAllocationFromBackend));
+              }
+            })
+            .catch(() => {});
+        })
+        .catch(err => console.warn('Failed to patch staff on backend:', err));
+    }
   };
 
   const toggleStaffStatus = (staffId: string, reason?: string, actor?: { id: string; name: string; role: any }) => {
@@ -1529,6 +2070,11 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     const nextStatus = member.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
     setStaff(prev => prev.map(m => m.id === staffId ? { ...m, status: nextStatus } : m));
+
+    if (/^\d+$/.test(staffId)) {
+      api.patch(`/accounts/users/${staffId}/`, { is_active: nextStatus === 'ACTIVE' })
+        .catch(err => console.warn('Failed to update staff status on backend:', err));
+    }
 
     if (actor) {
       addAuditLog({
@@ -1551,6 +2097,11 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     const newPin = `EIS-${Math.floor(1000 + Math.random() * 9000)}`;
     setStaff(prev => prev.map(m => m.id === staffId ? { ...m, defaultPin: newPin } : m));
+
+    if (/^\d+$/.test(staffId)) {
+      api.patch(`/accounts/users/${staffId}/`, { password: newPin, default_pin: newPin })
+        .catch(err => console.warn('Failed to sync new PIN to backend:', err));
+    }
 
     if (actor) {
       addAuditLog({
@@ -2242,6 +2793,35 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     });
   };
 
+  const retractSubjectMarksheet = (classArmId: string, subjectId: string, actor?: { id: string; name: string; role: any }) => {
+    setSubjectSubmissions(prev => {
+      return prev.map(s => {
+        const armMatches = s.classArmId === classArmId || resolveArmId(s.classArmId) === resolveArmId(classArmId);
+        const subMatches = s.subjectId === subjectId || resolveSubjectId(s.subjectId) === resolveSubjectId(subjectId);
+        const termMatches = s.termId === activeTerm.id || resolveTermId(s.termId) === resolveTermId(activeTerm.id);
+        if (armMatches && subMatches && termMatches) {
+          return { ...s, status: 'IN_PROGRESS' };
+        }
+        return s;
+      });
+    });
+
+    const arm = classArms.find(a => a.id === classArmId || resolveArmId(a.id) === resolveArmId(classArmId));
+    const subj = subjects.find(s => s.id === subjectId || resolveSubjectId(s.id) === resolveSubjectId(subjectId));
+    if (actor) {
+      addAuditLog({
+        userId: actor.id,
+        userIdentifier: actor.name,
+        userName: actor.name,
+        userRole: actor.role,
+        action: 'SUBJECT_MARKSHEET_RETRACTED',
+        targetEntity: `Subject Marksheet: ${arm?.fullName || classArmId} - ${subj?.name || subjectId}`,
+        details: `Subject Teacher ${actor.name} reopened marksheet to IN_PROGRESS status for edits.`,
+        metadata: { classArmId, subjectId, termId: activeTerm.id }
+      });
+    }
+  };
+
   const sendParentInquiry = (
     inquiry: Omit<ParentInquiry, 'id' | 'createdAt' | 'status'>,
     actor?: { id: string; name: string; role: any }
@@ -2410,6 +2990,30 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return [...prev, newAllocation];
     });
 
+    const armPk = resolveArmPk(classArmId);
+    const subPk = resolveSubjectPk(subjectId);
+    const teacherPk = /^\d+$/.test(teacherId) ? parseInt(teacherId, 10) : undefined;
+    if (armPk && subPk && teacherPk) {
+      api.post('/academics/allocations/', {
+        class_arm: armPk,
+        subject: subPk,
+        teacher: teacherPk,
+      }).then((res: any) => {
+        if (res && res.id) {
+          const live = adaptTeacherAllocationFromBackend(res);
+          setAllocations(prev => {
+            const idx = prev.findIndex(a => a.classArmId === classArmId && a.subjectId === subjectId);
+            if (idx >= 0) {
+              const cp = [...prev];
+              cp[idx] = live;
+              return cp;
+            }
+            return [...prev, live];
+          });
+        }
+      }).catch(err => console.warn('Failed to allocate teacher on backend:', err));
+    }
+
     if (actor) {
       addAuditLog({
         userId: actor.id,
@@ -2432,6 +3036,11 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const sub = subjects.find(s => s.id === target.subjectId);
 
     setAllocations(prev => prev.filter(a => a.id !== allocationId));
+
+    if (/^\d+$/.test(allocationId)) {
+      api.delete(`/academics/allocations/${allocationId}/`)
+        .catch(err => console.warn('Failed to delete allocation on backend:', err));
+    }
 
     if (actor) {
       addAuditLog({
@@ -2564,7 +3173,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         scores,
         affectiveTraits,
         attendanceRecords,
-        parents: INITIAL_PARENTS,
+        parents,
         staff,
         auditLogs,
         schoolSettings,
@@ -2579,10 +3188,13 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         updateStudentSubjects,
         dropStudentSubject,
         registerStudent,
+        getNextAdmissionNumber,
         updateStudent,
         deleteStudent,
         addClassArm,
         addClassLevel,
+        addSubject,
+        updateSubject,
         publishResults,
         setActiveTerm,
         getStudentDossier,
@@ -2622,6 +3234,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         endorseClassArm,
         subjectSubmissions,
         submitSubjectMarksheet,
+        retractSubjectMarksheet,
         feeClearances,
         weeklyTimetables,
         parentInquiries,
@@ -2643,7 +3256,9 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         replyToMessage,
         markMessageAsRead,
         markAllMessagesAsRead,
-        deleteMessage
+        deleteMessage,
+        isBackendLoaded,
+        refreshBackendData: fetchLiveSchoolData
       }}
     >
       {children}

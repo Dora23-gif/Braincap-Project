@@ -195,7 +195,8 @@ export const AttendanceRegisterView: React.FC = () => {
 
       {/* Attendance Roster Table */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-        <table className="w-full text-left border-collapse text-xs">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-xs">
           <thead>
             <tr className="bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-bold uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-slate-700">
               <th className="py-3 pl-3 pr-1 w-8 text-center">#</th>
@@ -303,6 +304,7 @@ export const AttendanceRegisterView: React.FC = () => {
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

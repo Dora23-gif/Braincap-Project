@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useSchoolData } from '../../context/SchoolDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { FuturisticPageShell } from '../../components/common/FuturisticPageShell';
+import { getWelcomeMessage } from '../../lib/userDisplay';
 import { FuturisticKPICard } from '../../components/common/FuturisticKPICard';
 import { DoubleBezelCard } from '../../components/common/DoubleBezelCard';
 import { SegmentedControl, SegmentedControlOption } from '../../components/common/SegmentedControl';
@@ -33,6 +34,7 @@ export const ParentDashboard: React.FC<{ onViewReportCard: (studentId: string) =
 }) => {
   const {
     students,
+    parents,
     subjects,
     activeTerm,
     activeSession,
@@ -49,15 +51,73 @@ export const ParentDashboard: React.FC<{ onViewReportCard: (studentId: string) =
   } = useSchoolData();
   const { user } = useAuth();
 
-  // Find all wards linked to this parent (with smart fallback so reviewers always see siblings)
-  const myWards = students.filter(
-    s => s.parentId === user?.parentId || s.parentEmail === user?.email || s.parentId === 'prt-001'
-  );
-  // Ensure at least 2 demo wards for testing sibling switching (Oluwaseun + Chioma)
-  const displayWards = myWards.length >= 2 ? myWards : [students[0], students[1]];
+  // Find all wards strictly linked to this parent (no arbitrary mock injection or prt-001 inheritance)
+  const displayWards = useMemo(() => {
+    if (!user) return [];
 
-  const [selectedWardId, setSelectedWardId] = useState<string>(displayWards[0]?.id || students[0].id);
-  const currentWard = students.find(s => s.id === selectedWardId) || displayWards[0] || students[0];
+    const userEmail = (user.email || '').trim().toLowerCase();
+    const userCleanId = String(user.id || '').replace(/^prt-/, '').trim();
+    const userParentCleanId = String(user.parentId || '').replace(/^prt-/, '').trim();
+    const sessionWardIds = new Set((user.wardIds || []).map(id => String(id).trim()));
+
+    // Look up parent record in parents collection if available
+    const matchedParent = (parents || []).find(p => {
+      const pEmail = (p.email || '').trim().toLowerCase();
+      const pCleanId = String(p.id || '').replace(/^prt-/, '').trim();
+      return (
+        (userEmail && pEmail && pEmail === userEmail) ||
+        (userCleanId && pCleanId === userCleanId) ||
+        (userParentCleanId && pCleanId === userParentCleanId)
+      );
+    });
+
+    const contextWardIds = new Set((matchedParent?.wardIds || []).map(id => String(id).trim()));
+
+    return students.filter(s => {
+      // 1. Direct denormalized parent_email match (e.g. from student admissions registration)
+      if (userEmail && s.parentEmail && s.parentEmail.trim().toLowerCase() === userEmail) {
+        return true;
+      }
+
+      // 2. Direct parentId match (clean ID comparison e.g. '99', 'prt-99', 'prt-001')
+      if (s.parentId) {
+        const studentParentCleanId = String(s.parentId).replace(/^prt-/, '').trim();
+        if (userParentCleanId && studentParentCleanId === userParentCleanId) {
+          return true;
+        }
+        if (userCleanId && studentParentCleanId === userCleanId) {
+          return true;
+        }
+      }
+
+      // 3. User session wardIds (from backend /accounts/me/ or /login/)
+      if (sessionWardIds.has(String(s.id).trim()) || sessionWardIds.has(String(s.admissionNumber).trim())) {
+        return true;
+      }
+
+      // 4. Context parents ward list
+      if (contextWardIds.has(String(s.id).trim()) || contextWardIds.has(String(s.admissionNumber).trim())) {
+        return true;
+      }
+
+      return false;
+    });
+  }, [students, parents, user]);
+
+  const [selectedWardId, setSelectedWardId] = useState<string>(displayWards[0]?.id || '');
+
+  // Keep selectedWardId synchronized with displayWards
+  useEffect(() => {
+    if (displayWards.length > 0) {
+      if (!selectedWardId || !displayWards.some(w => w.id === selectedWardId)) {
+        setSelectedWardId(displayWards[0].id);
+      }
+    } else {
+      setSelectedWardId('');
+    }
+  }, [displayWards, selectedWardId]);
+
+  const currentWard = displayWards.find(s => s.id === selectedWardId) || displayWards[0] || null;
 
   // Active Tab Workspace
   const [activeTab, setActiveTab] = useState<'ACADEMICS' | 'TIMETABLE' | 'CURRICULUM' | 'PASTORAL'>('ACADEMICS');
@@ -71,6 +131,40 @@ export const ParentDashboard: React.FC<{ onViewReportCard: (studentId: string) =
   const [inquiryMessage, setInquiryMessage] = useState('');
   const [isSendingInquiry, setIsSendingInquiry] = useState(false);
   const [inquirySuccess, setInquirySuccess] = useState(false);
+
+  // If no enrolled ward is associated with this parent account, display informative empty state
+  if (!currentWard) {
+    return (
+      <FuturisticPageShell
+        title="FAMILY & STUDENT COMMAND PORTAL"
+        subtitle={`${getWelcomeMessage(user?.name || 'Parent')}. Unified academic progress, weekly class timetables, registered subjects, and pastoral exeat records.`}
+        icon={Users}
+        badgeText="Family Hub"
+        badgeVariant="cyber"
+      >
+        <DoubleBezelCard>
+          <div className="p-8 sm:p-12 text-center max-w-lg mx-auto space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
+              <GraduationCap className="w-8 h-8" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+              No Enrolled Wards Found
+            </h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+              We could not find any active student records linked to your parent account (<span className="font-semibold text-slate-700 dark:text-slate-300">{user?.email || user?.identifier}</span>).
+            </p>
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-white/10 text-xs text-slate-600 dark:text-slate-400 text-left space-y-2">
+              <p className="font-bold text-slate-800 dark:text-slate-200">Helpful Information:</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li>If you recently enrolled a student, ensure the parent email provided during admission matches this account.</li>
+                <li>Contact the Everest Admissions Office at <span className="font-mono text-amber-600 dark:text-amber-400">admissions@everest.sch.ng</span> to confirm your ward's linkage.</li>
+              </ul>
+            </div>
+          </div>
+        </DoubleBezelCard>
+      </FuturisticPageShell>
+    );
+  }
 
   // Data for current ward
   const dossier = getStudentDossier(currentWard.id, activeTerm.id);
@@ -135,8 +229,8 @@ export const ParentDashboard: React.FC<{ onViewReportCard: (studentId: string) =
 
     sendMessage({
       threadId: `th-parent-${currentWard.id}-${Date.now()}`,
-      senderId: user?.id || user?.parentId || 'par-001',
-      senderName: user?.name || 'Dr. Kingsley Adeleke',
+      senderId: user?.id || user?.parentId || 'prt-001',
+      senderName: user?.name || 'Parent / Guardian',
       senderRole: 'PARENT',
       recipientId,
       recipientName,
@@ -167,7 +261,7 @@ export const ParentDashboard: React.FC<{ onViewReportCard: (studentId: string) =
   return (
     <FuturisticPageShell
       title="FAMILY & STUDENT COMMAND PORTAL"
-      subtitle="Unified academic progress, weekly class timetables, registered subjects, and pastoral exeat records."
+      subtitle={`${getWelcomeMessage(user?.name || 'Parent')}. Unified academic progress, weekly class timetables, registered subjects, and pastoral exeat records.`}
       icon={Users}
       badgeText="Family Hub"
       badgeVariant="cyber"
@@ -192,7 +286,7 @@ export const ParentDashboard: React.FC<{ onViewReportCard: (studentId: string) =
         <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-100 dark:border-white/10">
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
             <GraduationCap className="w-4 h-4 text-amber-500" />
-            <span>Select Ward / Child</span>
+            <span>{displayWards.length > 1 ? 'Select Ward / Child' : 'Enrolled Ward'}</span>
           </span>
           <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">
             {displayWards.length} Enrolled {displayWards.length === 1 ? 'Ward' : 'Wards'}
@@ -375,7 +469,7 @@ export const ParentDashboard: React.FC<{ onViewReportCard: (studentId: string) =
         <div className="space-y-6">
           {/* Summary Metric Cards */}
           {dossier && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 gap-2.5 sm:gap-4">
               <FuturisticKPICard
                 title="Total Aggregate Score"
                 value={dossier.totalAggregateScore}

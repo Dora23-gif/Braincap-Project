@@ -314,7 +314,7 @@ export const AreaTrendChart: React.FC<AreaTrendChartProps> = ({
 // 4. BAR DISTRIBUTION CHART (Responsive)
 // ==========================================
 interface BarItem {
-  label: string;
+  label: React.ReactNode;
   value: number;
   highlight?: boolean;
   color?: string;
@@ -342,7 +342,7 @@ export const BarDistributionChart: React.FC<BarDistributionChartProps> = ({
   const maxVal = Math.max(...data.map(d => d.value), 1);
 
   return (
-    <div className={clsx('flex flex-col space-y-3', className)}>
+    <div className={clsx('flex flex-col space-y-3 w-full min-w-0', className)}>
       {title && (
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
@@ -356,51 +356,53 @@ export const BarDistributionChart: React.FC<BarDistributionChartProps> = ({
         </div>
       )}
 
-      <div
-        className="flex items-end gap-2 sm:gap-3 w-full pt-6 pb-2"
-        style={{ height }}
-      >
-        {data.map((item, idx) => {
-          const heightPercent = Math.max(8, Math.round((item.value / maxVal) * 100));
-          const isHovered = hoverIdx === idx;
+      <div className="w-full overflow-x-auto no-scrollbar">
+        <div
+          className="flex items-end gap-1.5 sm:gap-3 w-full min-w-0 pt-6 pb-2"
+          style={{ height }}
+        >
+          {data.map((item, idx) => {
+            const heightPercent = Math.max(8, Math.round((item.value / maxVal) * 100));
+            const isHovered = hoverIdx === idx;
 
-          return (
-            <div
-              key={idx}
-              className="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer"
-              onMouseEnter={() => setHoverIdx(idx)}
-              onMouseLeave={() => setHoverIdx(null)}
-            >
-              {/* Value popover on hover */}
+            return (
               <div
-                className={clsx(
-                  'text-[10px] font-mono-tabular font-bold transition-all duration-200 mb-1',
-                  isHovered ? 'text-indigo-600 dark:text-cyan-400 scale-110' : 'text-slate-400 opacity-80'
-                )}
+                key={idx}
+                className="flex-1 min-w-0 flex flex-col items-center h-full justify-end group cursor-pointer"
+                onMouseEnter={() => setHoverIdx(idx)}
+                onMouseLeave={() => setHoverIdx(null)}
               >
-                {item.value}{unit}
-              </div>
-
-              {/* Bar column */}
-              <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-t-xl overflow-hidden h-full flex flex-col justify-end">
+                {/* Value popover on hover */}
                 <div
                   className={clsx(
-                    'w-full rounded-t-xl transition-all duration-500',
-                    item.color || (item.highlight
-                      ? 'bg-gradient-to-t from-indigo-600 to-cyan-400 shadow-md shadow-cyan-500/20'
-                      : 'bg-gradient-to-t from-slate-400 to-slate-300 dark:from-slate-700 dark:to-slate-600 group-hover:from-indigo-500 group-hover:to-indigo-400')
+                    'text-[9px] sm:text-[10px] font-mono-tabular font-bold transition-all duration-200 mb-1',
+                    isHovered ? 'text-indigo-600 dark:text-cyan-400 scale-110' : 'text-slate-400 opacity-80'
                   )}
-                  style={{ height: `${heightPercent}%` }}
-                />
-              </div>
+                >
+                  {item.value}{unit}
+                </div>
 
-              {/* Label below */}
-              <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 truncate w-full text-center mt-2">
-                {item.label}
-              </span>
-            </div>
-          );
-        })}
+                {/* Bar column */}
+                <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-t-xl overflow-hidden h-full flex flex-col justify-end">
+                  <div
+                    className={clsx(
+                      'w-full rounded-t-xl transition-all duration-500',
+                      item.color || (item.highlight
+                        ? 'bg-gradient-to-t from-indigo-600 to-cyan-400 shadow-md shadow-cyan-500/20'
+                        : 'bg-gradient-to-t from-slate-400 to-slate-300 dark:from-slate-700 dark:to-slate-600 group-hover:from-indigo-500 group-hover:to-indigo-400')
+                    )}
+                    style={{ height: `${heightPercent}%` }}
+                  />
+                </div>
+
+                {/* Label below */}
+                <span className="text-[9px] sm:text-[10px] font-semibold text-slate-500 dark:text-slate-400 truncate w-full text-center mt-1.5 sm:mt-2">
+                  {item.label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

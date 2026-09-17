@@ -59,6 +59,7 @@ export const SubjectSelectionModal: React.FC<SubjectSelectionModalProps> = ({
   const [dropCandidate, setDropCandidate] = useState<Subject | null>(null);
   const [dropReason, setDropReason] = useState<string>('');
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Group subjects
   const jssMandatorySubjects = subjects.filter(s => s.isCompulsoryJunior);
@@ -101,28 +102,40 @@ export const SubjectSelectionModal: React.FC<SubjectSelectionModalProps> = ({
   };
 
   // Handle formal drop (for SS2 and SS3 progressive drops)
-  const handleConfirmDrop = () => {
+  const handleConfirmDrop = async () => {
     if (!dropCandidate) return;
-    dropStudentSubject(
-      student.id,
-      dropCandidate.id,
-      currentLevelLabel as 'SSS 2' | 'SSS 3',
-      dropReason || `Elective dropped for ${currentLevelLabel} curriculum specialization`
-    );
-    setSelectedIds(prev => prev.filter(id => id !== dropCandidate.id));
-    setDropCandidate(null);
-    setDropReason('');
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
+    setIsSubmitting(true);
+    try {
+      await dropStudentSubject(
+        student.id,
+        dropCandidate.id,
+        currentLevelLabel as 'SSS 2' | 'SSS 3',
+        dropReason || `Elective dropped for ${currentLevelLabel} curriculum specialization`
+      );
+      setSelectedIds(prev => prev.filter(id => id !== dropCandidate.id));
+      setDropCandidate(null);
+      setDropReason('');
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleSave = () => {
-    updateStudentSubjects(student.id, selectedIds);
-    setSaveSuccess(true);
-    setTimeout(() => {
-      setSaveSuccess(false);
-      onClose();
-    }, 1200);
+  const handleSave = async () => {
+    setIsSubmitting(true);
+    try {
+      await updateStudentSubjects(student.id, selectedIds);
+      setSaveSuccess(true);
+      setTimeout(() => {
+        setSaveSuccess(false);
+        onClose();
+      }, 1000);
+    } catch (err) {
+      console.error('Failed to update student subjects:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const currentCount = selectedIds.length;

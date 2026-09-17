@@ -1,21 +1,29 @@
 import React, { useState } from 'react';
 import { useSchoolData } from '../../context/SchoolDataContext';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Phone, Mail, BookOpen, Users, Pencil, Trash2, Camera, AlertTriangle, Check, X, MapPin } from 'lucide-react';
+import { Search, Phone, Mail, BookOpen, Users, Pencil, Trash2, Camera, AlertTriangle, Check, X, MapPin, UserPlus } from 'lucide-react';
 import { SubjectSelectionModal } from './SubjectSelectionModal';
 import { FuturisticPageShell } from '../../components/common/FuturisticPageShell';
 import { DoubleBezelCard } from '../../components/common/DoubleBezelCard';
 import { ModalPortal } from '../../components/common/ModalPortal';
+import { PaginationControls } from '../../components/common/PaginationControls';
+import { api, PaginatedResponse, ARM_PK_BY_SLUG, adaptStudentFromBackend } from '../../lib/api';
 import type { Student } from '../../types';
 
-export const StudentDirectoryView: React.FC<{ onSelectStudent?: (studentId: string) => void }> = ({
-  onSelectStudent
+
+export const StudentDirectoryView: React.FC<{
+  onSelectStudent?: (studentId: string) => void;
+  onNavigateToAdmissions?: () => void;
+}> = ({
+  onSelectStudent,
+  onNavigateToAdmissions
 }) => {
-  const { students, classArms, updateStudent, deleteStudent, allocations } = useSchoolData();
+  const { students, classArms, updateStudent, deleteStudent, allocations, getNextAdmissionNumber } = useSchoolData();
   const { user } = useAuth();
   const isSuperAdmin = user?.activeRole === 'SUPER_ADMIN' || user?.assignedRoles?.includes('SUPER_ADMIN');
   const isFormMaster = user?.activeRole === 'FORM_MASTER';
   const isSubjectTeacher = user?.activeRole === 'SUBJECT_TEACHER' || user?.activeRole === 'TEACHER';
+  const canEnroll = isSuperAdmin || user?.activeRole === 'PRINCIPAL' || user?.activeRole === 'VICE_PRINCIPAL' || user?.activeRole === 'ADMISSIONS_OFFICER';
 
   // Compute teacher's allocated class arm IDs
   const teacherArmIds = React.useMemo(() => {
@@ -44,6 +52,15 @@ export const StudentDirectoryView: React.FC<{ onSelectStudent?: (studentId: stri
   );
   const [curriculumStudent, setCurriculumStudent] = useState<Student | null>(null);
 
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(20);
+  const [serverStudents, setServerStudents] = useState<Student[] | null>(null);
+  const [serverTotalCount, setServerTotalCount] = useState<number | null>(null);
+  const [serverTotalPages, setServerTotalPages] = useState<number | null>(null);
+  const [isLoadingPage, setIsLoadingPage] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
   // Super Admin Edit Student State
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [editForm, setEditForm] = useState<Partial<Student>>({});
@@ -52,6 +69,51 @@ export const StudentDirectoryView: React.FC<{ onSelectStudent?: (studentId: stri
   const [deletingStudent, setDeletingStudent] = useState<Student | null>(null);
   const [deleteReason, setDeleteReason] = useState('');
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Fetch paginated students from backend
+  React.useEffect(() => {
+    let isCancelled = false;
+    const timer = setTimeout(async () => {
+      setIsLoadingPage(true);
+      try {
+        const queryParams: Record<string, any> = {
+          page,
+          page_size: pageSize,
+        };
+        if (searchTerm.trim()) {
+          queryParams.search = searchTerm.trim();
+        }
+        if (selectedArmFilter !== 'ALL') {
+          const armPk = typeof selectedArmFilter === 'number'
+            ? selectedArmFilter
+            : (ARM_PK_BY_SLUG[selectedArmFilter] || selectedArmFilter);
+          queryParams.current_class_arm = armPk;
+        }
+
+        const res = await api.get<PaginatedResponse<any>>('/students/students/', queryParams);
+        if (!isCancelled && res && Array.isArray(res.results)) {
+          const adapted = res.results.map(adaptStudentFromBackend);
+          setServerStudents(adapted);
+          setServerTotalCount(res.count);
+          setServerTotalPages(res.total_pages || Math.ceil(res.count / pageSize));
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          setServerStudents(null);
+          setServerTotalCount(null);
+          setServerTotalPages(null);
+        }
+      } finally {
+        if (!isCancelled) setIsLoadingPage(false);
+      }
+    }, 200);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
+  }, [page, pageSize, searchTerm, selectedArmFilter, refreshTrigger, students.length]);
+
 
   const openEditModal = (student: Student) => {
     setEditingStudent(student);
@@ -105,6 +167,7 @@ export const StudentDirectoryView: React.FC<{ onSelectStudent?: (studentId: stri
     });
 
     setEditingStudent(null);
+    setRefreshTrigger(prev => prev + 1);
   };
 
   const handleConfirmDelete = () => {
@@ -123,25 +186,39 @@ export const StudentDirectoryView: React.FC<{ onSelectStudent?: (studentId: stri
     setDeletingStudent(null);
     setDeleteReason('');
     setDeleteError(null);
+    setRefreshTrigger(prev => prev + 1);
   };
 
-  const filteredStudents = students.filter(s => {
-    // Role jurisdictional boundaries
-    if (isFormMaster && user?.formMasterArmId && s.currentClassArmId !== user.formMasterArmId) {
-      return false;
+  const clientFilteredStudents = React.useMemo(() => {
+    return students.filter(s => {
+      // Role jurisdictional boundaries
+      if (isFormMaster && user?.formMasterArmId && s.currentClassArmId !== user.formMasterArmId) {
+        return false;
+      }
+      if (isSubjectTeacher && !teacherArmIds.includes(s.currentClassArmId)) {
+        return false;
+      }
+      const matchesArm = selectedArmFilter === 'ALL' || s.currentClassArmId === selectedArmFilter;
+      const search = searchTerm.toLowerCase();
+      const matchesSearch =
+        s.firstName.toLowerCase().includes(search) ||
+        s.lastName.toLowerCase().includes(search) ||
+        s.admissionNumber.toLowerCase().includes(search) ||
+        s.stateOfOrigin.toLowerCase().includes(search);
+      return matchesArm && matchesSearch;
+    });
+  }, [students, isFormMaster, user?.formMasterArmId, isSubjectTeacher, teacherArmIds, selectedArmFilter, searchTerm]);
+
+  const displayedStudents = React.useMemo(() => {
+    if (serverStudents !== null) {
+      return serverStudents;
     }
-    if (isSubjectTeacher && !teacherArmIds.includes(s.currentClassArmId)) {
-      return false;
-    }
-    const matchesArm = selectedArmFilter === 'ALL' || s.currentClassArmId === selectedArmFilter;
-    const search = searchTerm.toLowerCase();
-    const matchesSearch =
-      s.firstName.toLowerCase().includes(search) ||
-      s.lastName.toLowerCase().includes(search) ||
-      s.admissionNumber.toLowerCase().includes(search) ||
-      s.stateOfOrigin.toLowerCase().includes(search);
-    return matchesArm && matchesSearch;
-  });
+    const start = (page - 1) * pageSize;
+    return clientFilteredStudents.slice(start, start + pageSize);
+  }, [serverStudents, clientFilteredStudents, page, pageSize]);
+
+  const totalCount = serverTotalCount !== null ? serverTotalCount : clientFilteredStudents.length;
+  const totalPages = serverTotalPages !== null ? serverTotalPages : Math.max(1, Math.ceil(clientFilteredStudents.length / pageSize));
 
   return (
     <FuturisticPageShell
@@ -154,7 +231,7 @@ export const StudentDirectoryView: React.FC<{ onSelectStudent?: (studentId: stri
           : 'Active school roster with Nigerian demographic profiles, curriculum subject allocations, and parent links'
       }
       icon={Users}
-      badgeText={`${filteredStudents.length} Enrolled`}
+      badgeText={`${totalCount} Enrolled`}
       badgeVariant="info"
     >
       {/* Filter Bar */}
@@ -172,7 +249,10 @@ export const StudentDirectoryView: React.FC<{ onSelectStudent?: (studentId: stri
                 type="text"
                 placeholder="Search name, adm no, state..."
                 value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
+                onChange={e => {
+                  setSearchTerm(e.target.value);
+                  setPage(1);
+                }}
                 className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-amber-500 transition-all"
               />
             </div>
@@ -186,9 +266,13 @@ export const StudentDirectoryView: React.FC<{ onSelectStudent?: (studentId: stri
             ) : (
               <select
                 value={selectedArmFilter}
-                onChange={e => setSelectedArmFilter(e.target.value)}
+                onChange={e => {
+                  setSelectedArmFilter(e.target.value);
+                  setPage(1);
+                }}
                 className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-amber-500 cursor-pointer"
               >
+
                 {!isSubjectTeacher && <option value="ALL">All Class Arms</option>}
                 {allowedArms.map(a => (
                   <option key={a.id} value={a.id}>
@@ -197,13 +281,52 @@ export const StudentDirectoryView: React.FC<{ onSelectStudent?: (studentId: stri
                 ))}
               </select>
             )}
+
+            {/* Quick Action: Enroll Student */}
+            {onNavigateToAdmissions && canEnroll && (
+              <button
+                type="button"
+                onClick={onNavigateToAdmissions}
+                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer whitespace-nowrap shrink-0"
+                title={`Enroll New Student - Next Serial ID: ${getNextAdmissionNumber()}`}
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>+ Enroll Student</span>
+                <span className="px-1.5 py-0.5 rounded-md bg-slate-950/15 text-[10px] font-mono font-black">
+                  {getNextAdmissionNumber()}
+                </span>
+              </button>
+            )}
           </div>
         </div>
       </DoubleBezelCard>
 
       {/* Directory Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredStudents.map(student => {
+      {displayedStudents.length === 0 ? (
+        <DoubleBezelCard innerClassName="p-12 text-center space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
+            <Users className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">No Students Found</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto mt-1">
+              No students match the selected filter criteria or search query.
+            </p>
+          </div>
+          {onNavigateToAdmissions && canEnroll && (
+            <button
+              type="button"
+              onClick={onNavigateToAdmissions}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs cursor-pointer shadow-xs"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>Enroll New Student ({getNextAdmissionNumber()})</span>
+            </button>
+          )}
+        </DoubleBezelCard>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+        {displayedStudents.map(student => {
           const registeredCount = student.registeredSubjectIds ? student.registeredSubjectIds.length : 0;
           return (
             <DoubleBezelCard
@@ -321,13 +444,30 @@ export const StudentDirectoryView: React.FC<{ onSelectStudent?: (studentId: stri
           );
         })}
       </div>
+      )}
+
+      {/* Server Pagination Navigation */}
+      <PaginationControls
+        currentPage={page}
+        totalPages={totalPages}
+        totalCount={totalCount}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        isLoading={isLoadingPage}
+        itemLabel="students"
+        className="mt-6"
+      />
+
 
       {/* Subject Selection / Drop Management Modal */}
       {curriculumStudent && (
         <SubjectSelectionModal
           student={curriculumStudent}
           isOpen={!!curriculumStudent}
-          onClose={() => setCurriculumStudent(null)}
+          onClose={() => {
+            setCurriculumStudent(null);
+            setRefreshTrigger(p => p + 1);
+          }}
         />
       )}
 
@@ -627,7 +767,7 @@ export const StudentDirectoryView: React.FC<{ onSelectStudent?: (studentId: stri
                 Class Arm: <span className="font-semibold">{deletingStudent.currentClassArmName}</span>
               </div>
               <p className="text-[11px] text-rose-700 dark:text-rose-400 pt-1">
-                Warning: Removing this student permanently deletes their active enrollment profile and records an immutable audit log entry.
+                Warning: Removing this student permanently deletes their active enrollment profile and records an entry in Activity History.
               </p>
             </div>
 

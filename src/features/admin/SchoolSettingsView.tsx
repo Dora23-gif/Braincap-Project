@@ -18,16 +18,13 @@ import {
   Sparkles,
   Eye,
   Award,
-  Stamp,
-  AlertTriangle
+  Stamp
 } from 'lucide-react';
 import { FuturisticPageShell } from '../../components/common/FuturisticPageShell';
 import { DoubleBezelCard } from '../../components/common/DoubleBezelCard';
-import { ModalPortal } from '../../components/common/ModalPortal';
 
 export const SchoolSettingsView: React.FC = () => {
-  const { schoolSettings, updateSchoolSettings, resetToDefaultData } = useSchoolData();
-  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const { schoolSettings, updateSchoolSettings } = useSchoolData();
 
   const [principalName, setPrincipalName] = useState(schoolSettings.principalName);
   const [principalTitle, setPrincipalTitle] = useState(schoolSettings.principalTitle);
@@ -445,83 +442,6 @@ export const SchoolSettingsView: React.FC = () => {
           </div>
         </div>
       </form>
-
-      {/* Database & Factory Seed Maintenance Section */}
-      <div className="mt-8 pt-8 border-t border-slate-200 dark:border-slate-800">
-        <DoubleBezelCard hoverEffect>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <div className="p-2.5 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 shrink-0">
-                <AlertTriangle className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="font-serif-title font-bold text-slate-900 dark:text-white text-sm">
-                  Database & Factory Seed Maintenance
-                </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xl mt-0.5">
-                  Restore the initial benchmark demo database (60 students across 12 class arms, 20 faculty members, 20 parent accounts, examination halls, and default grades).
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setIsResetModalOpen(true)}
-              className="px-4 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-800 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shrink-0 shadow-2xs"
-            >
-              <RotateCcw className="w-4 h-4" />
-              <span>Reset Factory Dataset</span>
-            </button>
-          </div>
-        </DoubleBezelCard>
-      </div>
-
-      {/* High-Security Confirmation Modal using ModalPortal */}
-      {isResetModalOpen && (
-        <ModalPortal>
-          <div className="bg-white dark:bg-[#0E1526] border border-slate-200 dark:border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="p-3 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 shrink-0">
-                <AlertTriangle className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="font-serif-title font-bold text-slate-900 dark:text-white text-base">
-                  Confirm Factory Dataset Reset
-                </h3>
-                <span className="text-xs text-rose-600 dark:text-rose-400 font-semibold">
-                  Destructive Action • Irreversible
-                </span>
-              </div>
-            </div>
-
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              This action will completely wipe all custom-added students, classes, attendance logs, and modified marks, reverting the school database to the factory initial seed (100 benchmark records).
-            </p>
-
-            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
-              <button
-                type="button"
-                onClick={() => setIsResetModalOpen(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  resetToDefaultData();
-                  setIsResetModalOpen(false);
-                  showToast('Factory database reset successfully!');
-                }}
-                className="px-5 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-xs cursor-pointer flex items-center gap-1.5"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Confirm Factory Reset</span>
-              </button>
-            </div>
-          </div>
-        </ModalPortal>
-      )}
     </FuturisticPageShell>
   );
 };

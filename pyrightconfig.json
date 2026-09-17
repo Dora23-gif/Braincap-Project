@@ -1,0 +1,24 @@
+{
+  "typeCheckingMode": "off",
+  "extraPaths": [
+    "backend",
+    "backend/apps",
+    "apps"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    "**/.venv",
+    "dist"
+  ],
+  "reportMissingImports": "none",
+  "reportMissingModuleSource": "none",
+  "reportMissingTypeStubs": "none",
+  "reportAttributeAccessIssue": "none",
+  "reportOptionalMemberAccess": "none",
+  "reportGeneralTypeIssues": "none",
+  "reportUnusedFunction": "none",
+  "reportUnusedVariable": "none",
+  "reportCallIssue": "none",
+  "reportArgumentType": "none"
+}

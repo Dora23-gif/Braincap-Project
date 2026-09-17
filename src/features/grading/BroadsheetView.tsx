@@ -90,8 +90,8 @@ export const BroadsheetView: React.FC = () => {
 
   return (
     <FuturisticPageShell
-      title="MASTER BROADSHEET &amp; SCORE MATRIX"
-      subtitle={`Comprehensive multi-subject collation dossier for ${currentArm.fullName}, including ranking, averages, and terminal aggregation.`}
+      title={isSubjectTeacher ? "Student Performance & Broadsheet" : isFormMaster ? "Class Performance & Broadsheet" : "Master Broadsheet & Class Performance"}
+      subtitle={`View and analyze student scores, subject averages, and term rankings for ${currentArm.fullName}.`}
       icon={FileSpreadsheet}
       badgeText={activeTerm.isResultsPublished ? 'Published to Portal' : 'Unpublished Draft'}
       badgeVariant={activeTerm.isResultsPublished ? 'success' : 'warning'}

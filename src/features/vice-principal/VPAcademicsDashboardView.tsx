@@ -30,6 +30,7 @@ import {
   Printer
 } from 'lucide-react';
 import { FuturisticPageShell } from '../../components/common/FuturisticPageShell';
+import { getWelcomeMessage } from '../../lib/userDisplay';
 import { FuturisticKPICard } from '../../components/common/FuturisticKPICard';
 import { SegmentedControl, SegmentedControlOption } from '../../components/common/SegmentedControl';
 import { DoubleBezelCard } from '../../components/common/DoubleBezelCard';
@@ -412,13 +413,13 @@ export const VPAcademicsDashboardView: React.FC = () => {
   return (
     <FuturisticPageShell
       title="VICE PRINCIPAL (ACADEMICS) COMMAND"
-      subtitle={`Instructional delivery across ${classArms.length} arms, syllabus completion velocity, senior elective subject drops (12 → 11 → 9), and continuous assessment quality moderation.`}
+      subtitle={`${getWelcomeMessage(user?.name || 'Vice-Principal')}. Instructional delivery across ${classArms.length} arms, syllabus completion velocity, senior elective subject drops (12 → 11 → 9), and continuous assessment quality moderation.`}
       icon={GraduationCap}
       badgeText="Instructional Week: 10 of 12"
       badgeVariant="info"
     >
       {/* 4 Metric Summary Bento Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 gap-2.5 sm:gap-4">
         <FuturisticKPICard
           title="Syllabus Compliance"
           value={`${sowMetrics.complianceRate}%`}

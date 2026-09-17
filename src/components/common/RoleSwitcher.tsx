@@ -9,6 +9,7 @@ const ROLE_META: Record<string, { label: string; icon: React.ComponentType<{ cla
   VICE_PRINCIPAL: { label: 'Vice Principal (General)', icon: ShieldCheck, bg: 'bg-sky-50 dark:bg-sky-950/60', text: 'text-sky-700 dark:text-sky-300' },
   VICE_PRINCIPAL_ACADEMICS: { label: 'VP Academics & Instruction', icon: BookOpen, bg: 'bg-cyan-50 dark:bg-cyan-950/60', text: 'text-cyan-800 dark:text-cyan-300' },
   VICE_PRINCIPAL_ADMIN: { label: 'VP Administration & Students', icon: ShieldCheck, bg: 'bg-rose-50 dark:bg-rose-950/60', text: 'text-rose-800 dark:text-rose-300' },
+  VICE_PRINCIPAL_STUDENT_AFFAIRS: { label: 'VP Student Affairs', icon: ShieldCheck, bg: 'bg-rose-50 dark:bg-rose-950/60', text: 'text-rose-800 dark:text-rose-300' },
   EXAM_OFFICER: { label: 'Examination Officer', icon: BookOpen, bg: 'bg-amber-50 dark:bg-amber-950/60', text: 'text-amber-800 dark:text-amber-300' },
   EXAMINATION_OFFICER: { label: 'Examination Officer', icon: BookOpen, bg: 'bg-amber-50 dark:bg-amber-950/60', text: 'text-amber-800 dark:text-amber-300' },
   SUBJECT_TEACHER: { label: 'Subject Teacher', icon: BookOpen, bg: 'bg-blue-50 dark:bg-blue-950/60', text: 'text-blue-700 dark:text-blue-300' },
@@ -36,9 +37,10 @@ export const RoleSwitcher: React.FC = () => {
 
   if (!user) return null;
 
-  const currentMeta = ROLE_META[user.activeRole] || ROLE_META.SUBJECT_TEACHER;
+  const currentMeta = (user.activeRole && ROLE_META[user.activeRole]) || ROLE_META.SUBJECT_TEACHER;
   const ActiveIcon = currentMeta.icon;
-  const hasMultipleRoles = user.assignedRoles.length > 1;
+  const assignedList = Array.isArray(user.assignedRoles) ? user.assignedRoles : [];
+  const hasMultipleRoles = assignedList.length > 1;
 
   return (
     <div className="relative inline-block text-left" ref={dropdownRef}>
@@ -54,7 +56,7 @@ export const RoleSwitcher: React.FC = () => {
         <div className={`w-5 h-5 rounded-full flex items-center justify-center ${currentMeta.bg} ${currentMeta.text}`}>
           <ActiveIcon className="w-3 h-3" />
         </div>
-        <span className="text-slate-900 dark:text-slate-100">{currentMeta.label}</span>
+        <span className="hidden sm:inline text-slate-900 dark:text-slate-100">{currentMeta.label}</span>
         {hasMultipleRoles && (
           <ChevronDown
             className={`w-3.5 h-3.5 text-slate-400 dark:text-slate-500 transition-transform duration-200 ${
@@ -69,8 +71,8 @@ export const RoleSwitcher: React.FC = () => {
           <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800 mb-1">
             Active Working Role
           </div>
-          {user.assignedRoles.map(role => {
-            const meta = ROLE_META[role];
+          {assignedList.map(role => {
+            const meta = ROLE_META[role] || ROLE_META.SUBJECT_TEACHER;
             const Icon = meta.icon;
             const isCurrent = role === user.activeRole;
 
