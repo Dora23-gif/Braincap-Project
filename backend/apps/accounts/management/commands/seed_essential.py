@@ -1,4 +1,4 @@
-﻿from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand
 from datetime import date
 from apps.accounts.models import CustomUser
 from apps.academics.models import AcademicSession, AcademicTerm, Subject
@@ -158,7 +158,30 @@ class Command(BaseCommand):
             }
         )
 
-        # 8. Core Subjects
+        # 8. Class Levels & Arms
+        from apps.academics.models import ClassLevel, ClassArm
+        
+        levels_data = [
+            ("JSS 1", "JUNIOR", 1, ["Emerald", "Diamond", "Gold"]),
+            ("JSS 2", "JUNIOR", 2, ["Emerald", "Diamond", "Gold"]),
+            ("JSS 3", "JUNIOR", 3, ["Emerald", "Diamond", "Gold"]),
+            ("SSS 1", "SENIOR", 4, ["Science Emerald", "Science Diamond", "Commercial Gold", "Arts Platinum"]),
+            ("SSS 2", "SENIOR", 5, ["Science Emerald", "Science Diamond", "Commercial Gold", "Arts Platinum"]),
+            ("SSS 3", "SENIOR", 6, ["Science Emerald", "Science Diamond", "Commercial Gold", "Arts Platinum"]),
+        ]
+        for lvl_name, sec, order, arms in levels_data:
+            lvl, _ = ClassLevel.objects.update_or_create(
+                name=lvl_name,
+                defaults={"section": sec, "order": order}
+            )
+            for arm_name in arms:
+                ClassArm.objects.update_or_create(
+                    class_level=lvl,
+                    name=arm_name,
+                    defaults={"full_name": f"{lvl_name} {arm_name}"}
+                )
+
+        # 9. Core Subjects
         subjects = [
             ("Mathematics", "MTH", "CORE", "ALL", "CORE"),
             ("English Language", "ENG", "CORE", "ALL", "CORE"),
@@ -168,6 +191,10 @@ class Command(BaseCommand):
             ("Biology", "BIO", "SCIENCE", "SENIOR", "CORE"),
             ("Economics", "ECO", "COMMERCIAL", "SENIOR", "GENERAL_ELECTIVE"),
             ("Data Processing", "DP", "CORE", "SENIOR", "TRADE"),
+            ("Geography", "GEO", "ARTS", "SENIOR", "GENERAL_ELECTIVE"),
+            ("Agricultural Science", "AGR", "SCIENCE", "ALL", "GENERAL_ELECTIVE"),
+            ("Basic Science", "BSC", "CORE", "JUNIOR", "CORE"),
+            ("Basic Technology", "BTECH", "CORE", "JUNIOR", "CORE"),
         ]
         for name, code, cat, app, grp in subjects:
             Subject.objects.update_or_create(
@@ -182,4 +209,5 @@ class Command(BaseCommand):
                 }
             )
 
-        self.stdout.write(self.style.SUCCESS("All essential accounts & academic data successfully seeded!"))
+        self.stdout.write(self.style.SUCCESS("All essential accounts, classes, arms & academic data successfully seeded!"))
+
