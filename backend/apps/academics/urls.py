@@ -18,5 +18,7 @@ router.register("allocations", TeacherAllocationViewSet, basename="allocation")
 router.register("teacher-allocations", TeacherAllocationViewSet, basename="teacherallocation")
 
 urlpatterns = [
+    path("rollover/candidates/", AcademicSessionViewSet.as_view({"get": "rollover_candidates"}), name="rollover-candidates"),
+    path("rollover/execute/", AcademicSessionViewSet.as_view({"post": "execute_rollover"}), name="rollover-execute"),
     path("", include(router.urls)),
 ]

@@ -1,6 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useSchoolData } from '../../context/SchoolDataContext';
 import { ModalPortal } from '../../components/common/ModalPortal';
+import { PaginationControls } from '../../components/common/PaginationControls';
+import { fetchRolloverCandidates, RolloverCandidate } from '../../lib/api';
 import {
   GraduationCap,
   Sparkles,
@@ -34,6 +36,15 @@ export const AcademicRolloverView: React.FC = () => {
   const [selectedDecision, setSelectedDecision] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Pagination State
+  const [page, setPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(20);
+  const [serverCandidates, setServerCandidates] = useState<RolloverCandidate[] | null>(null);
+  const [serverTotalCount, setServerTotalCount] = useState<number | null>(null);
+  const [serverTotalPages, setServerTotalPages] = useState<number | null>(null);
+  const [serverSummary, setServerSummary] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
   // Local administrative overrides before rollover execution: studentId -> { decision, note }
   const [overrides, setOverrides] = useState<Record<string, { decision: string; note: string }>>({});
   const [overrideModalStudent, setOverrideModalStudent] = useState<any | null>(null);
@@ -45,6 +56,45 @@ export const AcademicRolloverView: React.FC = () => {
   const [rolloverStep, setRolloverStep] = useState<1 | 2 | 3 | 4>(1);
   const [confirmationCode, setConfirmationCode] = useState('');
   const [rolloverResult, setRolloverResult] = useState<any | null>(null);
+
+  // Fetch paginated candidates from live backend
+  useEffect(() => {
+    let isCancelled = false;
+    const timer = setTimeout(async () => {
+      setIsLoading(true);
+      try {
+        const res = await fetchRolloverCandidates({
+          page,
+          page_size: pageSize,
+          level: selectedLevel !== 'ALL' ? selectedLevel : undefined,
+          decision: selectedDecision !== 'ALL' ? selectedDecision : undefined,
+          search: searchTerm.trim() || undefined,
+        });
+
+        if (!isCancelled && res && Array.isArray(res.results)) {
+          setServerCandidates(res.results);
+          setServerTotalCount(res.count);
+          setServerTotalPages(res.total_pages || Math.ceil(res.count / pageSize));
+          if (res.summary) {
+            setServerSummary(res.summary);
+          }
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          setServerCandidates(null);
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
+      }
+    }, 200);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
+  }, [page, pageSize, selectedLevel, selectedDecision, searchTerm]);
 
   // Calculate promotion candidate matrix
   const candidateMatrix = useMemo(() => {
@@ -132,12 +182,32 @@ export const AcademicRolloverView: React.FC = () => {
     });
   }, [candidateMatrix, searchTerm, selectedLevel, selectedDecision]);
 
+  // Displayed Candidates with Pagination
+  const displayedCandidates = useMemo(() => {
+    if (serverCandidates !== null && Object.keys(overrides).length === 0) {
+      return serverCandidates;
+    }
+    const start = (page - 1) * pageSize;
+    return filteredCandidates.slice(start, start + pageSize);
+  }, [serverCandidates, filteredCandidates, page, pageSize, overrides]);
+
+  const totalCandidatesCount =
+    serverTotalCount !== null && Object.keys(overrides).length === 0
+      ? serverTotalCount
+      : filteredCandidates.length;
+
+  const totalPagesCount =
+    serverTotalPages !== null && Object.keys(overrides).length === 0
+      ? serverTotalPages
+      : Math.max(1, Math.ceil(filteredCandidates.length / pageSize));
+
   // Aggregate Stats
-  const totalEligible = candidateMatrix.length;
-  const promotedTotal = candidateMatrix.filter(c => c.effectiveDecision === 'PROMOTED').length;
-  const trialTotal = candidateMatrix.filter(c => c.effectiveDecision === 'PROMOTED_ON_TRIAL').length;
-  const repeatTotal = candidateMatrix.filter(c => c.effectiveDecision === 'REPEAT').length;
-  const graduateTotal = candidateMatrix.filter(c => c.effectiveDecision === 'GRADUATE').length;
+  const hasLocalOverrides = Object.keys(overrides).length > 0;
+  const totalEligible = hasLocalOverrides || !serverSummary ? candidateMatrix.length : serverSummary.total_eligible;
+  const promotedTotal = hasLocalOverrides || !serverSummary ? candidateMatrix.filter(c => c.effectiveDecision === 'PROMOTED').length : serverSummary.promoted;
+  const trialTotal = hasLocalOverrides || !serverSummary ? candidateMatrix.filter(c => c.effectiveDecision === 'PROMOTED_ON_TRIAL').length : serverSummary.promoted_on_trial;
+  const repeatTotal = hasLocalOverrides || !serverSummary ? candidateMatrix.filter(c => c.effectiveDecision === 'REPEAT').length : serverSummary.repeat;
+  const graduateTotal = hasLocalOverrides || !serverSummary ? candidateMatrix.filter(c => c.effectiveDecision === 'GRADUATE').length : serverSummary.graduate;
 
   const openOverrideModal = (candidate: any) => {
     setOverrideModalStudent(candidate);
@@ -168,12 +238,15 @@ export const AcademicRolloverView: React.FC = () => {
     });
   };
 
-  const handleExecuteRollover = () => {
-    const result = executeAcademicRollover({
-      id: 'stf-001',
-      name: 'Dr. Kenneth Balogun',
-      role: 'SUPER_ADMIN'
-    });
+  const handleExecuteRollover = async () => {
+    const result = await executeAcademicRollover(
+      {
+        id: 'stf-001',
+        name: 'Dr. Kenneth Balogun',
+        role: 'SUPER_ADMIN'
+      },
+      overrides
+    );
     setRolloverResult(result);
     setRolloverStep(4);
   };
@@ -303,7 +376,10 @@ export const AcademicRolloverView: React.FC = () => {
             type="text"
             placeholder="Search student name or admission number..."
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={e => {
+              setSearchTerm(e.target.value);
+              setPage(1);
+            }}
             className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-slate-900"
           />
         </div>
@@ -311,7 +387,10 @@ export const AcademicRolloverView: React.FC = () => {
         <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
           <select
             value={selectedLevel}
-            onChange={e => setSelectedLevel(e.target.value)}
+            onChange={e => {
+              setSelectedLevel(e.target.value);
+              setPage(1);
+            }}
             className="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
           >
             <option value="ALL">All Levels</option>
@@ -325,7 +404,10 @@ export const AcademicRolloverView: React.FC = () => {
 
           <select
             value={selectedDecision}
-            onChange={e => setSelectedDecision(e.target.value)}
+            onChange={e => {
+              setSelectedDecision(e.target.value);
+              setPage(1);
+            }}
             className="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
           >
             <option value="ALL">All Decisions</option>
@@ -333,6 +415,21 @@ export const AcademicRolloverView: React.FC = () => {
             <option value="PROMOTED_ON_TRIAL">On Trial</option>
             <option value="REPEAT">Repeat</option>
             <option value="GRADUATE">Graduating</option>
+          </select>
+
+          <select
+            value={pageSize}
+            onChange={e => {
+              setPageSize(Number(e.target.value));
+              setPage(1);
+            }}
+            className="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-indigo-500"
+            title="Rows per page"
+          >
+            <option value={10}>10 per page</option>
+            <option value={20}>20 per page</option>
+            <option value={50}>50 per page</option>
+            <option value={100}>100 per page</option>
           </select>
         </div>
       </div>
@@ -357,14 +454,14 @@ export const AcademicRolloverView: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-200">
-              {filteredCandidates.length === 0 ? (
+              {displayedCandidates.length === 0 ? (
                 <tr>
                   <td colSpan={11} className="py-8 text-center text-slate-400 dark:text-slate-500 italic">
-                    No students found matching your criteria.
+                    {isLoading ? 'Loading candidates from database...' : 'No students found matching your criteria.'}
                   </td>
                 </tr>
               ) : (
-                filteredCandidates.map(candidate => {
+                displayedCandidates.map(candidate => {
                   const s = candidate.student;
                   const isTrial = candidate.effectiveDecision === 'PROMOTED_ON_TRIAL';
                   const isRepeat = candidate.effectiveDecision === 'REPEAT';
@@ -504,6 +601,18 @@ export const AcademicRolloverView: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Pagination Controls */}
+      <PaginationControls
+        currentPage={page}
+        totalPages={totalPagesCount}
+        totalCount={totalCandidatesCount}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        isLoading={isLoading}
+        itemLabel="promotion candidates"
+        className="mt-4"
+      />
 
       {/* Compassionate Override Modal */}
       <ModalPortal isOpen={!!overrideModalStudent} onClose={() => setOverrideModalStudent(null)} maxWidthClass="max-w-md">

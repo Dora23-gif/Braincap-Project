@@ -798,3 +798,53 @@ export function adaptUserSessionFromBackend(d: any): UserSession {
     wardIds: wardIds.length > 0 ? wardIds : undefined,
   };
 }
+
+// ============================================================================
+// ACADEMIC ROLLOVER API & PAGINATION TYPES
+// ============================================================================
+
+export interface RolloverCandidate {
+  student: Student;
+  armName: string;
+  mathScore: number;
+  engScore: number;
+  term1Avg: number;
+  term2Avg: number;
+  term3Avg: number;
+  cumulativeAverage: number;
+  autoDecision: 'PROMOTED' | 'PROMOTED_ON_TRIAL' | 'REPEAT' | 'GRADUATE';
+  effectiveDecision: 'PROMOTED' | 'PROMOTED_ON_TRIAL' | 'REPEAT' | 'GRADUATE';
+  hasOverride: boolean;
+  overrideNote?: string;
+  nextArm: string;
+  isTransitioningToSenior: boolean;
+}
+
+export interface RolloverSummary {
+  total_eligible: number;
+  promoted: number;
+  promoted_on_trial: number;
+  repeat: number;
+  graduate: number;
+}
+
+export interface RolloverCandidatesResponse extends PaginatedResponse<RolloverCandidate> {
+  summary?: RolloverSummary;
+}
+
+export async function fetchRolloverCandidates(params: {
+  page?: number;
+  page_size?: number | string;
+  level?: string;
+  decision?: string;
+  search?: string;
+}): Promise<RolloverCandidatesResponse> {
+  return api.get<RolloverCandidatesResponse>('/academics/sessions/rollover-candidates/', params);
+}
+
+export async function executeBackendRollover(data: {
+  confirmation_code: string;
+  overrides?: Record<string, { decision: string; note: string }>;
+}): Promise<any> {
+  return api.post('/academics/sessions/execute-rollover/', data);
+}

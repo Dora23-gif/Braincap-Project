@@ -155,7 +155,13 @@ interface SchoolDataContextType {
   resetStaffPin: (staffId: string, actor?: { id: string; name: string; role: any }) => string;
   addAuditLog: (entry: Omit<AuditLogEntry, 'id' | 'timestamp'>) => void;
   updateSchoolSettings: (updates: Partial<SchoolSettings>, actor?: { id: string; name: string; role: any }) => void;
-  executeAcademicRollover: (adminUser: { id: string; name: string; role: any }) => {
+  executeAcademicRollover: (adminUser: { id: string; name: string; role: any }, overrides?: Record<string, { decision: string; note: string }>) => Promise<{
+    promotedCount: number;
+    graduatedCount: number;
+    heldBackCount: number;
+    trialCount: number;
+    newSessionName: string;
+  }> | {
     promotedCount: number;
     graduatedCount: number;
     heldBackCount: number;
@@ -2182,7 +2188,30 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   // Academic Rollover Engine
-  const executeAcademicRollover = (adminUser: { id: string; name: string; role: any }) => {
+  const executeAcademicRollover = async (
+    adminUser: { id: string; name: string; role: any },
+    overrides?: Record<string, { decision: string; note: string }>
+  ) => {
+    // Attempt live backend API call first
+    try {
+      const res = await api.post('/academics/sessions/execute-rollover/', {
+        confirmation_code: 'ROLLOVER-CONFIRM',
+        overrides: overrides || {},
+      });
+      if (res && res.success) {
+        await fetchLiveSchoolData();
+        return {
+          promotedCount: res.promoted_count,
+          graduatedCount: res.graduated_count,
+          heldBackCount: res.held_back_count,
+          trialCount: res.trial_count,
+          newSessionName: res.new_session_name,
+        };
+      }
+    } catch (err) {
+      console.warn('Backend execute-rollover API failed, falling back to local engine:', err);
+    }
+
     let promotedCount = 0;
     let graduatedCount = 0;
     let heldBackCount = 0;
