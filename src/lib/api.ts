@@ -21,8 +21,9 @@ import type {
 export const API_BASE_URL =
   (import.meta as any).env?.VITE_API_BASE_URL ||
   (typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')
-    ? 'https://everest-project.onrender.com/api/v1'
+    ? 'https://everest-backend.onrender.com/api/v1'
     : '/api/v1');
+
 
 
 /**
@@ -162,6 +163,12 @@ async function request<T = any>(
   try {
     return JSON.parse(rawText) as T;
   } catch {
+    if (rawText.trim().startsWith('<')) {
+      throw {
+        status: response.status,
+        message: 'Backend server is initializing. Please wait a few seconds and try again.',
+      };
+    }
     return rawText as unknown as T;
   }
 }
