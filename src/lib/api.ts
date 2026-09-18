@@ -205,73 +205,112 @@ export const api = {
 // ============================================================================
 
 export const ARM_SLUG_BY_PK: Record<number, string> = {
-  25: 'arm-jss1-gold',
-  26: 'arm-jss1-emerald',
-  27: 'arm-jss2-gold',
-  28: 'arm-jss2-diamond',
-  29: 'arm-jss3-gold',
-  30: 'arm-jss3-diamond',
-  31: 'arm-sss1-gold',
-  32: 'arm-sss1-diamond',
-  33: 'arm-sss2-gold',
-  34: 'arm-sss2-diamond',
-  35: 'arm-sss3-gold',
-  36: 'arm-sss3-diamond',
-  // Active database PKs:
-  37: 'arm-jss1-gold',
-  38: 'arm-jss1-emerald',
-  39: 'arm-jss2-gold',
-  40: 'arm-jss2-diamond',
-  41: 'arm-jss3-gold',
-  42: 'arm-jss3-diamond',
-  43: 'arm-sss1-gold',
-  44: 'arm-sss1-diamond',
-  45: 'arm-sss2-gold',
-  46: 'arm-sss2-diamond',
-  47: 'arm-sss3-gold',
-  48: 'arm-sss3-diamond',
+  25: 'arm-jss1-emerald',
+  26: 'arm-jss1-diamond',
+  27: 'arm-jss1-gold',
+  28: 'arm-jss2-emerald',
+  29: 'arm-jss2-diamond',
+  30: 'arm-jss2-gold',
+  31: 'arm-jss3-emerald',
+  32: 'arm-jss3-diamond',
+  33: 'arm-jss3-gold',
+  34: 'arm-sss1-science-emerald',
+  35: 'arm-sss1-science-diamond',
+  36: 'arm-sss1-commercial-gold',
+  37: 'arm-sss1-arts-platinum',
+  38: 'arm-sss2-science-emerald',
+  39: 'arm-sss2-science-diamond',
+  40: 'arm-sss2-commercial-gold',
+  41: 'arm-sss2-arts-platinum',
+  42: 'arm-sss3-science-emerald',
+  43: 'arm-sss3-science-diamond',
+  44: 'arm-sss3-commercial-gold',
+  45: 'arm-sss3-arts-platinum',
 };
 
 export const ARM_PK_BY_SLUG: Record<string, number> = {
-  'arm-jss1-gold': 37,
-  'arm-jss1-emerald': 38,
-  'arm-jss2-gold': 39,
-  'arm-jss2-diamond': 40,
-  'arm-jss3-gold': 41,
-  'arm-jss3-diamond': 42,
-  'arm-sss1-gold': 43,
-  'arm-sss1-diamond': 44,
-  'arm-sss2-gold': 45,
-  'arm-sss2-diamond': 46,
-  'arm-sss3-gold': 47,
-  'arm-sss3-diamond': 48,
+  'arm-jss1-emerald': 25,
+  'arm-jss1-diamond': 26,
+  'arm-jss1-gold': 27,
+  'arm-jss2-emerald': 28,
+  'arm-jss2-diamond': 29,
+  'arm-jss2-gold': 30,
+  'arm-jss3-emerald': 31,
+  'arm-jss3-diamond': 32,
+  'arm-jss3-gold': 33,
+  'arm-sss1-science-emerald': 34,
+  'arm-sss1-science-diamond': 35,
+  'arm-sss1-commercial-gold': 36,
+  'arm-sss1-arts-platinum': 37,
+  'arm-sss1-platinum': 37,
+  'arm-sss1-gold': 36,
+  'arm-sss1-diamond': 35,
+  'arm-sss1-emerald': 34,
+  'arm-sss2-science-emerald': 38,
+  'arm-sss2-science-diamond': 39,
+  'arm-sss2-commercial-gold': 40,
+  'arm-sss2-arts-platinum': 41,
+  'arm-sss2-platinum': 41,
+  'arm-sss2-gold': 40,
+  'arm-sss2-diamond': 39,
+  'arm-sss2-emerald': 38,
+  'arm-sss3-science-emerald': 42,
+  'arm-sss3-science-diamond': 43,
+  'arm-sss3-commercial-gold': 44,
+  'arm-sss3-arts-platinum': 45,
+  'arm-sss3-platinum': 45,
+  'arm-sss3-gold': 44,
+  'arm-sss3-diamond': 43,
+  'arm-sss3-emerald': 42,
 };
 
 export const ARM_SLUG_BY_NAME: Record<string, string> = {
-  'jss 1 gold': 'arm-jss1-gold',
-  'jss1 gold': 'arm-jss1-gold',
   'jss 1 emerald': 'arm-jss1-emerald',
   'jss1 emerald': 'arm-jss1-emerald',
-  'jss 2 gold': 'arm-jss2-gold',
-  'jss2 gold': 'arm-jss2-gold',
+  'jss 1 diamond': 'arm-jss1-diamond',
+  'jss1 diamond': 'arm-jss1-diamond',
+  'jss 1 gold': 'arm-jss1-gold',
+  'jss1 gold': 'arm-jss1-gold',
+  'jss 2 emerald': 'arm-jss2-emerald',
+  'jss2 emerald': 'arm-jss2-emerald',
   'jss 2 diamond': 'arm-jss2-diamond',
   'jss2 diamond': 'arm-jss2-diamond',
-  'jss 3 gold': 'arm-jss3-gold',
-  'jss3 gold': 'arm-jss3-gold',
+  'jss 2 gold': 'arm-jss2-gold',
+  'jss2 gold': 'arm-jss2-gold',
+  'jss 3 emerald': 'arm-jss3-emerald',
+  'jss3 emerald': 'arm-jss3-emerald',
   'jss 3 diamond': 'arm-jss3-diamond',
   'jss3 diamond': 'arm-jss3-diamond',
-  'sss 1 gold': 'arm-sss1-gold',
-  'sss1 gold': 'arm-sss1-gold',
-  'sss 1 diamond': 'arm-sss1-diamond',
-  'sss1 diamond': 'arm-sss1-diamond',
-  'sss 2 gold': 'arm-sss2-gold',
-  'sss2 gold': 'arm-sss2-gold',
-  'sss 2 diamond': 'arm-sss2-diamond',
-  'sss2 diamond': 'arm-sss2-diamond',
-  'sss 3 gold': 'arm-sss3-gold',
-  'sss3 gold': 'arm-sss3-gold',
-  'sss 3 diamond': 'arm-sss3-diamond',
-  'sss3 diamond': 'arm-sss3-diamond',
+  'jss 3 gold': 'arm-jss3-gold',
+  'jss3 gold': 'arm-jss3-gold',
+  'sss 1 arts platinum': 'arm-sss1-arts-platinum',
+  'sss 1 platinum': 'arm-sss1-arts-platinum',
+  'sss1 arts platinum': 'arm-sss1-arts-platinum',
+  'sss 1 commercial gold': 'arm-sss1-commercial-gold',
+  'sss 1 gold': 'arm-sss1-commercial-gold',
+  'sss1 commercial gold': 'arm-sss1-commercial-gold',
+  'sss 1 science diamond': 'arm-sss1-science-diamond',
+  'sss 1 diamond': 'arm-sss1-science-diamond',
+  'sss1 science diamond': 'arm-sss1-science-diamond',
+  'sss 1 science emerald': 'arm-sss1-science-emerald',
+  'sss 1 emerald': 'arm-sss1-science-emerald',
+  'sss1 science emerald': 'arm-sss1-science-emerald',
+  'sss 2 arts platinum': 'arm-sss2-arts-platinum',
+  'sss 2 platinum': 'arm-sss2-arts-platinum',
+  'sss 2 commercial gold': 'arm-sss2-commercial-gold',
+  'sss 2 gold': 'arm-sss2-commercial-gold',
+  'sss 2 science diamond': 'arm-sss2-science-diamond',
+  'sss 2 diamond': 'arm-sss2-science-diamond',
+  'sss 2 science emerald': 'arm-sss2-science-emerald',
+  'sss 2 emerald': 'arm-sss2-science-emerald',
+  'sss 3 arts platinum': 'arm-sss3-arts-platinum',
+  'sss 3 platinum': 'arm-sss3-arts-platinum',
+  'sss 3 commercial gold': 'arm-sss3-commercial-gold',
+  'sss 3 gold': 'arm-sss3-commercial-gold',
+  'sss 3 science diamond': 'arm-sss3-science-diamond',
+  'sss 3 diamond': 'arm-sss3-science-diamond',
+  'sss 3 science emerald': 'arm-sss3-science-emerald',
+  'sss 3 emerald': 'arm-sss3-science-emerald',
 };
 
 export const SUBJECT_CODE_BY_PK: Record<number, string> = {
@@ -297,17 +336,21 @@ export const SUBJECT_PK_BY_CODE: Record<string, number> = {
 };
 
 export function resolveArmId(rawIdOrName?: any, fullName?: string): string {
-  if (!rawIdOrName && !fullName) return 'arm-jss1-gold';
   const str = String(rawIdOrName || '').trim();
+  const nameToTry = (fullName || str).toLowerCase().trim();
+
+  if (nameToTry) {
+    if (ARM_SLUG_BY_NAME[nameToTry]) return ARM_SLUG_BY_NAME[nameToTry];
+    for (const [key, slug] of Object.entries(ARM_SLUG_BY_NAME)) {
+      if (nameToTry.includes(key)) return slug;
+    }
+  }
+
   if (str.startsWith('arm-')) return str;
   const num = parseInt(str, 10);
   if (!isNaN(num) && ARM_SLUG_BY_PK[num]) return ARM_SLUG_BY_PK[num];
-  const nameToTry = (fullName || str).toLowerCase().trim();
-  if (ARM_SLUG_BY_NAME[nameToTry]) return ARM_SLUG_BY_NAME[nameToTry];
-  for (const [key, slug] of Object.entries(ARM_SLUG_BY_NAME)) {
-    if (nameToTry.includes(key)) return slug;
-  }
-  return str || 'arm-jss1-gold';
+
+  return str || 'arm-jss1-emerald';
 }
 
 export function resolveArmPk(armSlugOrId?: any): number | undefined {
