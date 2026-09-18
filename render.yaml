@@ -1,4 +1,4 @@
-﻿services:
+services:
   # ====================================================
   # 1. DJANGO BACKEND WEB SERVICE
   # ====================================================
@@ -31,7 +31,6 @@
     name: everest-portal
     runtime: static
     plan: free
-    region: ohio
     buildCommand: "npm install && npm run build"
     staticPublishPath: "./dist"
     headers:
