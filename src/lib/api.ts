@@ -19,7 +19,11 @@ import type {
 } from '../types';
 
 export const API_BASE_URL =
-  (import.meta as any).env?.VITE_API_BASE_URL || '/api/v1';
+  (import.meta as any).env?.VITE_API_BASE_URL ||
+  (typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')
+    ? 'https://everest-project.onrender.com/api/v1'
+    : '/api/v1');
+
 
 /**
  * Extracts a cookie value by name from document.cookie.
