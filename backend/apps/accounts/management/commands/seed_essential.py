@@ -162,12 +162,12 @@ class Command(BaseCommand):
         from apps.academics.models import ClassLevel, ClassArm
         
         levels_data = [
-            ("JSS 1", "JUNIOR", 1, ["Emerald", "Diamond", "Gold"]),
-            ("JSS 2", "JUNIOR", 2, ["Emerald", "Diamond", "Gold"]),
-            ("JSS 3", "JUNIOR", 3, ["Emerald", "Diamond", "Gold"]),
-            ("SSS 1", "SENIOR", 4, ["Science Emerald", "Science Diamond", "Commercial Gold", "Arts Platinum"]),
-            ("SSS 2", "SENIOR", 5, ["Science Emerald", "Science Diamond", "Commercial Gold", "Arts Platinum"]),
-            ("SSS 3", "SENIOR", 6, ["Science Emerald", "Science Diamond", "Commercial Gold", "Arts Platinum"]),
+            ("JSS 1", "JUNIOR", 1, ["Gold", "Emerald", "Diamond"]),
+            ("JSS 2", "JUNIOR", 2, ["Gold", "Diamond", "Emerald"]),
+            ("JSS 3", "JUNIOR", 3, ["Gold", "Diamond", "Emerald"]),
+            ("SSS 1", "SENIOR", 4, ["Gold", "Diamond", "Science Emerald", "Science Diamond", "Commercial Gold", "Arts Platinum"]),
+            ("SSS 2", "SENIOR", 5, ["Gold", "Diamond", "Science Emerald", "Science Diamond", "Commercial Gold", "Arts Platinum"]),
+            ("SSS 3", "SENIOR", 6, ["Gold", "Diamond", "Science Emerald", "Science Diamond", "Commercial Gold", "Arts Platinum"]),
         ]
         for lvl_name, sec, order, arms in levels_data:
             lvl, _ = ClassLevel.objects.update_or_create(
@@ -209,5 +209,62 @@ class Command(BaseCommand):
                 }
             )
 
-        self.stdout.write(self.style.SUCCESS("All essential accounts, classes, arms & academic data successfully seeded!"))
+        # 10. Seed Full 60 Student Body (JSS 1 through SSS 3)
+        from apps.students.models import Student
+        from django.conf import settings
+        import re
+        import json
+        from pathlib import Path
+        from unittest.mock import patch
+
+        dataset_path = Path(settings.BASE_DIR).parent / "src" / "data" / "mockDataset100.ts"
+        if dataset_path.exists():
+            with open(dataset_path, "r", encoding="utf-8") as f:
+                ts_content = f.read()
+            match = re.search(r"export const FULL_STUDENTS.*?=\s*(\[.*?\]);", ts_content, re.DOTALL)
+            if match:
+                js_arr = match.group(1)
+                cleaned = re.sub(r",\s*([\]}])", r"\1", js_arr)
+                student_list = json.loads(cleaned)
+                all_subjs = list(Subject.objects.all())
+                
+                with patch("django.core.mail.send_mail", return_value=1):
+                    for s_data in student_list:
+                        adm = s_data.get("admissionNumber")
+                        if not adm:
+                            continue
+                        arm_full_name = s_data.get("currentClassArmName", "")
+                        arm = ClassArm.objects.filter(full_name__iexact=arm_full_name).first()
+                        if not arm:
+                            arm = ClassArm.objects.first()
+
+                        house = s_data.get("house", "Emerald")
+                        if house not in ["Emerald", "Sapphire", "Ruby", "Diamond"]:
+                            house = "Emerald"
+
+                        st, _ = Student.objects.update_or_create(
+                            admission_number=adm,
+                            defaults={
+                                "first_name": s_data.get("firstName", ""),
+                                "last_name": s_data.get("lastName", ""),
+                                "middle_name": s_data.get("middleName", ""),
+                                "gender": s_data.get("gender", "MALE"),
+                                "date_of_birth": s_data.get("dateOfBirth", "2012-01-01"),
+                                "state_of_origin": s_data.get("stateOfOrigin", "Lagos"),
+                                "lga": s_data.get("lga", "Ikeja"),
+                                "house": house,
+                                "blood_group": s_data.get("bloodGroup", "O+"),
+                                "genotype": s_data.get("genotype", "AA"),
+                                "parent_name": s_data.get("parentName", ""),
+                                "parent_phone": s_data.get("parentPhone", ""),
+                                "parent_email": s_data.get("parentEmail", ""),
+                                "current_class_arm": arm,
+                                "is_boarder": s_data.get("isBoarder", True),
+                                "status": "ACTIVE",
+                            }
+                        )
+                        st.registered_subjects.set(all_subjs[:8])
+
+        self.stdout.write(self.style.SUCCESS(f"All essential accounts, classes, arms & 60 students successfully seeded! Total students in DB: {Student.objects.count()}"))
+
 

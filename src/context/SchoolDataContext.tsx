@@ -137,7 +137,7 @@ interface SchoolDataContextType {
   dropStudentSubject: (studentId: string, subjectId: string, level: 'SSS 2' | 'SSS 3', reason?: string) => void;
   registerStudent: (student: Omit<Student, 'id' | 'admissionNumber' | 'status' | 'registeredSubjectIds'> & { registeredSubjectIds?: string[]; admissionNumber?: string }) => Promise<Student>;
   getNextAdmissionNumber: () => string;
-  updateStudent: (studentId: string, updates: Partial<Student>, actor?: { id: string; name: string; role: any }) => void;
+  updateStudent: (studentId: string, updates: Partial<Student>, actor?: { id: string; name: string; role: any }) => void | Promise<void>;
   deleteStudent: (studentId: string, reason: string, actor?: { id: string; name: string; role: any }) => void;
   addClassArm: (armData: { classLevelId: string; name: string; formMasterId?: string; formMasterName?: string }, actor?: { id: string; name: string; role: any }) => ClassArm;
   addClassLevel: (levelData: { name: string; section: 'JUNIOR' | 'SENIOR'; order?: number }, actor?: { id: string; name: string; role: any }) => ClassLevel;
@@ -542,10 +542,14 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         settingsRes,
         auditLogsRes,
         subjectsRes,
+        classLevelsRes,
+        classArmsRes,
         allocationsRes,
       ] = await Promise.allSettled([
         api.get('/academics/sessions/', { page_size: 'all' }),
         api.get('/academics/terms/', { page_size: 'all' }),
+        api.get('/academics/class-levels/', { page_size: 'all' }),
+        api.get('/academics/class-arms/', { page_size: 'all' }),
         api.get('/students/students/', { page_size: 'all' }),
         api.get('/accounts/users/', { page_size: 'all' }),
         api.get('/grading/scores/', { page_size: 'all' }),
@@ -562,6 +566,18 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
       if (termsRes.status === 'fulfilled' && Array.isArray(termsRes.value)) {
         setTerms(termsRes.value.map(adaptAcademicTermFromBackend));
+      }
+      if (classLevelsRes.status === 'fulfilled') {
+        const raw = (classLevelsRes.value as any)?.results || classLevelsRes.value;
+        if (Array.isArray(raw) && raw.length > 0) {
+          setClassLevels(raw.map(adaptClassLevelFromBackend));
+        }
+      }
+      if (classArmsRes.status === 'fulfilled') {
+        const raw = (classArmsRes.value as any)?.results || classArmsRes.value;
+        if (Array.isArray(raw) && raw.length > 0) {
+          setClassArms(raw.map(adaptClassArmFromBackend));
+        }
       }
 
       // Safe non-destructive merge: preserve existing students and append/update live backend students
@@ -580,6 +596,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                   ...currentList[existingIdx],
                   ...live,
                   currentClassArmId: live.currentClassArmId || currentList[existingIdx].currentClassArmId,
+                  currentClassArmName: live.currentClassArmName || currentList[existingIdx].currentClassArmName,
                 };
               } else {
                 currentList.push(live);
@@ -1539,31 +1556,49 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return newStudent;
   };
 
-  const updateStudent = (studentId: string, updates: Partial<Student>, actor?: { id: string; name: string; role: any }) => {
-    const existing = students.find(s => s.id === studentId);
+  const updateStudent = async (studentId: string, updates: Partial<Student>, actor?: { id: string; name: string; role: any }) => {
+    const existing = students.find(s => s.id === studentId || s.admissionNumber === studentId);
     if (!existing) return;
 
-    // Live asynchronous PATCH to Django backend
-    api.patch(`/students/students/${studentId}/`, adaptStudentToBackend(updates))
-      .catch(err => console.warn('Backend student update fallback:', err));
-
+    const arm = classArms.find(a => a.id === (updates.currentClassArmId ?? existing.currentClassArmId));
+    const newArmName = updates.currentClassArmName || arm?.fullName || existing.currentClassArmName;
+    const newArmId = updates.currentClassArmId ?? (arm ? arm.id : existing.currentClassArmId);
+    const newAdmNo = updates.admissionNumber ?? existing.admissionNumber;
     const newFirstName = updates.firstName ?? existing.firstName;
     const newLastName = updates.lastName ?? existing.lastName;
-    const newFullName = updates.name || `${newFirstName} ${newLastName}`;
-    const newArmId = updates.currentClassArmId ?? existing.currentClassArmId;
-    const newArmName = updates.currentClassArmName ?? existing.currentClassArmName;
-    const newAdmNo = updates.admissionNumber ?? existing.admissionNumber;
+    const newFullName = updates.name || `${newFirstName} ${newLastName}`.trim();
 
+    // Optimistic UI updates
     setStudents(prev => prev.map(s => {
-      if (s.id === studentId) {
+      if (s.id === studentId || s.admissionNumber === newAdmNo) {
         return {
           ...s,
           ...updates,
-          name: newFullName
+          name: newFullName,
+          currentClassArmId: newArmId,
+          currentClassArmName: newArmName,
         };
       }
       return s;
     }));
+
+    // Live asynchronous PATCH to Django backend
+    const backendPayload = adaptStudentToBackend({
+      ...updates,
+      admissionNumber: newAdmNo,
+      currentClassArmName: newArmName,
+      currentClassArmId: newArmId,
+    });
+
+    try {
+      const res = await api.patch(`/students/students/${studentId}/`, backendPayload);
+      if (res) {
+        const live = adaptStudentFromBackend(res);
+        setStudents(prev => prev.map(s => (s.id === studentId || s.admissionNumber === newAdmNo ? { ...s, ...live } : s)));
+      }
+    } catch (err) {
+      console.warn('Backend student update fallback:', err);
+    }
 
     // Cascade updates to SubjectScore records
     setScores(prev => prev.map(s => {

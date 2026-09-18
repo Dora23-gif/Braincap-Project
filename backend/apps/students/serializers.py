@@ -195,21 +195,23 @@ class ClassArmFlexibleRelatedField(serializers.PrimaryKeyRelatedField):
     """
     def to_internal_value(self, data):
         if not data:
-            return ClassArm.objects.first()
+            raise serializers.ValidationError("Class arm is required.")
         if isinstance(data, ClassArm):
             return data
         if isinstance(data, int):
             arm = ClassArm.objects.filter(pk=data).first()
             if arm:
                 return arm
-            return ClassArm.objects.first()
+            raise serializers.ValidationError(f"Class arm ID {data} does not exist.")
 
         str_val = str(data).strip()
         if str_val.isdigit():
             arm = ClassArm.objects.filter(pk=int(str_val)).first()
             if arm:
                 return arm
+            raise serializers.ValidationError(f"Class arm ID {str_val} does not exist.")
 
+        # 1. Exact full_name or name match
         arm = (
             ClassArm.objects.filter(full_name__iexact=str_val).first()
             or ClassArm.objects.filter(name__iexact=str_val).first()
@@ -217,19 +219,24 @@ class ClassArmFlexibleRelatedField(serializers.PrimaryKeyRelatedField):
         if arm:
             return arm
 
-        clean = str_val.lower().replace("arm-", "")
+        # 2. Slug or combined code matching (e.g. arm-sss3-arts-platinum or sss3gold)
+        clean = str_val.lower().replace("arm-", "").replace("-", "").replace(" ", "")
         for ca in ClassArm.objects.select_related("class_level").all():
             lvl_code = ca.class_level.name.lower().replace(" ", "")
-            arm_code = ca.name.lower()
-            if f"{lvl_code}-{arm_code}" == clean or f"{lvl_code}{arm_code}" == clean:
-                return ca
-            if lvl_code in clean and arm_code in clean:
+            arm_code = ca.name.lower().replace(" ", "")
+            combined = f"{lvl_code}{arm_code}"
+            if combined == clean or clean in combined or (lvl_code in clean and arm_code in clean):
                 return ca
 
-        fallback = ClassArm.objects.first()
-        if fallback:
-            return fallback
-        return super().to_internal_value(data)
+        # 3. Partial contains match
+        arm = (
+            ClassArm.objects.filter(full_name__icontains=str_val.replace("arm-", "").replace("-", " ")).first()
+            or ClassArm.objects.filter(name__icontains=str_val.replace("arm-", "").replace("-", " ")).first()
+        )
+        if arm:
+            return arm
+
+        raise serializers.ValidationError(f"Class arm '{data}' could not be resolved to any existing class arm in the database.")
 
 
 class StudentDetailSerializer(serializers.ModelSerializer):

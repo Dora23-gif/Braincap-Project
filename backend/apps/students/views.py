@@ -127,9 +127,18 @@ class StudentViewSet(viewsets.ModelViewSet):
             self.check_object_permissions(self.request, obj)
             return obj
 
-        # 3. Canonical ID format std-XXX or std_XXX
+        # 3. Admission number in request body payload (PATCH/PUT)
+        if hasattr(self.request, "data") and isinstance(self.request.data, dict) and "admission_number" in self.request.data:
+            adm_body = str(self.request.data["admission_number"]).strip()
+            obj = queryset.filter(admission_number__iexact=adm_body).first()
+            if obj:
+                self.check_object_permissions(self.request, obj)
+                return obj
+
+        # 4. Canonical ID format std-XXX or std_XXX
         if val.startswith("std-") or val.startswith("std_"):
-            clean_num = val.replace("std-", "").replace("std_", "").lstrip("0")
+            clean_str = val.replace("std-", "").replace("std_", "")
+            clean_num = clean_str.lstrip("0")
             if clean_num.isdigit():
                 num = int(clean_num)
                 matched = (

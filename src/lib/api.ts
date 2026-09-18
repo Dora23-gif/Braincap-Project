@@ -226,6 +226,13 @@ export const ARM_SLUG_BY_PK: Record<number, string> = {
   43: 'arm-sss3-science-diamond',
   44: 'arm-sss3-commercial-gold',
   45: 'arm-sss3-arts-platinum',
+  // Neon PostgreSQL active IDs for SSS 1-3 Gold & Diamond:
+  52: 'arm-sss1-gold',
+  53: 'arm-sss1-diamond',
+  54: 'arm-sss2-gold',
+  55: 'arm-sss2-diamond',
+  56: 'arm-sss3-gold',
+  57: 'arm-sss3-diamond',
 };
 
 export const ARM_PK_BY_SLUG: Record<string, number> = {
@@ -243,24 +250,22 @@ export const ARM_PK_BY_SLUG: Record<string, number> = {
   'arm-sss1-commercial-gold': 36,
   'arm-sss1-arts-platinum': 37,
   'arm-sss1-platinum': 37,
-  'arm-sss1-gold': 36,
-  'arm-sss1-diamond': 35,
-  'arm-sss1-emerald': 34,
+  'arm-sss1-gold': 52,
+  'arm-sss1-diamond': 53,
   'arm-sss2-science-emerald': 38,
   'arm-sss2-science-diamond': 39,
   'arm-sss2-commercial-gold': 40,
   'arm-sss2-arts-platinum': 41,
   'arm-sss2-platinum': 41,
-  'arm-sss2-gold': 40,
-  'arm-sss2-diamond': 39,
-  'arm-sss2-emerald': 38,
+  'arm-sss2-gold': 54,
+  'arm-sss2-diamond': 55,
   'arm-sss3-science-emerald': 42,
   'arm-sss3-science-diamond': 43,
   'arm-sss3-commercial-gold': 44,
   'arm-sss3-arts-platinum': 45,
   'arm-sss3-platinum': 45,
-  'arm-sss3-gold': 44,
-  'arm-sss3-diamond': 43,
+  'arm-sss3-gold': 56,
+  'arm-sss3-diamond': 57,
   'arm-sss3-emerald': 42,
 };
 
@@ -287,28 +292,32 @@ export const ARM_SLUG_BY_NAME: Record<string, string> = {
   'sss 1 platinum': 'arm-sss1-arts-platinum',
   'sss1 arts platinum': 'arm-sss1-arts-platinum',
   'sss 1 commercial gold': 'arm-sss1-commercial-gold',
-  'sss 1 gold': 'arm-sss1-commercial-gold',
-  'sss1 commercial gold': 'arm-sss1-commercial-gold',
+  'sss 1 gold': 'arm-sss1-gold',
+  'sss1 gold': 'arm-sss1-gold',
   'sss 1 science diamond': 'arm-sss1-science-diamond',
-  'sss 1 diamond': 'arm-sss1-science-diamond',
-  'sss1 science diamond': 'arm-sss1-science-diamond',
+  'sss 1 diamond': 'arm-sss1-diamond',
+  'sss1 diamond': 'arm-sss1-diamond',
   'sss 1 science emerald': 'arm-sss1-science-emerald',
   'sss 1 emerald': 'arm-sss1-science-emerald',
   'sss1 science emerald': 'arm-sss1-science-emerald',
   'sss 2 arts platinum': 'arm-sss2-arts-platinum',
   'sss 2 platinum': 'arm-sss2-arts-platinum',
   'sss 2 commercial gold': 'arm-sss2-commercial-gold',
-  'sss 2 gold': 'arm-sss2-commercial-gold',
+  'sss 2 gold': 'arm-sss2-gold',
+  'sss2 gold': 'arm-sss2-gold',
   'sss 2 science diamond': 'arm-sss2-science-diamond',
-  'sss 2 diamond': 'arm-sss2-science-diamond',
+  'sss 2 diamond': 'arm-sss2-diamond',
+  'sss2 diamond': 'arm-sss2-diamond',
   'sss 2 science emerald': 'arm-sss2-science-emerald',
   'sss 2 emerald': 'arm-sss2-science-emerald',
   'sss 3 arts platinum': 'arm-sss3-arts-platinum',
   'sss 3 platinum': 'arm-sss3-arts-platinum',
   'sss 3 commercial gold': 'arm-sss3-commercial-gold',
-  'sss 3 gold': 'arm-sss3-commercial-gold',
+  'sss 3 gold': 'arm-sss3-gold',
+  'sss3 gold': 'arm-sss3-gold',
   'sss 3 science diamond': 'arm-sss3-science-diamond',
-  'sss 3 diamond': 'arm-sss3-science-diamond',
+  'sss 3 diamond': 'arm-sss3-diamond',
+  'sss3 diamond': 'arm-sss3-diamond',
   'sss 3 science emerald': 'arm-sss3-science-emerald',
   'sss 3 emerald': 'arm-sss3-science-emerald',
 };
@@ -339,16 +348,19 @@ export function resolveArmId(rawIdOrName?: any, fullName?: string): string {
   const str = String(rawIdOrName || '').trim();
   const nameToTry = (fullName || str).toLowerCase().trim();
 
-  if (nameToTry) {
-    if (ARM_SLUG_BY_NAME[nameToTry]) return ARM_SLUG_BY_NAME[nameToTry];
-    for (const [key, slug] of Object.entries(ARM_SLUG_BY_NAME)) {
-      if (nameToTry.includes(key)) return slug;
-    }
+  if (nameToTry && ARM_SLUG_BY_NAME[nameToTry]) {
+    return ARM_SLUG_BY_NAME[nameToTry];
   }
 
   if (str.startsWith('arm-')) return str;
   const num = parseInt(str, 10);
   if (!isNaN(num) && ARM_SLUG_BY_PK[num]) return ARM_SLUG_BY_PK[num];
+
+  if (nameToTry) {
+    for (const [key, slug] of Object.entries(ARM_SLUG_BY_NAME)) {
+      if (nameToTry.includes(key)) return slug;
+    }
+  }
 
   return str || 'arm-jss1-emerald';
 }
@@ -358,7 +370,7 @@ export function resolveArmPk(armSlugOrId?: any): number | undefined {
   const str = String(armSlugOrId).trim();
   if (ARM_PK_BY_SLUG[str]) return ARM_PK_BY_SLUG[str];
   const num = parseInt(str, 10);
-  if (!isNaN(num) && num >= 25 && num <= 48) return num;
+  if (!isNaN(num) && num > 0) return num;
   return undefined;
 }
 
@@ -524,11 +536,11 @@ export function adaptStudentToBackend(s: Partial<Student>): any {
   if (s.parentName !== undefined) payload.parent_name = s.parentName;
   if (s.parentPhone !== undefined) payload.parent_phone = s.parentPhone;
   if (s.parentEmail !== undefined) payload.parent_email = s.parentEmail;
-  if (s.currentClassArmId !== undefined) {
-    const pk = resolveArmPk(s.currentClassArmId);
-    payload.current_class_arm = pk !== undefined ? pk : (s.currentClassArmName || s.currentClassArmId);
-  } else if (s.currentClassArmName !== undefined) {
+  if (s.currentClassArmName !== undefined && s.currentClassArmName) {
     payload.current_class_arm = s.currentClassArmName;
+  } else if (s.currentClassArmId !== undefined) {
+    const pk = resolveArmPk(s.currentClassArmId);
+    payload.current_class_arm = pk !== undefined ? pk : s.currentClassArmId;
   }
   if (s.isBoarder !== undefined) payload.is_boarder = s.isBoarder;
   if (s.status !== undefined) payload.status = s.status;
@@ -536,11 +548,25 @@ export function adaptStudentToBackend(s: Partial<Student>): any {
 }
 
 export function adaptClassArmFromBackend(d: any): ClassArm {
+  const armFullName = d.full_name || `${d.class_level_name || ''} ${d.name || ''}`.trim();
+  const slug = resolveArmId(d.id, armFullName);
+
+  if (d.id) {
+    const numId = typeof d.id === 'number' ? d.id : parseInt(d.id, 10);
+    if (!isNaN(numId)) {
+      ARM_SLUG_BY_PK[numId] = slug;
+      ARM_PK_BY_SLUG[slug] = numId;
+    }
+  }
+  if (armFullName) {
+    ARM_SLUG_BY_NAME[armFullName.toLowerCase().trim()] = slug;
+  }
+
   return {
-    id: resolveArmId(d.id, d.full_name || `${d.class_level_name || ''} ${d.name || ''}`.trim()),
+    id: slug,
     classLevelId: String(d.class_level || ''),
     name: d.name || '',
-    fullName: d.full_name || `${d.class_level_name || ''} ${d.name || ''}`.trim(),
+    fullName: armFullName,
     formMasterId: d.form_master ? String(d.form_master) : undefined,
     formMasterName: d.form_master_name || undefined,
   };

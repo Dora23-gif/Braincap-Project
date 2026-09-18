@@ -148,7 +148,7 @@ export const StudentDirectoryView: React.FC<{
     }
   };
 
-  const handleSaveStudentEdit = (e: React.FormEvent) => {
+  const handleSaveStudentEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingStudent) return;
 
@@ -158,7 +158,7 @@ export const StudentDirectoryView: React.FC<{
       currentClassArmName: arm ? arm.fullName : editForm.currentClassArmName
     };
 
-    updateStudent(editingStudent.id, updates, {
+    await updateStudent(editingStudent.id, updates, {
       id: user?.id || 'stf-001',
       name: user?.name || 'Dr. Kenneth Balogun',
       role: user?.activeRole || 'SUPER_ADMIN'
