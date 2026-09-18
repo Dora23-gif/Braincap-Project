@@ -27,8 +27,9 @@ services:
   # ====================================================
   # 2. REACT FRONTEND STATIC SITE
   # ====================================================
-  - type: static
+  - type: web
     name: everest-portal
+    runtime: static
     buildCommand: "npm install && npm run build"
     staticPublishPath: "./dist"
     headers:
