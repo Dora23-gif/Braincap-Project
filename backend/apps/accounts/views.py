@@ -80,6 +80,7 @@ class SetPasswordView(APIView):
     Accepts { uid, token, password }.
     Validates token, sets secure password, and logs them in immediately.
     """
+    authentication_classes = []
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
@@ -133,7 +134,9 @@ class LoginView(APIView):
     - Username (e.g. admin or parent_prt_002)
     - Staff/Student ID (e.g. EIS/2026/001)
     """
+    authentication_classes = []
     permission_classes = [permissions.AllowAny]
+
 
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
@@ -185,11 +188,13 @@ class LoginView(APIView):
 
 class LogoutView(APIView):
     """POST /api/v1/accounts/logout/ — End current session."""
-    permission_classes = [permissions.IsAuthenticated]
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request):
         logout(request)
         return Response({"detail": "Logged out successfully."}, status=status.HTTP_200_OK)
+
 
 
 class UserViewSet(viewsets.ModelViewSet):
