@@ -82,10 +82,19 @@ if DATABASE_URL:
         DATABASES = {
             "default": dj_database_url.config(
                 default=DATABASE_URL,
-                conn_max_age=600,
+                conn_max_age=300,
                 conn_health_checks=True,
+                ssl_require=True,
             )
         }
+        DATABASES["default"].setdefault("OPTIONS", {})
+        DATABASES["default"]["OPTIONS"].update({
+            "connect_timeout": 10,
+            "keepalives": 1,
+            "keepalives_idle": 30,
+            "keepalives_interval": 10,
+            "keepalives_count": 5,
+        })
     except ImportError:
         url = urlparse(DATABASE_URL)
         DATABASES = {
@@ -96,8 +105,13 @@ if DATABASE_URL:
                 "PASSWORD": url.password,
                 "HOST": url.hostname,
                 "PORT": url.port or 5432,
+                "OPTIONS": {
+                    "sslmode": "require",
+                    "connect_timeout": 10,
+                },
             }
         }
+
 elif DB_ENGINE == "django.db.backends.sqlite3":
     DATABASES = {"default": {"ENGINE": DB_ENGINE, "NAME": BASE_DIR / "db.sqlite3"}}
 else:
