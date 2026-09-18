@@ -1,0 +1,52 @@
+﻿services:
+  # ====================================================
+  # 1. DJANGO BACKEND WEB SERVICE
+  # ====================================================
+  - type: web
+    name: everest-backend
+    runtime: python
+    rootDir: backend
+    plan: free
+    region: ohio
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn config.wsgi:application"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: DATABASE_URL
+        value: postgresql://neondb_owner:npg_hB2iloUYN8cE@ep-curly-silence-b4idbikz.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: "*"
+      - key: CORS_ALLOW_CREDENTIALS
+        value: "True"
+
+  # ====================================================
+  # 2. REACT FRONTEND STATIC SITE
+  # ====================================================
+  - type: web
+    name: everest-portal
+    runtime: static
+    plan: free
+    region: ohio
+    buildCommand: "npm install && npm run build"
+    staticPublishPath: "./dist"
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        fromService:
+          type: web
+          name: everest-backend
+          property: host
+        valuePrefix: "https://"
+        valueSuffix: "/api/v1"
