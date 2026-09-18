@@ -66,18 +66,28 @@ class StudentViewSet(viewsets.ModelViewSet):
             if arm_str.isdigit():
                 qs = qs.filter(current_class_arm_id=int(arm_str))
             elif arm_str.startswith("arm-"):
-                clean = arm_str.replace("arm-", "").lower()
+                clean = arm_str.replace("arm-", "").lower().replace("-", "")
                 matched_ca = None
                 for ca in ClassArm.objects.select_related("class_level").all():
                     lvl_c = ca.class_level.name.lower().replace(" ", "")
-                    arm_c = ca.name.lower()
-                    if f"{lvl_c}-{arm_c}" == clean or f"{lvl_c}{arm_c}" == clean or (lvl_c in clean and arm_c in clean):
+                    arm_c = ca.name.lower().replace(" ", "")
+                    combined = f"{lvl_c}{arm_c}"
+                    if combined == clean or clean in combined or (lvl_c in clean and arm_c in clean):
                         matched_ca = ca
                         break
                 if matched_ca:
                     qs = qs.filter(current_class_arm=matched_ca)
+                else:
+                    qs = qs.filter(
+                        models.Q(current_class_arm__full_name__icontains=arm_str.replace("arm-", "").replace("-", " ")) |
+                        models.Q(current_class_arm__name__icontains=arm_str.replace("arm-", "").replace("-", " "))
+                    )
             else:
-                qs = qs.filter(models.Q(current_class_arm__full_name__iexact=arm_str) | models.Q(current_class_arm__name__iexact=arm_str))
+                qs = qs.filter(
+                    models.Q(current_class_arm__full_name__iexact=arm_str) |
+                    models.Q(current_class_arm__name__iexact=arm_str) |
+                    models.Q(current_class_arm__full_name__icontains=arm_str)
+                )
 
         # Flexible subject filtering (supports PK, slug, or code)
         subj_param = self.request.query_params.get("subject") or self.request.query_params.get("registered_subjects")

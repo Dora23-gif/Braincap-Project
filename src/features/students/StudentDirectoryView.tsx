@@ -84,10 +84,8 @@ export const StudentDirectoryView: React.FC<{
           queryParams.search = searchTerm.trim();
         }
         if (selectedArmFilter !== 'ALL') {
-          const armPk = typeof selectedArmFilter === 'number'
-            ? selectedArmFilter
-            : (ARM_PK_BY_SLUG[selectedArmFilter] || selectedArmFilter);
-          queryParams.current_class_arm = armPk;
+          const armObj = classArms.find(a => a.id === selectedArmFilter);
+          queryParams.current_class_arm = armObj ? (armObj.fullName || armObj.id) : selectedArmFilter;
         }
 
         const res = await api.get<PaginatedResponse<any>>('/students/students/', queryParams);
@@ -190,6 +188,9 @@ export const StudentDirectoryView: React.FC<{
   };
 
   const clientFilteredStudents = React.useMemo(() => {
+    const selectedArmObj = classArms.find(a => a.id === selectedArmFilter);
+    const targetFullName = (selectedArmObj?.fullName || '').toLowerCase().trim();
+
     return students.filter(s => {
       // Role jurisdictional boundaries
       if (isFormMaster && user?.formMasterArmId && s.currentClassArmId !== user.formMasterArmId) {
@@ -198,16 +199,32 @@ export const StudentDirectoryView: React.FC<{
       if (isSubjectTeacher && !teacherArmIds.includes(s.currentClassArmId)) {
         return false;
       }
-      const matchesArm = selectedArmFilter === 'ALL' || s.currentClassArmId === selectedArmFilter;
-      const search = searchTerm.toLowerCase();
+
+      let matchesArm = false;
+      if (selectedArmFilter === 'ALL') {
+        matchesArm = true;
+      } else {
+        const studentArmId = String(s.currentClassArmId || '').toLowerCase().trim();
+        const studentArmName = (s.currentClassArmName || '').toLowerCase().trim();
+        const filterId = String(selectedArmFilter || '').toLowerCase().trim();
+
+        matchesArm =
+          studentArmId === filterId ||
+          (targetFullName !== '' && (studentArmName === targetFullName || studentArmName.includes(targetFullName)));
+      }
+
+      const search = searchTerm.toLowerCase().trim();
       const matchesSearch =
+        !search ||
         s.firstName.toLowerCase().includes(search) ||
         s.lastName.toLowerCase().includes(search) ||
         s.admissionNumber.toLowerCase().includes(search) ||
+        (s.currentClassArmName || '').toLowerCase().includes(search) ||
         s.stateOfOrigin.toLowerCase().includes(search);
+
       return matchesArm && matchesSearch;
     });
-  }, [students, isFormMaster, user?.formMasterArmId, isSubjectTeacher, teacherArmIds, selectedArmFilter, searchTerm]);
+  }, [students, isFormMaster, user?.formMasterArmId, isSubjectTeacher, teacherArmIds, selectedArmFilter, searchTerm, classArms]);
 
   const displayedStudents = React.useMemo(() => {
     if (serverStudents !== null) {
