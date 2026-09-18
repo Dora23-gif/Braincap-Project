@@ -21,7 +21,7 @@ import type {
 export const API_BASE_URL =
   (import.meta as any).env?.VITE_API_BASE_URL ||
   (typeof window !== 'undefined' && window.location.hostname.includes('onrender.com')
-    ? 'https://everest-backend.onrender.com/api/v1'
+    ? 'https://everest-backend-mo7u.onrender.com/api/v1'
     : '/api/v1');
 
 
