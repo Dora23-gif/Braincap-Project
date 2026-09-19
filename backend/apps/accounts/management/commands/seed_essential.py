@@ -26,95 +26,50 @@ class Command(BaseCommand):
         admin_user.set_password("Password123!")
         admin_user.save()
 
-        # 2. Principal
-        p_user, _ = CustomUser.objects.update_or_create(
-            identifier="STF/2026/002",
-            defaults={
-                "username": "stf_2026_002",
-                "email": "principal@everest.com",
-                "first_name": "Cordelia",
-                "last_name": "Okeke",
-                "roles": ["PRINCIPAL"],
-                "active_role": "PRINCIPAL",
-                "is_staff": True,
-                "is_superuser": False,
-            }
-        )
-        p_user.set_password("Password123!")
-        p_user.save()
-
-        # 3. Exam Officer
-        e_user, _ = CustomUser.objects.update_or_create(
-            identifier="STF/2026/003",
-            defaults={
-                "username": "stf_2026_003",
-                "email": "exam@everest.com",
-                "first_name": "Samuel",
-                "last_name": "Adeyemi",
-                "roles": ["EXAM_OFFICER"],
-                "active_role": "EXAM_OFFICER",
-                "is_staff": True,
-                "is_superuser": False,
-            }
-        )
-        e_user.set_password("Password123!")
-        e_user.save()
-
-        # 4. Vice Principals
-        vp_acad, _ = CustomUser.objects.update_or_create(
-            identifier="STF/2026/004",
-            defaults={
-                "username": "stf_2026_004",
-                "email": "vp.academics@everest.com",
-                "first_name": "Babatunde",
-                "last_name": "Fashola",
-                "roles": ["VICE_PRINCIPAL_ACADEMICS"],
-                "active_role": "VICE_PRINCIPAL_ACADEMICS",
-                "is_staff": True,
-            }
-        )
-        vp_acad.set_password("Password123!")
-        vp_acad.save()
-
-        vp_admin, _ = CustomUser.objects.update_or_create(
-            identifier="STF/2026/005",
-            defaults={
-                "username": "stf_2026_005",
-                "email": "vp.admin@everest.com",
-                "first_name": "Ayodele",
-                "last_name": "Ogunlesi",
-                "roles": ["VICE_PRINCIPAL_ADMIN"],
-                "active_role": "VICE_PRINCIPAL_ADMIN",
-                "is_staff": True,
-            }
-        )
-        vp_admin.set_password("Password123!")
-        vp_admin.save()
-
-        # 5. Teachers
-        teachers = [
-            ("Michael", "Okafor", "michael.okafor@everest.com", "STF/2026/006"),
-            ("Chioma", "Eze", "chioma.eze@everest.com", "STF/2026/007"),
-            ("Ibrahim", "Danjuma", "ibrahim.danjuma@everest.com", "STF/2026/008"),
-            ("Ngozi", "Amaechi", "ngozi.amaechi@everest.com", "STF/2026/009"),
-            ("Folashade", "Adeleke", "folashade.adeleke@everest.com", "STF/2026/010"),
+        # 2. Complete Staff Body (20 Staff Members matching FULL_STAFF)
+        staff_data = [
+            ("STF/2026/001", "stf_2026_001", "admin@everest.com", "Kenneth", "Balogun", ["SUPER_ADMIN"], "SUPER_ADMIN", "Systems Administrator & IT Director"),
+            ("STF/2026/002", "stf_2026_002", "principal@everest.com", "Cordelia", "Okonkwo", ["PRINCIPAL"], "PRINCIPAL", "Principal & Head of Academics"),
+            ("STF/2026/003", "stf_2026_003", "exam@everest.com", "Samuel", "Danjuma", ["EXAM_OFFICER"], "EXAM_OFFICER", "Chief Examination & Records Officer"),
+            ("STF/2026/004", "stf_2026_004", "vp.admin@everest.com", "Ayodele", "Tinubu", ["VICE_PRINCIPAL_ADMIN", "ADMISSIONS_OFFICER"], "VICE_PRINCIPAL_ADMIN", "Vice Principal (Administration & Student Affairs)"),
+            ("STF/2026/019", "stf_2026_019", "vp.academics@everest.com", "Babatunde", "Fashola", ["VICE_PRINCIPAL_ACADEMICS", "SUBJECT_TEACHER"], "VICE_PRINCIPAL_ACADEMICS", "Vice Principal (Academics & Instruction)"),
+            ("STF/2026/005", "stf_2026_005", "f.alabi@everest.com", "Folashade", "Alabi", ["SUBJECT_TEACHER", "FORM_MASTER"], "SUBJECT_TEACHER", "Mathematics Teacher & Form Master JSS 1 Gold"),
+            ("STF/2026/006", "stf_2026_006", "c.eze@everest.com", "Chukwuma", "Eze", ["SUBJECT_TEACHER", "FORM_MASTER"], "SUBJECT_TEACHER", "English Language Teacher & Form Master JSS 1 Emerald"),
+            ("STF/2026/011", "stf_2026_011", "n.okeke@everest.com", "Ngozi", "Okeke", ["SUBJECT_TEACHER", "FORM_MASTER"], "SUBJECT_TEACHER", "Basic Science Teacher & Form Master JSS 2 Gold"),
+            ("STF/2026/012", "stf_2026_012", "a.garba@everest.com", "Abubakar", "Garba", ["SUBJECT_TEACHER", "FORM_MASTER"], "SUBJECT_TEACHER", "Hausa Language Teacher & Form Master JSS 2 Diamond"),
+            ("STF/2026/013", "stf_2026_013", "k.adeleke@everest.com", "Kemi", "Adeleke", ["SUBJECT_TEACHER", "FORM_MASTER"], "SUBJECT_TEACHER", "Yoruba Language Teacher & Form Master JSS 3 Gold"),
+            ("STF/2026/014", "stf_2026_014", "e.okafor@everest.com", "Emmanuel", "Okafor", ["SUBJECT_TEACHER", "FORM_MASTER"], "SUBJECT_TEACHER", "Igbo Language Teacher & Form Master JSS 3 Diamond"),
+            ("STF/2026/007", "stf_2026_007", "p.bello@everest.com", "Paul", "Bello", ["SUBJECT_TEACHER", "FORM_MASTER"], "SUBJECT_TEACHER", "Chemistry Teacher & Form Master SSS 1 Gold"),
+            ("STF/2026/008", "stf_2026_008", "h.musa@everest.com", "Hadiza", "Musa", ["SUBJECT_TEACHER", "FORM_MASTER"], "SUBJECT_TEACHER", "Biology Teacher & Form Master SSS 1 Diamond"),
+            ("STF/2026/018", "stf_2026_018", "m.adebayo@everest.com", "Michael", "Adebayo", ["SUBJECT_TEACHER", "FORM_MASTER"], "SUBJECT_TEACHER", "Senior Physics Master & Form Master SSS 2 Gold"),
+            ("STF/2026/009", "stf_2026_009", "t.nwosu@everest.com", "Tochukwu", "Nwosu", ["SUBJECT_TEACHER", "FORM_MASTER"], "SUBJECT_TEACHER", "Civic Education Teacher & Form Master SSS 2 Diamond"),
+            ("STF/2026/010", "stf_2026_010", "b.cole@everest.com", "Bridget", "Cole", ["SUBJECT_TEACHER", "FORM_MASTER"], "SUBJECT_TEACHER", "Economics Teacher & Form Master SSS 3 Gold"),
+            ("STF/2026/015", "stf_2026_015", "a.umar@everest.com", "Amina", "Umar", ["SUBJECT_TEACHER", "FORM_MASTER"], "SUBJECT_TEACHER", "Agricultural Science Teacher & Form Master SSS 3 Diamond"),
+            ("STF/2026/016", "stf_2026_016", "d.oladipo@everest.com", "David", "Oladipo", ["SUBJECT_TEACHER"], "SUBJECT_TEACHER", "Further Mathematics & Technical Drawing"),
+            ("STF/2026/017", "stf_2026_017", "f.sanusi@everest.com", "Fatima", "Sanusi", ["SUBJECT_TEACHER"], "SUBJECT_TEACHER", "Computer Studies & Data Processing Lead"),
+            ("STF/2026/020", "stf_2026_020", "g.bassey@everest.com", "Grace", "Grace Bassey", ["SUBJECT_TEACHER"], "SUBJECT_TEACHER", "Food & Nutrition / Home Economics Head"),
         ]
-        for fn, ln, em, ident in teachers:
-            t, _ = CustomUser.objects.update_or_create(
+
+        staff_map = {}
+        for ident, uname, em, fn, ln, roles, active_role, title in staff_data:
+            s_user, _ = CustomUser.objects.update_or_create(
                 identifier=ident,
                 defaults={
-                    "username": ident.replace("/", "_").lower(),
+                    "username": uname,
                     "email": em,
                     "first_name": fn,
                     "last_name": ln,
-                    "roles": ["TEACHER", "SUBJECT_TEACHER"],
-                    "active_role": "SUBJECT_TEACHER",
+                    "roles": roles,
+                    "active_role": active_role,
+                    "is_staff": True,
+                    "is_active": True,
                 }
             )
-            t.set_password("Password123!")
-            t.save()
+            s_user.set_password("Password123!")
+            s_user.save()
+            staff_map[ident] = s_user
 
-        # 6. Parent
+        # 3. Parent Account
         parent, _ = CustomUser.objects.update_or_create(
             identifier="PRT/2026/001",
             defaults={
@@ -124,12 +79,13 @@ class Command(BaseCommand):
                 "last_name": "Balogun",
                 "roles": ["PARENT"],
                 "active_role": "PARENT",
+                "is_active": True,
             }
         )
         parent.set_password("Password123!")
         parent.save()
 
-        # 7. Session & Terms
+        # 4. Session & All 3 Terms (1st, 2nd, 3rd)
         session, _ = AcademicSession.objects.update_or_create(
             name="2025/2026",
             defaults={"is_current": True}
@@ -157,9 +113,36 @@ class Command(BaseCommand):
                 "is_results_approved_by_principal": True,
             }
         )
+        AcademicTerm.objects.update_or_create(
+            session=session,
+            name="3rd Term",
+            defaults={
+                "resumption_date": date(2026, 5, 4),
+                "closing_date": date(2026, 7, 24),
+                "next_term_resumption_date": date(2026, 9, 14),
+                "is_active": False,
+                "is_results_published": False,
+                "is_results_approved_by_principal": False,
+            }
+        )
 
-        # 8. Class Levels & Arms
+        # 5. Class Levels & Arms with Form Masters
         from apps.academics.models import ClassLevel, ClassArm
+
+        form_master_assignments = {
+            ("JSS 1", "Gold"): "STF/2026/005",
+            ("JSS 1", "Emerald"): "STF/2026/006",
+            ("JSS 2", "Gold"): "STF/2026/011",
+            ("JSS 2", "Diamond"): "STF/2026/012",
+            ("JSS 3", "Gold"): "STF/2026/013",
+            ("JSS 3", "Diamond"): "STF/2026/014",
+            ("SSS 1", "Gold"): "STF/2026/007",
+            ("SSS 1", "Diamond"): "STF/2026/008",
+            ("SSS 2", "Gold"): "STF/2026/018",
+            ("SSS 2", "Diamond"): "STF/2026/009",
+            ("SSS 3", "Gold"): "STF/2026/010",
+            ("SSS 3", "Diamond"): "STF/2026/015",
+        }
         
         levels_data = [
             ("JSS 1", "JUNIOR", 1, ["Gold", "Emerald", "Diamond"]),
@@ -175,10 +158,15 @@ class Command(BaseCommand):
                 defaults={"section": sec, "order": order}
             )
             for arm_name in arms:
+                fm_ident = form_master_assignments.get((lvl_name, arm_name))
+                fm_user = staff_map.get(fm_ident) if fm_ident else None
                 ClassArm.objects.update_or_create(
                     class_level=lvl,
                     name=arm_name,
-                    defaults={"full_name": f"{lvl_name} {arm_name}"}
+                    defaults={
+                        "full_name": f"{lvl_name} {arm_name}",
+                        "form_master": fm_user,
+                    }
                 )
 
         # 9. Core Subjects

@@ -217,7 +217,7 @@ class UserViewSet(viewsets.ModelViewSet):
         params = getattr(self.request, "query_params", getattr(self.request, "GET", {}))
         user_type = str(params.get("user_type", "")).strip().lower()
         if user_type == "staff":
-            qs = qs.exclude(active_role="PARENT")
+            qs = qs.exclude(active_role="PARENT").exclude(username="admin")
         elif user_type == "parent":
             qs = qs.filter(active_role="PARENT")
         return qs

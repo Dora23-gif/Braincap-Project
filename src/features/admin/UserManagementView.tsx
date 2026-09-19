@@ -202,7 +202,7 @@ export const UserManagementView: React.FC = () => {
 
 
   // Quick stats
-  const totalStaff = staff.length;
+  const totalStaff = serverTotalCount !== null ? serverTotalCount : staff.length;
   const activeStaff = staff.filter(s => s.status === 'ACTIVE').length;
   const suspendedStaff = staff.filter(s => s.status === 'SUSPENDED').length;
   const multiRoleStaff = staff.filter(s => s.roles && s.roles.length > 1).length;

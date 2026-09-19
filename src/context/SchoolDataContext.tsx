@@ -245,7 +245,7 @@ interface SchoolDataContextType {
 
 const SchoolDataContext = createContext<SchoolDataContextType | undefined>(undefined);
 
-const DATA_VERSION = 'v14_clean_live_db_sync';
+const DATA_VERSION = 'v15_unify_staff_and_3terms';
 
 export const INITIAL_PORTAL_MESSAGES: PortalMessage[] = [
   {
@@ -504,6 +504,10 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       localStorage.setItem('eis_portal_messages', JSON.stringify(INITIAL_PORTAL_MESSAGES));
       localStorage.setItem('eis_class_levels', JSON.stringify(INITIAL_CLASS_LEVELS));
       localStorage.setItem('eis_class_arms', JSON.stringify(INITIAL_CLASS_ARMS));
+      localStorage.setItem('eis_sessions', JSON.stringify(INITIAL_SESSIONS));
+      localStorage.setItem('eis_terms', JSON.stringify(INITIAL_TERMS));
+      setSessions(INITIAL_SESSIONS);
+      setTerms(INITIAL_TERMS);
       setClassLevels(INITIAL_CLASS_LEVELS);
       setClassArms(INITIAL_CLASS_ARMS);
       setStudents(INITIAL_STUDENTS);
@@ -568,11 +572,17 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         api.get('/academics/allocations/', { page_size: 'all' }),
       ]);
 
-      if (sessionsRes.status === 'fulfilled' && Array.isArray(sessionsRes.value)) {
-        setSessions(sessionsRes.value.map(adaptAcademicSessionFromBackend));
+      if (sessionsRes.status === 'fulfilled') {
+        const raw = (sessionsRes.value as any)?.results || sessionsRes.value;
+        if (Array.isArray(raw) && raw.length > 0) {
+          setSessions(raw.map(adaptAcademicSessionFromBackend));
+        }
       }
-      if (termsRes.status === 'fulfilled' && Array.isArray(termsRes.value)) {
-        setTerms(termsRes.value.map(adaptAcademicTermFromBackend));
+      if (termsRes.status === 'fulfilled') {
+        const raw = (termsRes.value as any)?.results || termsRes.value;
+        if (Array.isArray(raw) && raw.length > 0) {
+          setTerms(raw.map(adaptAcademicTermFromBackend));
+        }
       }
       if (classLevelsRes.status === 'fulfilled') {
         const raw = (classLevelsRes.value as any)?.results || classLevelsRes.value;
@@ -619,7 +629,11 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const raw = (staffRes.value as any)?.results || staffRes.value;
         if (Array.isArray(raw) && raw.length > 0) {
           const staffUsers = raw.filter(
-            (u: any) => u.active_role !== 'PARENT' && !(Array.isArray(u.roles) && u.roles.includes('PARENT'))
+            (u: any) =>
+              u.active_role !== 'PARENT' &&
+              !(Array.isArray(u.roles) && u.roles.includes('PARENT')) &&
+              u.username !== 'admin' &&
+              u.identifier !== 'admin'
           );
           const parentUsers = raw.filter(
             (u: any) => u.active_role === 'PARENT' || (Array.isArray(u.roles) && u.roles.includes('PARENT'))
@@ -1876,12 +1890,28 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
-  const publishResults = (termId: string, isPublished: boolean) => {
+  const publishResults = async (termId: string, isPublished: boolean) => {
     setTerms(prev => prev.map(t => t.id === termId ? { ...t, isResultsPublished: isPublished } : t));
+    const termPk = resolveTermPk(termId);
+    if (termPk) {
+      try {
+        await api.patch(`/academics/terms/${termPk}/`, { is_results_published: isPublished });
+      } catch (err) {
+        console.warn('Backend term publish error:', err);
+      }
+    }
   };
 
-  const setActiveTerm = (termId: string) => {
+  const setActiveTerm = async (termId: string) => {
     setTerms(prev => prev.map(t => ({ ...t, isActive: t.id === termId })));
+    const termPk = resolveTermPk(termId);
+    if (termPk) {
+      try {
+        await api.patch(`/academics/terms/${termPk}/`, { is_active: true });
+      } catch (err) {
+        console.warn('Backend setActiveTerm error:', err);
+      }
+    }
   };
 
   const getStudentDossier = (studentId: string, termId?: string): StudentTerminalDossier | null => {

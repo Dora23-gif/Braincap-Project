@@ -613,14 +613,14 @@ export function adaptAcademicSessionFromBackend(d: any): AcademicSession {
 export function adaptAcademicTermFromBackend(d: any): AcademicTerm {
   return {
     id: resolveTermId(d.id || d.name),
-    sessionId: String(d.academic_session || ''),
+    sessionId: String(d.session || d.academic_session || ''),
     name: d.name,
     resumptionDate: d.resumption_date || '',
     closingDate: d.closing_date || '',
     nextTermResumptionDate: d.next_term_resumption_date || '',
     isActive: Boolean(d.is_active),
     isResultsPublished: Boolean(d.is_results_published),
-    isResultsApprovedByPrincipal: Boolean(d.is_results_published),
+    isResultsApprovedByPrincipal: Boolean(d.is_results_approved_by_principal ?? d.is_results_published),
   };
 }
 
