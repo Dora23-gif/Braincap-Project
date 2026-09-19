@@ -245,7 +245,7 @@ interface SchoolDataContextType {
 
 const SchoolDataContext = createContext<SchoolDataContextType | undefined>(undefined);
 
-const DATA_VERSION = 'v15_unify_staff_and_3terms';
+const DATA_VERSION = 'v16_live_header_auth_sync';
 
 export const INITIAL_PORTAL_MESSAGES: PortalMessage[] = [
   {
@@ -575,52 +575,43 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       if (sessionsRes.status === 'fulfilled') {
         const raw = (sessionsRes.value as any)?.results || sessionsRes.value;
         if (Array.isArray(raw) && raw.length > 0) {
-          setSessions(raw.map(adaptAcademicSessionFromBackend));
+          const liveSessions = raw.map(adaptAcademicSessionFromBackend);
+          setSessions(liveSessions);
+          try { localStorage.setItem('eis_sessions', JSON.stringify(liveSessions)); } catch (e) {}
         }
       }
       if (termsRes.status === 'fulfilled') {
         const raw = (termsRes.value as any)?.results || termsRes.value;
         if (Array.isArray(raw) && raw.length > 0) {
-          setTerms(raw.map(adaptAcademicTermFromBackend));
+          const liveTerms = raw.map(adaptAcademicTermFromBackend);
+          setTerms(liveTerms);
+          try { localStorage.setItem('eis_terms', JSON.stringify(liveTerms)); } catch (e) {}
         }
       }
       if (classLevelsRes.status === 'fulfilled') {
         const raw = (classLevelsRes.value as any)?.results || classLevelsRes.value;
         if (Array.isArray(raw) && raw.length > 0) {
-          setClassLevels(raw.map(adaptClassLevelFromBackend));
+          const liveLevels = raw.map(adaptClassLevelFromBackend);
+          setClassLevels(liveLevels);
+          try { localStorage.setItem('eis_class_levels', JSON.stringify(liveLevels)); } catch (e) {}
         }
       }
       if (classArmsRes.status === 'fulfilled') {
         const raw = (classArmsRes.value as any)?.results || classArmsRes.value;
         if (Array.isArray(raw) && raw.length > 0) {
-          setClassArms(raw.map(adaptClassArmFromBackend));
+          const liveArms = raw.map(adaptClassArmFromBackend);
+          setClassArms(liveArms);
+          try { localStorage.setItem('eis_class_arms', JSON.stringify(liveArms)); } catch (e) {}
         }
       }
 
-      // Safe non-destructive merge: preserve existing students and append/update live backend students
+      // Authoritative live students hydration directly from PostgreSQL
       if (studentsRes.status === 'fulfilled') {
         const raw = (studentsRes.value as any)?.results || studentsRes.value;
         if (Array.isArray(raw) && raw.length > 0) {
           const liveStudents = raw.map(adaptStudentFromBackend);
-          setStudents(prev => {
-            const currentList = [...prev];
-            for (const live of liveStudents) {
-              const existingIdx = currentList.findIndex(
-                s => s.admissionNumber === live.admissionNumber || s.id === live.id
-              );
-              if (existingIdx >= 0) {
-                currentList[existingIdx] = {
-                  ...currentList[existingIdx],
-                  ...live,
-                  currentClassArmId: live.currentClassArmId || currentList[existingIdx].currentClassArmId,
-                  currentClassArmName: live.currentClassArmName || currentList[existingIdx].currentClassArmName,
-                };
-              } else {
-                currentList.push(live);
-              }
-            }
-            return currentList;
-          });
+          setStudents(liveStudents);
+          try { localStorage.setItem('eis_students', JSON.stringify(liveStudents)); } catch (e) {}
         }
       }
 
@@ -642,11 +633,13 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           if (staffUsers.length > 0) {
             const liveStaff = staffUsers.map(adaptStaffFromBackend);
             setStaff(liveStaff);
+            try { localStorage.setItem('eis_staff', JSON.stringify(liveStaff)); } catch (e) {}
           }
 
           if (parentUsers.length > 0) {
             const liveParents = parentUsers.map(adaptParentFromBackend);
             setParents(liveParents);
+            try { localStorage.setItem('eis_parents', JSON.stringify(liveParents)); } catch (e) {}
           }
         }
       }

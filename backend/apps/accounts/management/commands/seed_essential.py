@@ -47,7 +47,7 @@ class Command(BaseCommand):
             ("STF/2026/015", "stf_2026_015", "a.umar@everest.com", "Amina", "Umar", ["SUBJECT_TEACHER", "FORM_MASTER"], "SUBJECT_TEACHER", "Agricultural Science Teacher & Form Master SSS 3 Diamond"),
             ("STF/2026/016", "stf_2026_016", "d.oladipo@everest.com", "David", "Oladipo", ["SUBJECT_TEACHER"], "SUBJECT_TEACHER", "Further Mathematics & Technical Drawing"),
             ("STF/2026/017", "stf_2026_017", "f.sanusi@everest.com", "Fatima", "Sanusi", ["SUBJECT_TEACHER"], "SUBJECT_TEACHER", "Computer Studies & Data Processing Lead"),
-            ("STF/2026/020", "stf_2026_020", "g.bassey@everest.com", "Grace", "Grace Bassey", ["SUBJECT_TEACHER"], "SUBJECT_TEACHER", "Food & Nutrition / Home Economics Head"),
+            ("STF/2026/020", "stf_2026_020", "g.bassey@everest.com", "Grace", "Bassey", ["SUBJECT_TEACHER"], "SUBJECT_TEACHER", "Food & Nutrition / Home Economics Head"),
         ]
 
         staff_map = {}

@@ -24,7 +24,7 @@ from .serializers import (
 class AcademicSessionViewSet(viewsets.ModelViewSet):
     queryset = AcademicSession.objects.prefetch_related("terms").all()
     serializer_class = AcademicSessionSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 
     @action(detail=False, methods=["get"], url_path="rollover-candidates")
     def rollover_candidates(self, request):
@@ -371,21 +371,21 @@ class AcademicSessionViewSet(viewsets.ModelViewSet):
 class AcademicTermViewSet(viewsets.ModelViewSet):
     queryset = AcademicTerm.objects.select_related("session").all()
     serializer_class = AcademicTermSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     filterset_fields = ["session", "is_active", "is_results_published"]
 
 
 class ClassLevelViewSet(viewsets.ModelViewSet):
     queryset = ClassLevel.objects.prefetch_related("arms").all()
     serializer_class = ClassLevelSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     filterset_fields = ["section"]
 
 
 class ClassArmViewSet(viewsets.ModelViewSet):
     queryset = ClassArm.objects.select_related("class_level", "form_master").all()
     serializer_class = ClassArmSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     filterset_fields = ["class_level", "class_level__section"]
     search_fields = ["full_name", "name"]
 
@@ -401,7 +401,7 @@ class SubjectViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ["create", "update", "partial_update", "destroy"]:
             return [IsPrincipalOrAdmin()]
-        return [permissions.IsAuthenticated()]
+        return [permissions.IsAuthenticatedOrReadOnly()]
 
 
 class TeacherAllocationViewSet(viewsets.ModelViewSet):
@@ -409,7 +409,7 @@ class TeacherAllocationViewSet(viewsets.ModelViewSet):
         "teacher", "class_arm", "subject", "term"
     ).all().order_by("id")
     serializer_class = TeacherAllocationSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     filterset_fields = ["teacher", "class_arm", "subject", "term"]
     search_fields = [
         "teacher__first_name", "teacher__last_name",

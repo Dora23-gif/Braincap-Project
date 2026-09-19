@@ -39,6 +39,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!isMounted) return;
         setIsBackendConnected(true);
         if (data && (data.id || data.username)) {
+          if (data.token) {
+            localStorage.setItem('eis_auth_token', data.token);
+          }
           const sessionUser = adaptUserSessionFromBackend(data);
           setUser(sessionUser);
         }
@@ -49,6 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setIsBackendConnected(true);
           setUser(null);
           localStorage.removeItem('eis_auth_user');
+          localStorage.removeItem('eis_auth_token');
         } else {
           setIsBackendConnected(false);
           const saved = localStorage.getItem('eis_auth_user');
@@ -79,6 +83,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (res && res.user) {
+        if (res.token) {
+          localStorage.setItem('eis_auth_token', res.token);
+        }
         const sessionUser = adaptUserSessionFromBackend(res.user);
         setUser(sessionUser);
         setIsBackendConnected(true);
@@ -119,6 +126,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         password: 'Password123!',
       });
       if (res && res.user) {
+        if (res.token) {
+          localStorage.setItem('eis_auth_token', res.token);
+        }
         const sessionUser = adaptUserSessionFromBackend(res.user);
         setUser(sessionUser);
         setIsBackendConnected(true);
@@ -130,6 +140,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     api.post('/accounts/logout/').catch(() => {});
+    localStorage.removeItem('eis_auth_token');
+    localStorage.removeItem('eis_auth_user');
     setUser(null);
   };
 
@@ -143,6 +155,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const data = await api.get('/accounts/me/');
       if (data && (data.id || data.username)) {
+        if (data.token) {
+          localStorage.setItem('eis_auth_token', data.token);
+        }
         const sessionUser = adaptUserSessionFromBackend(data);
         setUser(sessionUser);
       }

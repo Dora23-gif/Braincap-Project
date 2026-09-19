@@ -69,6 +69,17 @@ async function request<T = any>(
     ...(options.headers as Record<string, string>),
   };
 
+  // Attach session token for cross-origin / mobile clients where 3rd-party cookies are blocked
+  try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('eis_auth_token') : null;
+    if (token && !headers['Authorization']) {
+      headers['Authorization'] = `Bearer ${token}`;
+      headers['X-Session-Key'] = token;
+    }
+  } catch (e) {
+    // Ignore localStorage access issues
+  }
+
   const method = (options.method || 'GET').toUpperCase();
 
   // Add CSRF token for mutating requests

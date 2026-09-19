@@ -26,6 +26,15 @@ class CurrentUserView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         return self.request.user
 
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        data = dict(serializer.data)
+        if hasattr(request, "session") and getattr(request.session, "session_key", None):
+            data["token"] = request.session.session_key
+        return Response(data)
+
+
 
 class ChangePasswordView(APIView):
     """
@@ -115,11 +124,26 @@ class SetPasswordView(APIView):
         user.save()
 
         # Log user into session automatically
-        login(request, user)
+        if hasattr(request, "session") and request.session is not None:
+            login(request, user)
+            if not request.session.session_key:
+                request.session.save()
+            token = request.session.session_key
+        else:
+            from importlib import import_module
+            from django.conf import settings
+            engine = import_module(settings.SESSION_ENGINE)
+            session = engine.SessionStore()
+            session["_auth_user_id"] = str(user.pk)
+            session["_auth_user_backend"] = "django.contrib.auth.backends.ModelBackend"
+            session["_auth_user_hash"] = user.get_session_auth_hash()
+            session.save()
+            token = session.session_key
 
         return Response(
             {
                 "detail": "Password successfully created. Your account is active!",
+                "token": token,
                 "user": UserSessionSerializer(user).data,
             },
             status=status.HTTP_200_OK,
@@ -175,11 +199,26 @@ class LoginView(APIView):
             )
 
         # 3. Log user into session
-        login(request, user)
+        if hasattr(request, "session") and request.session is not None:
+            login(request, user)
+            if not request.session.session_key:
+                request.session.save()
+            token = request.session.session_key
+        else:
+            from importlib import import_module
+            from django.conf import settings
+            engine = import_module(settings.SESSION_ENGINE)
+            session = engine.SessionStore()
+            session["_auth_user_id"] = str(user.pk)
+            session["_auth_user_backend"] = "django.contrib.auth.backends.ModelBackend"
+            session["_auth_user_hash"] = user.get_session_auth_hash()
+            session.save()
+            token = session.session_key
 
         return Response(
             {
                 "detail": "Login successful.",
+                "token": token,
                 "user": UserSessionSerializer(user).data,
             },
             status=status.HTTP_200_OK,

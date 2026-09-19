@@ -1,6 +1,7 @@
 from pathlib import Path
 from decouple import config, Csv
 from urllib.parse import urlparse
+from corsheaders.defaults import default_headers
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -153,6 +154,7 @@ AUTH_USER_MODEL = "accounts.CustomUser"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
+        "apps.accounts.authentication.HeaderSessionAuthentication",
         "apps.accounts.authentication.CsrfExemptSessionAuthentication",
         "rest_framework.authentication.BasicAuthentication",
     ],
@@ -179,6 +181,9 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^http:\/\/localhost:\d+$",
 ]
 CORS_ALLOW_CREDENTIALS = config("CORS_ALLOW_CREDENTIALS", default=True, cast=bool)
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    "x-session-key",
+]
 
 CSRF_TRUSTED_ORIGINS = config(
     "CSRF_TRUSTED_ORIGINS",
