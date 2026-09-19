@@ -200,6 +200,7 @@ export interface StaffMember {
   formMasterClassArmName?: string;
   assignedClassArms?: string[];
   joinedDate?: string;
+  backendId?: number;
 }
 
 export interface AuditLogDiffItem {

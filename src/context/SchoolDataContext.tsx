@@ -2018,6 +2018,29 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
     setStaff(prev => [newMember, ...prev]);
 
+    // Immediately synchronize allocations in local React state
+    if (memberData.allocatedSubjects && memberData.allocatedSubjects.length > 0) {
+      const newAllocs: TeacherAllocation[] = memberData.allocatedSubjects.map((alloc, idx) => ({
+        id: `alloc-live-${newId}-${alloc.classArmId}-${alloc.subjectId}-${idx}`,
+        classArmId: resolveArmId(alloc.classArmId, alloc.classArmName),
+        classArmName: alloc.classArmName || alloc.classArmId,
+        subjectId: resolveSubjectId(alloc.subjectId),
+        subjectName: alloc.subjectName || alloc.subjectId,
+        teacherId: newId,
+        teacherName: memberData.name,
+      }));
+      setAllocations(prev => [...prev, ...newAllocs]);
+    }
+
+    const backendAllocations = (memberData.allocatedSubjects || []).map(a => ({
+      class_arm: resolveArmPk(a.classArmId) || a.classArmId,
+      subject: resolveSubjectPk(a.subjectId) || a.subjectId,
+      classArmId: resolveArmId(a.classArmId, a.classArmName),
+      classArmName: a.classArmName,
+      subjectId: resolveSubjectId(a.subjectId),
+      subjectName: a.subjectName,
+    }));
+
     // Live asynchronous POST to Django backend
     api.post('/accounts/users/', {
       username: (memberData.identifier || memberData.staffId || newId).replace(/[\/\s]/g, '_').toLowerCase(),
@@ -2031,11 +2054,23 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       password: initialPin,
       default_pin: initialPin,
       address: memberData.address || '',
+      allocated_subjects: backendAllocations,
+      allocatedSubjects: backendAllocations,
+      form_master_class_arm: memberData.formMasterClassArmId ? (resolveArmPk(memberData.formMasterClassArmId) || memberData.formMasterClassArmId) : undefined,
     })
     .then(saved => {
       if (saved && saved.id) {
         const live = adaptStaffFromBackend(saved);
-        setStaff(prev => prev.map(m => m.id === newId ? live : m));
+        setStaff(prev => prev.map(m => (m.id === newId || m.identifier === live.identifier) ? live : m));
+        // Re-sync allocations from backend
+        api.get<any>('/academics/allocations/', { page_size: 'all' })
+          .then(res => {
+            const raw = res?.results || res;
+            if (Array.isArray(raw)) {
+              setAllocations(raw.map(adaptTeacherAllocationFromBackend));
+            }
+          })
+          .catch(() => {});
       }
     })
     .catch(err => console.error('Backend staff add error:', err));
@@ -2046,7 +2081,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const updateStaff = (staffId: string, updates: Partial<StaffMember>) => {
     setStaff(prev => prev.map(m => m.id === staffId ? { ...m, ...updates } : m));
 
-    const currentStaff = staff.find(s => s.id === staffId);
+    const currentStaff = staff.find(s => s.id === staffId || s.staffId === staffId || s.identifier === staffId);
 
     // Synchronize Form Master assignments with classArms
     if (updates.formMasterArmId !== undefined || updates.name !== undefined) {
@@ -2080,15 +2115,16 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setAllocations(prev => {
         const filtered = prev.filter(
           a => a.teacherId !== staffId &&
+               a.teacherId !== currentStaff?.id &&
                a.teacherId !== currentStaff?.staffId &&
                a.teacherId !== currentStaff?.identifier
         );
         const newAllocations: TeacherAllocation[] = (updates.allocatedSubjects || []).map((alloc, idx) => ({
           id: `alloc-live-${staffId}-${alloc.classArmId}-${alloc.subjectId}-${idx}`,
-          classArmId: alloc.classArmId,
-          classArmName: alloc.classArmName,
-          subjectId: alloc.subjectId,
-          subjectName: alloc.subjectName,
+          classArmId: resolveArmId(alloc.classArmId, alloc.classArmName),
+          classArmName: alloc.classArmName || alloc.classArmId,
+          subjectId: resolveSubjectId(alloc.subjectId),
+          subjectName: alloc.subjectName || alloc.subjectId,
           teacherId: staffId,
           teacherName: updates.name || currentStaff?.name || '',
         }));
@@ -2096,7 +2132,9 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       });
     }
 
-    if (/^\d+$/.test(staffId)) {
+    const targetLookupId = currentStaff?.backendId || (/^\d+$/.test(staffId) ? staffId : (currentStaff && /^\d+$/.test(currentStaff.id) ? currentStaff.id : undefined));
+
+    if (targetLookupId) {
       const payload: any = {};
       if (updates.name) {
         const parts = updates.name.split(' ');
@@ -2115,15 +2153,19 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         payload.allocated_subjects = updates.allocatedSubjects.map(a => ({
           class_arm: resolveArmPk(a.classArmId) || a.classArmId,
           subject: resolveSubjectPk(a.subjectId) || a.subjectId,
-          classArmId: a.classArmId,
+          classArmId: resolveArmId(a.classArmId, a.classArmName),
           classArmName: a.classArmName,
-          subjectId: a.subjectId,
+          subjectId: resolveSubjectId(a.subjectId),
           subjectName: a.subjectName,
         }));
       }
-      api.patch(`/accounts/users/${staffId}/`, payload)
+      if (updates.formMasterArmId !== undefined || updates.formMasterClassArmId !== undefined) {
+        const fmArm = updates.formMasterClassArmId || updates.formMasterArmId;
+        payload.form_master_class_arm = fmArm ? (resolveArmPk(fmArm) || fmArm) : null;
+      }
+      api.patch(`/accounts/users/${targetLookupId}/`, payload)
         .then(() => {
-          // Re-sync allocations from backend SQLite truth
+          // Re-sync allocations from backend
           api.get<any>('/academics/allocations/', { page_size: 'all' })
             .then(res => {
               const raw = res?.results || res;

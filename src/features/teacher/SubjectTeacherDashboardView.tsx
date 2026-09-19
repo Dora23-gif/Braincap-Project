@@ -31,6 +31,7 @@ import { DoubleBezelCard } from '../../components/common/DoubleBezelCard';
 import { BarDistributionChart } from '../../components/common/ChartComponents';
 import { ModalPortal } from '../../components/common/ModalPortal';
 import { evaluateGrade } from '../../lib/gradeCalculator';
+import { resolveArmId, resolveSubjectId } from '../../lib/api';
 
 interface SubjectTeacherDashboardViewProps {
   onNavigateToScores?: (classArmId?: string, subjectId?: string) => void;
@@ -79,18 +80,13 @@ export const SubjectTeacherDashboardView: React.FC<SubjectTeacherDashboardViewPr
     };
 
     const fromAllocations = allocations.filter(isTeacherMatch);
-    if (fromAllocations.length > 0) {
-      return fromAllocations.map(a => ({
-        classArmId: a.classArmId,
-        classArmName: a.classArmName || a.classArmId,
-        subjectId: a.subjectId,
-        subjectName: a.subjectName || a.subjectId
-      }));
-    }
-    if (user?.allocatedSubjects && user.allocatedSubjects.length > 0) {
-      return user.allocatedSubjects;
-    }
-    return [];
+    const source = fromAllocations.length > 0 ? fromAllocations : (user?.allocatedSubjects || []);
+    return source.map((a: any) => ({
+      classArmId: resolveArmId(a.classArmId || a.class_arm || a.class_arm_id, a.classArmName || a.class_arm_name),
+      classArmName: a.classArmName || a.class_arm_name || a.classArmId,
+      subjectId: resolveSubjectId(a.subjectId || a.subject_code || a.subject || a.subject_id),
+      subjectName: a.subjectName || a.subject_name || a.subjectId
+    }));
   }, [allocations, user]);
 
   // Unique classes and subjects

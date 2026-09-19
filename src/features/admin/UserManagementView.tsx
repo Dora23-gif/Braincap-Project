@@ -30,7 +30,7 @@ import { FuturisticKPICard } from '../../components/common/FuturisticKPICard';
 import { FuturisticPageShell } from '../../components/common/FuturisticPageShell';
 import { ModalPortal } from '../../components/common/ModalPortal';
 import { PaginationControls } from '../../components/common/PaginationControls';
-import { api, PaginatedResponse, adaptStaffFromBackend } from '../../lib/api';
+import { api, PaginatedResponse, adaptStaffFromBackend, resolveArmId, resolveSubjectId, resolveArmPk, resolveSubjectPk } from '../../lib/api';
 
 
 export const UserManagementView: React.FC = () => {
@@ -139,28 +139,34 @@ export const UserManagementView: React.FC = () => {
   };
 
   const handleSubjectToggle = (subjectId: string) => {
-    if (formSubjectIds.includes(subjectId)) {
-      setFormSubjectIds(formSubjectIds.filter(id => id !== subjectId));
+    const canonical = resolveSubjectId(subjectId);
+    if (formSubjectIds.some(id => id === canonical || resolveSubjectId(id) === canonical)) {
+      setFormSubjectIds(formSubjectIds.filter(id => id !== canonical && resolveSubjectId(id) !== canonical));
     } else {
-      setFormSubjectIds([...formSubjectIds, subjectId]);
+      setFormSubjectIds([...formSubjectIds, canonical]);
     }
   };
 
   const handleTeachingArmToggle = (armId: string) => {
-    if (formTeachingArmIds.includes(armId)) {
-      setFormTeachingArmIds(formTeachingArmIds.filter(id => id !== armId));
+    const canonical = resolveArmId(armId);
+    if (formTeachingArmIds.some(id => id === canonical || resolveArmId(id) === canonical)) {
+      setFormTeachingArmIds(formTeachingArmIds.filter(id => id !== canonical && resolveArmId(id) !== canonical));
     } else {
-      setFormTeachingArmIds([...formTeachingArmIds, armId]);
+      setFormTeachingArmIds([...formTeachingArmIds, canonical]);
     }
   };
 
   const handleSelectJuniorArms = () => {
-    const juniorIds = classArms.filter(a => (a.fullName || a.name).toLowerCase().includes('jss')).map(a => a.id);
+    const juniorIds = classArms
+      .filter(a => (a.fullName || a.name).toLowerCase().includes('jss'))
+      .map(a => resolveArmId(a.id, a.fullName));
     setFormTeachingArmIds(prev => Array.from(new Set([...prev, ...juniorIds])));
   };
 
   const handleSelectSeniorArms = () => {
-    const seniorIds = classArms.filter(a => (a.fullName || a.name).toLowerCase().includes('sss')).map(a => a.id);
+    const seniorIds = classArms
+      .filter(a => (a.fullName || a.name).toLowerCase().includes('sss'))
+      .map(a => resolveArmId(a.id, a.fullName));
     setFormTeachingArmIds(prev => Array.from(new Set([...prev, ...seniorIds])));
   };
 
@@ -233,15 +239,32 @@ export const UserManagementView: React.FC = () => {
     setFormRoles(member.roles && member.roles.length > 0 ? member.roles : (member.role ? [member.role] : ['SUBJECT_TEACHER']));
     setFormClassArmId(member.formMasterClassArmId || member.formMasterArmId || '');
 
-    const teacherAllocs = allocations.filter(
-      a => a.teacherId === member.id || a.teacherId === member.staffId || a.teacherId === member.identifier
-    );
-    const existingSubjectIds = (member.assignedSubjectIds && member.assignedSubjectIds.length > 0)
+    const cleanMemberName = member.name.toLowerCase().replace(/^(mr\.|mrs\.|ms\.|dr\.|prof\.|engr\.)\s*/, '').trim();
+
+    const teacherAllocs = allocations.filter(a => {
+      if (a.teacherId === member.id || a.teacherId === member.staffId || a.teacherId === member.identifier) return true;
+      if (member.id && /^\d+$/.test(member.id) && String(a.teacherId) === String(member.id)) return true;
+      if (a.teacherName && cleanMemberName) {
+        const cleanAllocName = a.teacherName.toLowerCase().replace(/^(mr\.|mrs\.|ms\.|dr\.|prof\.|engr\.)\s*/, '').trim();
+        if (cleanAllocName === cleanMemberName || cleanAllocName.includes(cleanMemberName) || cleanMemberName.includes(cleanAllocName)) return true;
+      }
+      return false;
+    });
+
+    const rawSubjects = (member.assignedSubjectIds && member.assignedSubjectIds.length > 0)
       ? member.assignedSubjectIds
-      : Array.from(new Set(teacherAllocs.map(a => a.subjectId)));
-    const existingArmIds = (member.assignedClassArms && member.assignedClassArms.length > 0)
+      : (member.allocatedSubjects && member.allocatedSubjects.length > 0
+          ? member.allocatedSubjects.map(a => a.subjectId)
+          : Array.from(new Set(teacherAllocs.map(a => a.subjectId))));
+
+    const rawArms = (member.assignedClassArms && member.assignedClassArms.length > 0)
       ? member.assignedClassArms
-      : Array.from(new Set(teacherAllocs.map(a => a.classArmId)));
+      : (member.allocatedSubjects && member.allocatedSubjects.length > 0
+          ? member.allocatedSubjects.map(a => a.classArmId)
+          : Array.from(new Set(teacherAllocs.map(a => a.classArmId))));
+
+    const existingSubjectIds = Array.from(new Set(rawSubjects.map(resolveSubjectId)));
+    const existingArmIds = Array.from(new Set(rawArms.map(a => resolveArmId(a))));
 
     setFormSubjectIds(existingSubjectIds);
     setFormTeachingArmIds(existingArmIds);
@@ -268,40 +291,42 @@ export const UserManagementView: React.FC = () => {
     const isSubjectTeacher = formRoles.includes('SUBJECT_TEACHER') || formPrimaryRole === 'SUBJECT_TEACHER';
     const isFormMaster = formRoles.includes('FORM_MASTER') || formPrimaryRole === 'FORM_MASTER';
 
-    const armObj = classArms.find(a => a.id === formClassArmId);
+    const armObj = classArms.find(a => a.id === formClassArmId || resolveArmId(a.id, a.fullName) === resolveArmId(formClassArmId));
     const staffCode = `STF/2026/${String(staff.length + 1).padStart(3, '0')}`;
 
     // Generate allocated subjects matrix
     const allocated = formSubjectIds.flatMap(subId => {
-      const subObj = subjects.find(s => s.id === subId);
+      const canonicalSubId = resolveSubjectId(subId);
+      const subObj = subjects.find(s => s.id === canonicalSubId || resolveSubjectId(s.id) === canonicalSubId);
       const effectiveArms = formTeachingArmIds.length > 0
-        ? formTeachingArmIds
+        ? formTeachingArmIds.map(a => resolveArmId(a))
         : classArms.filter(a => {
             const isJunior = (a.fullName || a.name).toLowerCase().includes('jss');
             if (subObj?.applicableTo === 'JUNIOR') return isJunior;
             if (subObj?.applicableTo === 'SENIOR') return !isJunior;
             return true;
-          }).map(a => a.id);
+          }).map(a => resolveArmId(a.id, a.fullName));
 
       return effectiveArms.map(armId => {
-        const aObj = classArms.find(a => a.id === armId);
+        const canonicalArmId = resolveArmId(armId);
+        const aObj = classArms.find(a => a.id === canonicalArmId || resolveArmId(a.id, a.fullName) === canonicalArmId);
         return {
-          classArmId: armId,
-          classArmName: aObj?.fullName || armId,
-          subjectId: subId,
-          subjectName: subObj?.name || subId
+          classArmId: canonicalArmId,
+          classArmName: aObj?.fullName || canonicalArmId,
+          subjectId: canonicalSubId,
+          subjectName: subObj?.name || canonicalSubId
         };
       });
     });
 
     const effectiveTeachingArms = formTeachingArmIds.length > 0
-      ? formTeachingArmIds
+      ? formTeachingArmIds.map(a => resolveArmId(a))
       : Array.from(new Set(allocated.map(a => a.classArmId)));
 
     // Combine teaching class arms with form master class arm if applicable
     const allAssignedArms = Array.from(new Set([
       ...effectiveTeachingArms,
-      ...(isFormMaster && formClassArmId ? [formClassArmId] : [])
+      ...(isFormMaster && formClassArmId ? [resolveArmId(formClassArmId)] : [])
     ]));
 
     const initialPin = formPassword.trim() || `EIS-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -324,9 +349,9 @@ export const UserManagementView: React.FC = () => {
       role: formPrimaryRole,
       roles: formRoles,
       assignedClassArms: allAssignedArms,
-      assignedSubjectIds: formSubjectIds,
+      assignedSubjectIds: formSubjectIds.map(resolveSubjectId),
       allocatedSubjects: allocated,
-      formMasterClassArmId: isFormMaster ? formClassArmId : undefined,
+      formMasterClassArmId: isFormMaster ? resolveArmId(formClassArmId) : undefined,
       formMasterClassArmName: isFormMaster && armObj ? armObj.fullName : undefined,
       defaultPin: initialPin,
     });
@@ -343,37 +368,39 @@ export const UserManagementView: React.FC = () => {
     const isSubjectTeacher = formRoles.includes('SUBJECT_TEACHER') || formPrimaryRole === 'SUBJECT_TEACHER';
     const isFormMaster = formRoles.includes('FORM_MASTER') || formPrimaryRole === 'FORM_MASTER';
 
-    const armObj = classArms.find(a => a.id === formClassArmId);
+    const armObj = classArms.find(a => a.id === formClassArmId || resolveArmId(a.id, a.fullName) === resolveArmId(formClassArmId));
 
     const allocated = formSubjectIds.flatMap(subId => {
-      const subObj = subjects.find(s => s.id === subId);
+      const canonicalSubId = resolveSubjectId(subId);
+      const subObj = subjects.find(s => s.id === canonicalSubId || resolveSubjectId(s.id) === canonicalSubId);
       const effectiveArms = formTeachingArmIds.length > 0
-        ? formTeachingArmIds
+        ? formTeachingArmIds.map(a => resolveArmId(a))
         : classArms.filter(a => {
             const isJunior = (a.fullName || a.name).toLowerCase().includes('jss');
             if (subObj?.applicableTo === 'JUNIOR') return isJunior;
             if (subObj?.applicableTo === 'SENIOR') return !isJunior;
             return true;
-          }).map(a => a.id);
+          }).map(a => resolveArmId(a.id, a.fullName));
 
       return effectiveArms.map(armId => {
-        const aObj = classArms.find(a => a.id === armId);
+        const canonicalArmId = resolveArmId(armId);
+        const aObj = classArms.find(a => a.id === canonicalArmId || resolveArmId(a.id, a.fullName) === canonicalArmId);
         return {
-          classArmId: armId,
-          classArmName: aObj?.fullName || armId,
-          subjectId: subId,
-          subjectName: subObj?.name || subId
+          classArmId: canonicalArmId,
+          classArmName: aObj?.fullName || canonicalArmId,
+          subjectId: canonicalSubId,
+          subjectName: subObj?.name || canonicalSubId
         };
       });
     });
 
     const effectiveTeachingArms = formTeachingArmIds.length > 0
-      ? formTeachingArmIds
+      ? formTeachingArmIds.map(a => resolveArmId(a))
       : Array.from(new Set(allocated.map(a => a.classArmId)));
 
     const allAssignedArms = Array.from(new Set([
       ...effectiveTeachingArms,
-      ...(isFormMaster && formClassArmId ? [formClassArmId] : [])
+      ...(isFormMaster && formClassArmId ? [resolveArmId(formClassArmId)] : [])
     ]));
 
     const updates: Partial<StaffMember> = {
@@ -385,9 +412,9 @@ export const UserManagementView: React.FC = () => {
       role: formPrimaryRole,
       roles: formRoles,
       assignedClassArms: allAssignedArms,
-      assignedSubjectIds: formSubjectIds,
+      assignedSubjectIds: formSubjectIds.map(resolveSubjectId),
       allocatedSubjects: allocated,
-      formMasterClassArmId: isFormMaster ? formClassArmId : undefined,
+      formMasterClassArmId: isFormMaster ? resolveArmId(formClassArmId) : undefined,
       formMasterClassArmName: isFormMaster && armObj ? armObj.fullName : undefined
     };
 
@@ -954,7 +981,9 @@ export const UserManagementView: React.FC = () => {
                     </span>
                     <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1.5 bg-white/70 dark:bg-slate-800/60 rounded-lg border border-indigo-100 dark:border-indigo-900/40">
                       {subjects.map(sub => {
-                        const isSelected = formSubjectIds.includes(sub.id);
+                        const isSelected = formSubjectIds.some(
+                          id => id === sub.id || resolveSubjectId(id) === sub.id || resolveSubjectId(id) === resolveSubjectId(sub.id) || id === sub.code.toLowerCase() || id === `subj-${sub.code.toLowerCase()}`
+                        );
                         return (
                           <button
                             key={sub.id}
@@ -1008,7 +1037,9 @@ export const UserManagementView: React.FC = () => {
                     </div>
                     <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1.5 bg-white/70 dark:bg-slate-800/60 rounded-lg border border-indigo-100 dark:border-indigo-900/40">
                       {classArms.map(arm => {
-                        const isSelected = formTeachingArmIds.includes(arm.id);
+                        const isSelected = formTeachingArmIds.some(
+                          id => id === arm.id || resolveArmId(id, arm.fullName) === arm.id || (arm.fullName && resolveArmId(id, arm.fullName) === resolveArmId(arm.id, arm.fullName))
+                        );
                         return (
                           <button
                             key={arm.id}
@@ -1251,7 +1282,9 @@ export const UserManagementView: React.FC = () => {
                     </span>
                     <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1.5 bg-white/70 dark:bg-slate-800/60 rounded-lg border border-indigo-100 dark:border-indigo-900/40">
                       {subjects.map(sub => {
-                        const isSelected = formSubjectIds.includes(sub.id);
+                        const isSelected = formSubjectIds.some(
+                          id => id === sub.id || resolveSubjectId(id) === sub.id || resolveSubjectId(id) === resolveSubjectId(sub.id) || id === sub.code.toLowerCase() || id === `subj-${sub.code.toLowerCase()}`
+                        );
                         return (
                           <button
                             key={sub.id}
@@ -1305,7 +1338,9 @@ export const UserManagementView: React.FC = () => {
                     </div>
                     <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1.5 bg-white/70 dark:bg-slate-800/60 rounded-lg border border-indigo-100 dark:border-indigo-900/40">
                       {classArms.map(arm => {
-                        const isSelected = formTeachingArmIds.includes(arm.id);
+                        const isSelected = formTeachingArmIds.some(
+                          id => id === arm.id || resolveArmId(id, arm.fullName) === arm.id || (arm.fullName && resolveArmId(id, arm.fullName) === resolveArmId(arm.id, arm.fullName))
+                        );
                         return (
                           <button
                             key={arm.id}

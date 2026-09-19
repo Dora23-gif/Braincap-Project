@@ -216,6 +216,7 @@ export const api = {
 // ============================================================================
 
 export const ARM_SLUG_BY_PK: Record<number, string> = {
+  // Legacy local SQLite IDs:
   25: 'arm-jss1-emerald',
   26: 'arm-jss1-diamond',
   27: 'arm-jss1-gold',
@@ -228,97 +229,151 @@ export const ARM_SLUG_BY_PK: Record<number, string> = {
   34: 'arm-sss1-science-emerald',
   35: 'arm-sss1-science-diamond',
   36: 'arm-sss1-commercial-gold',
-  37: 'arm-sss1-arts-platinum',
-  38: 'arm-sss2-science-emerald',
-  39: 'arm-sss2-science-diamond',
-  40: 'arm-sss2-commercial-gold',
-  41: 'arm-sss2-arts-platinum',
-  42: 'arm-sss3-science-emerald',
-  43: 'arm-sss3-science-diamond',
-  44: 'arm-sss3-commercial-gold',
-  45: 'arm-sss3-arts-platinum',
-  // Neon PostgreSQL active IDs for SSS 1-3 Gold & Diamond:
-  52: 'arm-sss1-gold',
-  53: 'arm-sss1-diamond',
-  54: 'arm-sss2-gold',
-  55: 'arm-sss2-diamond',
-  56: 'arm-sss3-gold',
-  57: 'arm-sss3-diamond',
+  37: 'arm-jss1-gold', // Neon active
+  38: 'arm-jss1-emerald', // Neon active
+  39: 'arm-jss2-gold', // Neon active
+  40: 'arm-jss2-diamond', // Neon active
+  41: 'arm-jss3-gold', // Neon active
+  42: 'arm-jss3-diamond', // Neon active
+  43: 'arm-sss1-gold', // Neon active
+  44: 'arm-sss1-diamond', // Neon active
+  45: 'arm-sss2-gold', // Neon active
+  46: 'arm-sss2-diamond', // Neon active
+  47: 'arm-sss3-gold', // Neon active
+  48: 'arm-sss3-diamond', // Neon active
+  49: 'arm-jss1-diamond', // Neon active
+  50: 'arm-jss2-emerald', // Neon active
+  51: 'arm-jss3-emerald', // Neon active
+  52: 'arm-sss1-science-emerald', // Neon active
+  53: 'arm-sss1-science-diamond', // Neon active
+  54: 'arm-sss1-commercial-gold', // Neon active
+  55: 'arm-sss1-arts-platinum', // Neon active
+  56: 'arm-sss2-science-emerald', // Neon active
+  57: 'arm-sss2-science-diamond', // Neon active
+  58: 'arm-sss2-commercial-gold', // Neon active
+  59: 'arm-sss2-arts-platinum', // Neon active
+  60: 'arm-sss3-science-emerald', // Neon active
+  61: 'arm-sss3-science-diamond', // Neon active
+  62: 'arm-sss3-commercial-gold', // Neon active
+  63: 'arm-sss3-arts-platinum', // Neon active
 };
 
 export const ARM_PK_BY_SLUG: Record<string, number> = {
-  'arm-jss1-emerald': 25,
-  'arm-jss1-diamond': 26,
-  'arm-jss1-gold': 27,
-  'arm-jss2-emerald': 28,
-  'arm-jss2-diamond': 29,
-  'arm-jss2-gold': 30,
-  'arm-jss3-emerald': 31,
-  'arm-jss3-diamond': 32,
-  'arm-jss3-gold': 33,
-  'arm-sss1-science-emerald': 34,
-  'arm-sss1-science-diamond': 35,
-  'arm-sss1-commercial-gold': 36,
-  'arm-sss1-arts-platinum': 37,
-  'arm-sss1-platinum': 37,
-  'arm-sss1-gold': 52,
-  'arm-sss1-diamond': 53,
-  'arm-sss2-science-emerald': 38,
-  'arm-sss2-science-diamond': 39,
-  'arm-sss2-commercial-gold': 40,
-  'arm-sss2-arts-platinum': 41,
-  'arm-sss2-platinum': 41,
-  'arm-sss2-gold': 54,
-  'arm-sss2-diamond': 55,
-  'arm-sss3-science-emerald': 42,
-  'arm-sss3-science-diamond': 43,
-  'arm-sss3-commercial-gold': 44,
-  'arm-sss3-arts-platinum': 45,
-  'arm-sss3-platinum': 45,
-  'arm-sss3-gold': 56,
-  'arm-sss3-diamond': 57,
-  'arm-sss3-emerald': 42,
+  'arm-jss1-emerald': 38,
+  'arm-jss-1-emerald': 38,
+  'arm-jss1-diamond': 49,
+  'arm-jss-1-diamond': 49,
+  'arm-jss1-gold': 37,
+  'arm-jss-1-gold': 37,
+  'arm-jss2-emerald': 50,
+  'arm-jss-2-emerald': 50,
+  'arm-jss2-diamond': 40,
+  'arm-jss-2-diamond': 40,
+  'arm-jss2-gold': 39,
+  'arm-jss-2-gold': 39,
+  'arm-jss3-emerald': 51,
+  'arm-jss-3-emerald': 51,
+  'arm-jss3-diamond': 42,
+  'arm-jss-3-diamond': 42,
+  'arm-jss3-gold': 41,
+  'arm-jss-3-gold': 41,
+  'arm-sss1-gold': 43,
+  'arm-sss-1-gold': 43,
+  'arm-sss1-diamond': 44,
+  'arm-sss-1-diamond': 44,
+  'arm-sss1-science-emerald': 52,
+  'arm-sss-1-science-emerald': 52,
+  'arm-sss1-science-diamond': 53,
+  'arm-sss-1-science-diamond': 53,
+  'arm-sss1-commercial-gold': 54,
+  'arm-sss-1-commercial-gold': 54,
+  'arm-sss1-arts-platinum': 55,
+  'arm-sss-1-arts-platinum': 55,
+  'arm-sss1-platinum': 55,
+  'arm-sss2-gold': 45,
+  'arm-sss-2-gold': 45,
+  'arm-sss2-diamond': 46,
+  'arm-sss-2-diamond': 46,
+  'arm-sss2-science-emerald': 56,
+  'arm-sss-2-science-emerald': 56,
+  'arm-sss2-science-diamond': 57,
+  'arm-sss-2-science-diamond': 57,
+  'arm-sss2-commercial-gold': 58,
+  'arm-sss-2-commercial-gold': 58,
+  'arm-sss2-arts-platinum': 59,
+  'arm-sss-2-arts-platinum': 59,
+  'arm-sss2-platinum': 59,
+  'arm-sss3-gold': 47,
+  'arm-sss-3-gold': 47,
+  'arm-sss3-diamond': 48,
+  'arm-sss-3-diamond': 48,
+  'arm-sss3-science-emerald': 60,
+  'arm-sss-3-science-emerald': 60,
+  'arm-sss3-science-diamond': 61,
+  'arm-sss-3-science-diamond': 61,
+  'arm-sss3-commercial-gold': 62,
+  'arm-sss-3-commercial-gold': 62,
+  'arm-sss3-arts-platinum': 63,
+  'arm-sss-3-arts-platinum': 63,
+  'arm-sss3-platinum': 63,
 };
 
 export const ARM_SLUG_BY_NAME: Record<string, string> = {
   'jss 1 emerald': 'arm-jss1-emerald',
   'jss1 emerald': 'arm-jss1-emerald',
+  'jss-1-emerald': 'arm-jss1-emerald',
   'jss 1 diamond': 'arm-jss1-diamond',
   'jss1 diamond': 'arm-jss1-diamond',
+  'jss-1-diamond': 'arm-jss1-diamond',
   'jss 1 gold': 'arm-jss1-gold',
   'jss1 gold': 'arm-jss1-gold',
+  'jss-1-gold': 'arm-jss1-gold',
   'jss 2 emerald': 'arm-jss2-emerald',
   'jss2 emerald': 'arm-jss2-emerald',
+  'jss-2-emerald': 'arm-jss2-emerald',
   'jss 2 diamond': 'arm-jss2-diamond',
   'jss2 diamond': 'arm-jss2-diamond',
+  'jss-2-diamond': 'arm-jss2-diamond',
   'jss 2 gold': 'arm-jss2-gold',
   'jss2 gold': 'arm-jss2-gold',
+  'jss-2-gold': 'arm-jss2-gold',
   'jss 3 emerald': 'arm-jss3-emerald',
   'jss3 emerald': 'arm-jss3-emerald',
+  'jss-3-emerald': 'arm-jss3-emerald',
   'jss 3 diamond': 'arm-jss3-diamond',
   'jss3 diamond': 'arm-jss3-diamond',
+  'jss-3-diamond': 'arm-jss3-diamond',
   'jss 3 gold': 'arm-jss3-gold',
   'jss3 gold': 'arm-jss3-gold',
+  'jss-3-gold': 'arm-jss3-gold',
   'sss 1 arts platinum': 'arm-sss1-arts-platinum',
   'sss 1 platinum': 'arm-sss1-arts-platinum',
   'sss1 arts platinum': 'arm-sss1-arts-platinum',
+  'sss-1-arts-platinum': 'arm-sss1-arts-platinum',
   'sss 1 commercial gold': 'arm-sss1-commercial-gold',
+  'sss1 commercial gold': 'arm-sss1-commercial-gold',
+  'sss-1-commercial-gold': 'arm-sss1-commercial-gold',
   'sss 1 gold': 'arm-sss1-gold',
   'sss1 gold': 'arm-sss1-gold',
+  'sss-1-gold': 'arm-sss1-gold',
   'sss 1 science diamond': 'arm-sss1-science-diamond',
   'sss 1 diamond': 'arm-sss1-diamond',
   'sss1 diamond': 'arm-sss1-diamond',
+  'sss-1-diamond': 'arm-sss1-diamond',
   'sss 1 science emerald': 'arm-sss1-science-emerald',
   'sss 1 emerald': 'arm-sss1-science-emerald',
   'sss1 science emerald': 'arm-sss1-science-emerald',
+  'sss-1-science-emerald': 'arm-sss1-science-emerald',
   'sss 2 arts platinum': 'arm-sss2-arts-platinum',
   'sss 2 platinum': 'arm-sss2-arts-platinum',
   'sss 2 commercial gold': 'arm-sss2-commercial-gold',
   'sss 2 gold': 'arm-sss2-gold',
   'sss2 gold': 'arm-sss2-gold',
+  'sss-2-gold': 'arm-sss2-gold',
   'sss 2 science diamond': 'arm-sss2-science-diamond',
   'sss 2 diamond': 'arm-sss2-diamond',
   'sss2 diamond': 'arm-sss2-diamond',
+  'sss-2-diamond': 'arm-sss2-diamond',
   'sss 2 science emerald': 'arm-sss2-science-emerald',
   'sss 2 emerald': 'arm-sss2-science-emerald',
   'sss 3 arts platinum': 'arm-sss3-arts-platinum',
@@ -326,9 +381,11 @@ export const ARM_SLUG_BY_NAME: Record<string, string> = {
   'sss 3 commercial gold': 'arm-sss3-commercial-gold',
   'sss 3 gold': 'arm-sss3-gold',
   'sss3 gold': 'arm-sss3-gold',
+  'sss-3-gold': 'arm-sss3-gold',
   'sss 3 science diamond': 'arm-sss3-science-diamond',
   'sss 3 diamond': 'arm-sss3-diamond',
   'sss3 diamond': 'arm-sss3-diamond',
+  'sss-3-diamond': 'arm-sss3-diamond',
   'sss 3 science emerald': 'arm-sss3-science-emerald',
   'sss 3 emerald': 'arm-sss3-science-emerald',
 };
@@ -344,7 +401,7 @@ export const SUBJECT_CODE_BY_PK: Record<number, string> = {
   65: 'his', 66: 'scs', 67: 'cca', 68: 'bus', 69: 'agr', 70: 'crs',
   71: 'frn', 72: 'phy', 73: 'che', 74: 'bio', 75: 'civ', 76: 'yor',
   77: 'hau', 78: 'dp',  79: 'fn',  80: 'cmp', 81: 'eco', 82: 'geo',
-  83: 'td',  84: 'fmth'
+  83: 'td',  84: 'fmth', 86: 'tiv', 87: 'fin',
 };
 
 export const SUBJECT_PK_BY_CODE: Record<string, number> = {
@@ -352,7 +409,7 @@ export const SUBJECT_PK_BY_CODE: Record<string, number> = {
   'his': 65, 'scs': 66, 'cca': 67, 'bus': 68, 'agr': 69, 'crs': 70,
   'frn': 71, 'phy': 72, 'che': 73, 'bio': 74, 'civ': 75, 'yor': 76,
   'hau': 77, 'dp':  78, 'fn':  79, 'cmp': 80, 'eco': 81, 'geo': 82,
-  'td':  83, 'fmth': 84
+  'td':  83, 'fmth': 84, 'tiv': 86, 'fin': 87
 };
 
 export function resolveArmId(rawIdOrName?: any, fullName?: string): string {
@@ -363,13 +420,22 @@ export function resolveArmId(rawIdOrName?: any, fullName?: string): string {
     return ARM_SLUG_BY_NAME[nameToTry];
   }
 
-  if (str.startsWith('arm-')) return str;
-  const num = parseInt(str, 10);
-  if (!isNaN(num) && ARM_SLUG_BY_PK[num]) return ARM_SLUG_BY_PK[num];
+  const num = parseInt(str.replace(/^arm-/, ''), 10);
+  if (!isNaN(num) && ARM_SLUG_BY_PK[num]) {
+    return ARM_SLUG_BY_PK[num];
+  }
+
+  if (str.startsWith('arm-')) {
+    const clean = str.replace(/-+/g, '-').replace(/jss-(\d)/, 'jss$1').replace(/sss-(\d)/, 'sss$1');
+    return clean;
+  }
 
   if (nameToTry) {
+    const compact = nameToTry.replace(/[\s-_]+/g, '');
     for (const [key, slug] of Object.entries(ARM_SLUG_BY_NAME)) {
-      if (nameToTry.includes(key)) return slug;
+      if (compact.includes(key.replace(/[\s-_]+/g, '')) || key.replace(/[\s-_]+/g, '').includes(compact)) {
+        return slug;
+      }
     }
   }
 
@@ -730,17 +796,31 @@ export function adaptStaffFromBackend(d: any): StaffMember {
 
   const defaultTitle = roleTitleMap[primaryRole] || primaryRole.replace(/_/g, ' ');
 
-  const adaptedAllocations = Array.isArray(d.allocated_subjects)
-    ? d.allocated_subjects.map((a: any) => ({
-        classArmId: resolveArmId(a.class_arm || a.classArmId, a.classArmName || a.class_arm_name),
+  const adaptedAllocations = Array.isArray(d.allocated_subjects || d.allocatedSubjects)
+    ? (d.allocated_subjects || d.allocatedSubjects).map((a: any) => ({
+        classArmId: resolveArmId(a.class_arm || a.classArmId || a.class_arm_id, a.classArmName || a.class_arm_name),
         classArmName: a.classArmName || a.class_arm_name || '',
-        subjectId: resolveSubjectId(a.subject_code || a.subject || a.subjectId),
+        subjectId: resolveSubjectId(a.subject_code || a.subject || a.subjectId || a.subject_id),
         subjectName: a.subjectName || a.subject_name || '',
       }))
     : [];
 
-  const assignedSubjectIds: string[] = Array.from(new Set(adaptedAllocations.map((a: { subjectId: string }) => a.subjectId)));
-  const assignedClassArms: string[] = Array.from(new Set(adaptedAllocations.map((a: { classArmId: string }) => a.classArmId)));
+  const rawAssignedSubIds = Array.isArray(d.assigned_subject_ids)
+    ? d.assigned_subject_ids
+    : (Array.isArray(d.assignedSubjectIds) ? d.assignedSubjectIds : []);
+  const rawAssignedArmIds = Array.isArray(d.assigned_class_arms)
+    ? d.assigned_class_arms
+    : (Array.isArray(d.assignedClassArms) ? d.assignedClassArms : []);
+
+  const assignedSubjectIds: string[] = Array.from(new Set([
+    ...adaptedAllocations.map((a: { subjectId: string }) => a.subjectId),
+    ...rawAssignedSubIds.map((s: any) => resolveSubjectId(s))
+  ]));
+
+  const assignedClassArms: string[] = Array.from(new Set([
+    ...adaptedAllocations.map((a: { classArmId: string }) => a.classArmId),
+    ...rawAssignedArmIds.map((arm: any) => resolveArmId(arm))
+  ]));
 
   return {
     id: String(d.id),
@@ -761,6 +841,7 @@ export function adaptStaffFromBackend(d: any): StaffMember {
     assignedSubjectIds,
     assignedClassArms,
     defaultPin: d.default_pin || d.defaultPin || '••••••',
+    backendId: !isNaN(Number(d.id)) ? Number(d.id) : undefined,
   };
 }
 
