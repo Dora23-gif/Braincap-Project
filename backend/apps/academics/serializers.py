@@ -25,9 +25,124 @@ class AcademicSessionSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "is_current", "start_date", "end_date", "terms"]
 
 
+from apps.accounts.models import CustomUser
+
+
+class ClassLevelFlexibleRelatedField(serializers.PrimaryKeyRelatedField):
+    """
+    Accepts:
+    1. Integer PK (e.g. 13)
+    2. Numeric string (e.g. "13")
+    3. Level name (e.g. "JSS 1", "SSS 2")
+    4. Mock ID slug (e.g. "lvl-jss1", "lvl-sss2")
+    5. Order number (1-6)
+    """
+    def to_internal_value(self, data):
+        if not data:
+            raise serializers.ValidationError("Class level is required.")
+        if isinstance(data, ClassLevel):
+            return data
+
+        if isinstance(data, int):
+            lvl = ClassLevel.objects.filter(pk=data).first()
+            if lvl:
+                return lvl
+
+        str_val = str(data).strip()
+        if str_val.isdigit():
+            num = int(str_val)
+            lvl = ClassLevel.objects.filter(pk=num).first() or ClassLevel.objects.filter(order=num).first()
+            if lvl:
+                return lvl
+
+        if str_val.lower().startswith("lvl-") or str_val.lower().startswith("lvl_"):
+            clean_str = str_val.replace("lvl-", "").replace("lvl_", "").strip()
+            norm = clean_str.upper()
+            if len(norm) >= 4 and (norm.startswith("JSS") or norm.startswith("SSS")):
+                spaced = f"{norm[:3]} {norm[3:]}"
+                lvl = ClassLevel.objects.filter(name__iexact=spaced).first()
+                if lvl:
+                    return lvl
+
+        lvl = ClassLevel.objects.filter(name__iexact=str_val).first()
+        if lvl:
+            return lvl
+
+        clean_name = str_val.replace(" ", "").upper()
+        for cl in ClassLevel.objects.all():
+            if cl.name.replace(" ", "").upper() == clean_name:
+                return cl
+
+        raise serializers.ValidationError(f"Class level '{data}' could not be resolved.")
+
+
+class FormMasterFlexibleRelatedField(serializers.PrimaryKeyRelatedField):
+    """
+    Accepts:
+    1. Integer PK (e.g. 56)
+    2. Numeric string (e.g. "56")
+    3. Username (e.g. "stf_2026_001")
+    4. Identifier (e.g. "STF/2026/001")
+    5. Mock ID slug (e.g. "stf-001")
+    6. Full Name
+    7. Null or blank
+    """
+    def to_internal_value(self, data):
+        if not data:
+            return None
+        if isinstance(data, CustomUser):
+            return data
+
+        if isinstance(data, int):
+            user = CustomUser.objects.filter(pk=data).first()
+            if user:
+                return user
+
+        str_val = str(data).strip()
+        if not str_val or str_val.lower() in ("null", "none", "undefined", ""):
+            return None
+
+        if str_val.isdigit():
+            user = CustomUser.objects.filter(pk=int(str_val)).first()
+            if user:
+                return user
+
+        if str_val.lower().startswith("stf-") or str_val.lower().startswith("stf_"):
+            num_part = str_val[4:]
+            if num_part.isdigit():
+                formatted_num = f"{int(num_part):03d}"
+                user = (
+                    CustomUser.objects.filter(identifier__iexact=f"STF/2026/{formatted_num}").first()
+                    or CustomUser.objects.filter(username__iexact=f"stf_2026_{formatted_num}").first()
+                )
+                if user:
+                    return user
+
+        user = (
+            CustomUser.objects.filter(identifier__iexact=str_val).first()
+            or CustomUser.objects.filter(username__iexact=str_val).first()
+            or CustomUser.objects.filter(email__iexact=str_val).first()
+        )
+        if user:
+            return user
+
+        for u in CustomUser.objects.all():
+            if u.get_full_name().lower() == str_val.lower():
+                return u
+
+        return None
+
+
 class ClassArmSerializer(serializers.ModelSerializer):
+    class_level = ClassLevelFlexibleRelatedField(queryset=ClassLevel.objects.all())
     class_level_name = serializers.CharField(source="class_level.name", read_only=True)
+    form_master = FormMasterFlexibleRelatedField(
+        queryset=CustomUser.objects.all(),
+        required=False,
+        allow_null=True
+    )
     form_master_name = serializers.SerializerMethodField()
+    full_name = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = ClassArm
@@ -41,6 +156,26 @@ class ClassArmSerializer(serializers.ModelSerializer):
             return obj.form_master.get_full_name() or obj.form_master.username
         return None
 
+    def validate(self, attrs):
+        if not attrs.get("full_name") and attrs.get("class_level") and attrs.get("name"):
+            attrs["full_name"] = f"{attrs['class_level'].name} {attrs['name']}".strip()
+        return attrs
+
+    def create(self, validated_data):
+        class_level = validated_data.get("class_level")
+        name = validated_data.get("name")
+        full_name = validated_data.get("full_name") or (f"{class_level.name} {name}".strip() if class_level and name else "")
+        validated_data["full_name"] = full_name
+
+        existing = ClassArm.objects.filter(class_level=class_level, name__iexact=name).first()
+        if existing:
+            for k, v in validated_data.items():
+                setattr(existing, k, v)
+            existing.save()
+            return existing
+
+        return super().create(validated_data)
+
 
 class ClassLevelSerializer(serializers.ModelSerializer):
     arms = ClassArmSerializer(many=True, read_only=True)
@@ -48,6 +183,16 @@ class ClassLevelSerializer(serializers.ModelSerializer):
     class Meta:
         model = ClassLevel
         fields = ["id", "name", "section", "order", "arms"]
+
+    def create(self, validated_data):
+        name = validated_data.get("name", "").strip()
+        existing = ClassLevel.objects.filter(name__iexact=name).first()
+        if existing:
+            for k, v in validated_data.items():
+                setattr(existing, k, v)
+            existing.save()
+            return existing
+        return super().create(validated_data)
 
 
 class SubjectSerializer(serializers.ModelSerializer):

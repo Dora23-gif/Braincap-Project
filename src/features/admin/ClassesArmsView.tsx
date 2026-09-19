@@ -68,13 +68,13 @@ export const ClassesArmsView: React.FC = () => {
     },
   ];
 
-  const handleCreateArm = (e: React.FormEvent) => {
+  const handleCreateArm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!armName.trim() || !selectedLevelId) return;
 
     const assignedStaff = staff.find(s => s.id === selectedFormMasterId);
 
-    addClassArm(
+    await addClassArm(
       {
         classLevelId: selectedLevelId,
         name: armName.trim(),
@@ -93,11 +93,11 @@ export const ClassesArmsView: React.FC = () => {
     setIsAddArmOpen(false);
   };
 
-  const handleCreateLevel = (e: React.FormEvent) => {
+  const handleCreateLevel = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newLevelName.trim()) return;
 
-    addClassLevel(
+    await addClassLevel(
       {
         name: newLevelName.trim(),
         section: newLevelSection,
@@ -123,36 +123,52 @@ export const ClassesArmsView: React.FC = () => {
       badgeVariant="cyber"
       actions={
         <div className="w-full lg:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 min-w-0 max-w-full">
-          <div className="w-full sm:w-auto min-w-0 max-w-full overflow-x-auto no-scrollbar">
-            <SegmentedControl
-              options={sectionOptions}
-              activeId={selectedSection}
-              onChange={setSelectedSection}
-              className="w-full sm:w-auto"
-            />
+          {/* Section Filter Pills */}
+          <div className="flex bg-slate-100 dark:bg-slate-800/80 p-1 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shrink-0">
+            {sectionOptions.map(tab => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setSelectedSection(tab.id as any)}
+                className={`px-3 sm:px-4 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  selectedSection === tab.id
+                    ? 'bg-white dark:bg-slate-900 text-indigo-900 dark:text-white shadow-2xs'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+              >
+                <span>{tab.label}</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono-tabular ${
+                  selectedSection === tab.id
+                    ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
+                    : 'bg-slate-200/60 dark:bg-slate-700/60 text-slate-500'
+                }`}>
+                  {tab.count}
+                </span>
+              </button>
+            ))}
           </div>
 
-          {canManage && (
-            <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+          {/* Action Buttons */}
+          {user?.activeRole === 'SUPER_ADMIN' && (
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <button
                 type="button"
                 onClick={() => {
                   setSelectedLevelId(classLevels[0]?.id || '');
                   setIsAddArmOpen(true);
                 }}
-                className="flex-1 sm:flex-initial px-3.5 py-2 rounded-2xl bg-amber-600 hover:bg-amber-500 text-slate-950 text-xs font-bold shadow-md flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                className="flex-1 sm:flex-initial px-3.5 py-2 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Add Class Arm</span>
+                <span>Add Arm</span>
               </button>
-
               <button
                 type="button"
                 onClick={() => {
                   setNewLevelOrder(classLevels.length + 1);
                   setIsAddLevelOpen(true);
                 }}
-                className="flex-1 sm:flex-initial px-3 py-2 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                className="flex-1 sm:flex-initial px-3.5 py-2 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5"
               >
                 <PlusCircle className="w-3.5 h-3.5 text-amber-500" />
                 <span>Add Level</span>
@@ -165,7 +181,11 @@ export const ClassesArmsView: React.FC = () => {
       {/* Class Level Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 gap-4 sm:gap-6">
         {filteredLevels.map(lvl => {
-          const arms = classArms.filter(a => a.classLevelId === lvl.id);
+          const arms = classArms.filter(
+            a => a.classLevelId === lvl.id ||
+                 a.classLevelId === String(lvl.order) ||
+                 (lvl.name && a.fullName?.toLowerCase().startsWith(lvl.name.toLowerCase()))
+          );
 
           return (
             <DoubleBezelCard key={lvl.id} hoverEffect innerClassName="p-3.5 sm:p-5 space-y-3 sm:space-y-4">

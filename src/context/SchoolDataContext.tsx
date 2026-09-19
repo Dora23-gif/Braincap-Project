@@ -73,6 +73,7 @@ import {
   adaptStudentFromBackend,
   adaptStudentToBackend,
   adaptClassArmFromBackend,
+  adaptClassArmToBackend,
   adaptClassLevelFromBackend,
   adaptAcademicSessionFromBackend,
   adaptAcademicTermFromBackend,
@@ -139,8 +140,8 @@ interface SchoolDataContextType {
   getNextAdmissionNumber: () => string;
   updateStudent: (studentId: string, updates: Partial<Student>, actor?: { id: string; name: string; role: any }) => void | Promise<void>;
   deleteStudent: (studentId: string, reason: string, actor?: { id: string; name: string; role: any }) => void;
-  addClassArm: (armData: { classLevelId: string; name: string; formMasterId?: string; formMasterName?: string }, actor?: { id: string; name: string; role: any }) => ClassArm;
-  addClassLevel: (levelData: { name: string; section: 'JUNIOR' | 'SENIOR'; order?: number }, actor?: { id: string; name: string; role: any }) => ClassLevel;
+  addClassArm: (armData: { classLevelId: string; name: string; formMasterId?: string; formMasterName?: string }, actor?: { id: string; name: string; role: any }) => ClassArm | Promise<ClassArm>;
+  addClassLevel: (levelData: { name: string; section: 'JUNIOR' | 'SENIOR'; order?: number }, actor?: { id: string; name: string; role: any }) => ClassLevel | Promise<ClassLevel>;
   addSubject: (data: Omit<Subject, 'id'>) => Promise<Subject>;
   updateSubject: (subjectId: string, updates: Partial<Subject>) => Promise<Subject>;
   publishResults: (termId: string, isPublished: boolean) => void;
@@ -244,7 +245,7 @@ interface SchoolDataContextType {
 
 const SchoolDataContext = createContext<SchoolDataContextType | undefined>(undefined);
 
-const DATA_VERSION = 'v12_unlocked_live_marks';
+const DATA_VERSION = 'v14_clean_live_db_sync';
 
 export const INITIAL_PORTAL_MESSAGES: PortalMessage[] = [
   {
@@ -540,6 +541,8 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const [
         sessionsRes,
         termsRes,
+        classLevelsRes,
+        classArmsRes,
         studentsRes,
         staffRes,
         scoresRes,
@@ -548,8 +551,6 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         settingsRes,
         auditLogsRes,
         subjectsRes,
-        classLevelsRes,
-        classArmsRes,
         allocationsRes,
       ] = await Promise.allSettled([
         api.get('/academics/sessions/', { page_size: 'all' }),
@@ -613,54 +614,25 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
       }
 
-      // Safe non-destructive merge: preserve existing rich staff (Principal, etc.) and append live staff
+      // Live Staff & Parent Accounts hydration directly from PostgreSQL
       if (staffRes.status === 'fulfilled') {
         const raw = (staffRes.value as any)?.results || staffRes.value;
         if (Array.isArray(raw) && raw.length > 0) {
-          const liveStaff = raw.map(adaptStaffFromBackend);
-          setStaff(prev => {
-            const currentList = [...prev];
-            for (const live of liveStaff) {
-              const existingIdx = currentList.findIndex(
-                s => s.email === live.email || s.staffId === live.staffId || s.identifier === live.identifier || s.id === live.id
-              );
-              if (existingIdx >= 0) {
-                currentList[existingIdx] = {
-                  ...currentList[existingIdx],
-                  status: live.status,
-                  title: live.title || currentList[existingIdx].title,
-                };
-              } else {
-                currentList.push(live);
-              }
-            }
-            return currentList;
-          });
-
-          // Live Parent Accounts hydration
-          const parentUsers = raw.filter(
-            (u: any) => (u.roles && u.roles.includes('PARENT')) || u.active_role === 'PARENT'
+          const staffUsers = raw.filter(
+            (u: any) => u.active_role !== 'PARENT' && !(Array.isArray(u.roles) && u.roles.includes('PARENT'))
           );
+          const parentUsers = raw.filter(
+            (u: any) => u.active_role === 'PARENT' || (Array.isArray(u.roles) && u.roles.includes('PARENT'))
+          );
+
+          if (staffUsers.length > 0) {
+            const liveStaff = staffUsers.map(adaptStaffFromBackend);
+            setStaff(liveStaff);
+          }
+
           if (parentUsers.length > 0) {
             const liveParents = parentUsers.map(adaptParentFromBackend);
-            setParents(prev => {
-              const currentList = [...prev];
-              for (const live of liveParents) {
-                const existingIdx = currentList.findIndex(
-                  p => p.email.toLowerCase() === live.email.toLowerCase() || p.id === live.id
-                );
-                if (existingIdx >= 0) {
-                  currentList[existingIdx] = {
-                    ...currentList[existingIdx],
-                    ...live,
-                    wardIds: live.wardIds && live.wardIds.length > 0 ? live.wardIds : currentList[existingIdx].wardIds,
-                  };
-                } else {
-                  currentList.push(live);
-                }
-              }
-              return currentList;
-            });
+            setParents(liveParents);
           }
         }
       }
@@ -1721,15 +1693,15 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
-  const addClassLevel = (levelData: { name: string; section: 'JUNIOR' | 'SENIOR'; order?: number }, actor?: { id: string; name: string; role: any }): ClassLevel => {
-    const id = `lvl-${Date.now()}`;
+  const addClassLevel = async (levelData: { name: string; section: 'JUNIOR' | 'SENIOR'; order?: number }, actor?: { id: string; name: string; role: any }): Promise<ClassLevel> => {
+    const id = `lvl-${levelData.name.toLowerCase().replace(/\s+/g, '')}`;
     const newLevel: ClassLevel = {
       id,
-      name: levelData.name,
+      name: levelData.name.trim(),
       section: levelData.section,
       order: levelData.order || (classLevels.length + 1)
     };
-    setClassLevels(prev => [...prev, newLevel]);
+    setClassLevels(prev => [...prev.filter(l => l.name.toLowerCase() !== newLevel.name.toLowerCase()), newLevel]);
 
     if (actor) {
       addAuditLog({
@@ -1743,25 +1715,42 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         metadata: { classLevelId: id, levelName: newLevel.name, section: newLevel.section }
       });
     }
+
+    try {
+      const saved = await api.post('/academics/class-levels/', {
+        name: levelData.name.trim(),
+        section: levelData.section,
+        order: levelData.order || (classLevels.length + 1)
+      });
+      if (saved && saved.id) {
+        const liveLevel = adaptClassLevelFromBackend(saved);
+        setClassLevels(prev => prev.map(l => (l.name.toLowerCase() === liveLevel.name.toLowerCase() || l.id === id) ? liveLevel : l));
+        return liveLevel;
+      }
+    } catch (err) {
+      console.warn('Backend class level creation error, keeping local optimistic:', err);
+    }
     return newLevel;
   };
 
-  const addClassArm = (armData: { classLevelId: string; name: string; formMasterId?: string; formMasterName?: string }, actor?: { id: string; name: string; role: any }): ClassArm => {
-    const id = `arm-${Date.now()}`;
-    const parentLevel = classLevels.find(l => l.id === armData.classLevelId);
-    const fullName = parentLevel ? `${parentLevel.name} ${armData.name}` : armData.name;
+  const addClassArm = async (armData: { classLevelId: string; name: string; formMasterId?: string; formMasterName?: string }, actor?: { id: string; name: string; role: any }): Promise<ClassArm> => {
+    const parentLevel = classLevels.find(
+      l => l.id === armData.classLevelId || l.name === armData.classLevelId || String(l.order) === armData.classLevelId
+    );
+    const fullName = parentLevel ? `${parentLevel.name} ${armData.name}`.trim() : armData.name.trim();
+    const tempId = `arm-${Date.now()}`;
     const newArm: ClassArm = {
-      id,
+      id: tempId,
       classLevelId: armData.classLevelId,
-      name: armData.name,
+      name: armData.name.trim(),
       fullName,
       formMasterId: armData.formMasterId,
       formMasterName: armData.formMasterName
     };
-    setClassArms(prev => [...prev, newArm]);
+    setClassArms(prev => [...prev.filter(a => a.fullName.toLowerCase() !== fullName.toLowerCase()), newArm]);
 
     if (armData.formMasterId) {
-      setStaff(prev => prev.map(m => m.id === armData.formMasterId ? { ...m, formMasterArmId: id, formMasterArmName: fullName } : m));
+      setStaff(prev => prev.map(m => m.id === armData.formMasterId ? { ...m, formMasterArmId: tempId, formMasterArmName: fullName } : m));
     }
 
     if (actor) {
@@ -1773,8 +1762,28 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         action: 'CLASS_ARM_CREATED',
         targetEntity: `Class Arm: ${fullName}`,
         details: `Created new classroom arm ${fullName}${armData.formMasterName ? ' assigned to Form Master ' + armData.formMasterName : ''}.`,
-        metadata: { classArmId: id, fullName, formMaster: armData.formMasterName }
+        metadata: { classArmId: tempId, fullName, formMaster: armData.formMasterName }
       });
+    }
+
+    try {
+      const payload = adaptClassArmToBackend({
+        classLevelId: armData.classLevelId,
+        name: armData.name.trim(),
+        fullName,
+        formMasterId: armData.formMasterId
+      });
+      const saved = await api.post('/academics/class-arms/', payload);
+      if (saved && saved.id) {
+        const liveArm = adaptClassArmFromBackend(saved);
+        setClassArms(prev => prev.map(a => (a.id === tempId || a.fullName.toLowerCase() === liveArm.fullName.toLowerCase()) ? liveArm : a));
+        if (armData.formMasterId) {
+          setStaff(prev => prev.map(m => m.id === armData.formMasterId ? { ...m, formMasterArmId: liveArm.id, formMasterArmName: liveArm.fullName } : m));
+        }
+        return liveArm;
+      }
+    } catch (err) {
+      console.warn('Backend class arm creation error, keeping local optimistic:', err);
     }
     return newArm;
   };

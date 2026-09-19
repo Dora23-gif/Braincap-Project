@@ -59,6 +59,7 @@ export const UserManagementView: React.FC = () => {
         const queryParams: Record<string, any> = {
           page,
           page_size: pageSize,
+          user_type: 'staff',
         };
         if (searchTerm.trim()) {
           queryParams.search = searchTerm.trim();

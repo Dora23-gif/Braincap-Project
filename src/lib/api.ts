@@ -572,6 +572,25 @@ export function adaptClassArmFromBackend(d: any): ClassArm {
   };
 }
 
+export function adaptClassArmToBackend(arm: {
+  classLevelId: string;
+  name: string;
+  formMasterId?: string;
+  fullName?: string;
+}): any {
+  const payload: Record<string, any> = {
+    class_level: arm.classLevelId,
+    name: arm.name.trim(),
+  };
+  if (arm.fullName) {
+    payload.full_name = arm.fullName.trim();
+  }
+  if (arm.formMasterId) {
+    payload.form_master = arm.formMasterId;
+  }
+  return payload;
+}
+
 export function adaptClassLevelFromBackend(d: any): ClassLevel {
   return {
     id: String(d.id),
