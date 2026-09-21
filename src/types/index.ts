@@ -611,3 +611,21 @@ export interface PortalMessage {
     name?: string;
   };
 }
+
+export type NotificationCategory = 'ACADEMICS' | 'ATTENDANCE' | 'DIRECTIVE' | 'ADMISSION' | 'GOVERNANCE' | 'COMMUNICATION' | 'GENERAL';
+
+export interface AppNotification {
+  id: string;
+  userId?: string; // target user ID or 'ALL'
+  role?: RoleType; // target role or 'ALL'
+  title: string;
+  message: string;
+  category: NotificationCategory;
+  priority: 'NORMAL' | 'URGENT' | 'CRITICAL';
+  linkView?: string; // view to navigate to (e.g. 'score-entry', 'attendance-register', 'principal-remarks', 'communications', 'master-broadsheet')
+  linkId?: string;
+  createdAt: string;
+  isRead: boolean;
+  actorName?: string;
+  actorRole?: string;
+}

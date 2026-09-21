@@ -163,35 +163,59 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
     }
     if (composeRecipientRole === 'PARENT') {
       return [
-        { id: 'ALL', name: 'All Registered Parents / Guardians', role: 'PARENT' },
-        ...parents.map(p => ({
-          id: p.id,
-          name: `${p.fatherName || p.motherName || 'Parent'} (${p.wardIds?.length || 1} Ward)`,
-          role: 'PARENT'
-        }))
+        { id: 'ALL', name: 'All Registered Parents / Guardians (Broadcast)', role: 'PARENT' },
+        ...parents.map(p => {
+          const parentName = (p as any).fullName || p.fatherName || p.motherName || (p as any).name || (p as any).email || 'Parent';
+          const wardCount = p.wardIds?.length || (p as any).wards?.length || 1;
+          return {
+            id: p.id,
+            name: `${parentName} (${wardCount} ${wardCount === 1 ? 'Ward' : 'Wards'})`,
+            role: 'PARENT'
+          };
+        })
       ];
     }
     // For staff roles
     const matchingStaff = staff.filter(s => {
       const sRole = String(s.role || '');
+      const sRoles = Array.isArray((s as any).roles) ? (s as any).roles : [];
+      const sTitle = String((s as any).title || '').toUpperCase();
       const compRole = String(composeRecipientRole);
-      if (compRole === 'PRINCIPAL') return sRole === 'PRINCIPAL';
-      if (compRole === 'VICE_PRINCIPAL_ACADEMICS') return sRole === 'VICE_PRINCIPAL_ACADEMICS';
-      if (compRole === 'VICE_PRINCIPAL_STUDENT_AFFAIRS' || compRole === 'VICE_PRINCIPAL_ADMIN') return sRole.includes('VICE_PRINCIPAL');
-      if (compRole === 'EXAMINATION_OFFICER' || compRole === 'EXAM_OFFICER') return sRole === 'EXAM_OFFICER' || sRole === 'EXAMINATION_OFFICER';
-      if (compRole === 'FORM_MASTER') return sRole === 'FORM_MASTER' || (s.roles && s.roles.includes('FORM_MASTER'));
-      if (compRole === 'TEACHER' || compRole === 'SUBJECT_TEACHER') return sRole === 'SUBJECT_TEACHER' || sRole === 'TEACHER';
-      if (compRole === 'SUPER_ADMIN') return sRole === 'SUPER_ADMIN';
+
+      if (compRole === 'PRINCIPAL') {
+        return sRole === 'PRINCIPAL' || sRoles.includes('PRINCIPAL') || sTitle.includes('PRINCIPAL');
+      }
+      if (compRole === 'VICE_PRINCIPAL_ACADEMICS') {
+        return sRole === 'VICE_PRINCIPAL_ACADEMICS' || sRoles.includes('VICE_PRINCIPAL_ACADEMICS') || (sRole.includes('VICE_PRINCIPAL') && sTitle.includes('ACADEMIC'));
+      }
+      if (compRole === 'VICE_PRINCIPAL_STUDENT_AFFAIRS' || compRole === 'VICE_PRINCIPAL_ADMIN') {
+        return sRole.includes('VICE_PRINCIPAL') || sRoles.some((r: string) => r.includes('VICE_PRINCIPAL'));
+      }
+      if (compRole === 'EXAMINATION_OFFICER' || compRole === 'EXAM_OFFICER') {
+        return sRole === 'EXAM_OFFICER' || sRole === 'EXAMINATION_OFFICER' || sRoles.includes('EXAM_OFFICER') || sRoles.includes('EXAMINATION_OFFICER') || sTitle.includes('EXAM');
+      }
+      if (compRole === 'FORM_MASTER') {
+        return sRole === 'FORM_MASTER' || sRoles.includes('FORM_MASTER') || Boolean((s as any).formMasterArmId) || Boolean((s as any).formMasterClassArmId) || sTitle.includes('FORM');
+      }
+      if (compRole === 'TEACHER' || compRole === 'SUBJECT_TEACHER') {
+        return sRole === 'SUBJECT_TEACHER' || sRole === 'TEACHER' || sRoles.includes('TEACHER') || sRoles.includes('SUBJECT_TEACHER') || sRoles.includes('STAFF');
+      }
+      if (compRole === 'SUPER_ADMIN') {
+        return sRole === 'SUPER_ADMIN' || sRoles.includes('SUPER_ADMIN') || sTitle.includes('ADMIN');
+      }
       return false;
     });
 
     return [
-      { id: 'ALL', name: `All ${composeRecipientRole.replace(/_/g, ' ')}s`, role: composeRecipientRole },
-      ...matchingStaff.map(s => ({
-        id: s.id,
-        name: `${s.name} (${s.staffId})`,
-        role: s.role
-      }))
+      { id: 'ALL', name: `All ${composeRecipientRole.replace(/_/g, ' ')}s (Broadcast)`, role: composeRecipientRole },
+      ...matchingStaff.map(s => {
+        const extra = (s as any).formMasterArmName || (s as any).title || s.staffId || '';
+        return {
+          id: s.id,
+          name: `${s.name} ${extra ? `(${extra})` : ''}`,
+          role: s.role
+        };
+      })
     ];
   }, [composeRecipientRole, staff, parents]);
 

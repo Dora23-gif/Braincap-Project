@@ -30,7 +30,9 @@ import {
   TimetablePeriod,
   ExamTimetableEntry,
   ParentInquiry,
-  PortalMessage
+  PortalMessage,
+  AppNotification,
+  NotificationCategory
 } from '../types';
 import {
   INITIAL_SESSIONS,
@@ -92,6 +94,7 @@ import {
   resolveTermId,
   resolveTermPk,
   resolveStudentCanonicalId,
+  adaptPortalMessageFromBackend,
 } from '../lib/api';
 import { useAuth } from './AuthContext';
 
@@ -239,13 +242,20 @@ interface SchoolDataContextType {
   markMessageAsRead: (messageId: string) => void;
   markAllMessagesAsRead: (userIdOrRole: string) => void;
   deleteMessage: (messageId: string) => void;
+
+  // Unified Role-Based Notifications
+  appNotifications: AppNotification[];
+  sendNotification: (notif: Omit<AppNotification, 'id' | 'createdAt' | 'isRead'>) => AppNotification;
+  markNotificationAsRead: (notificationId: string) => void;
+  markAllNotificationsAsRead: (roleOrUserId?: string) => void;
+
   isBackendLoaded: boolean;
   refreshBackendData: () => Promise<void>;
 }
 
 const SchoolDataContext = createContext<SchoolDataContextType | undefined>(undefined);
 
-const DATA_VERSION = 'v16_live_header_auth_sync';
+const DATA_VERSION = 'v17_notifications_comms_live';
 
 export const INITIAL_PORTAL_MESSAGES: PortalMessage[] = [
   {
@@ -345,6 +355,100 @@ export const INITIAL_PORTAL_MESSAGES: PortalMessage[] = [
     isRead: false,
     priority: 'URGENT',
     relatedEntity: { type: 'EXAM', id: 'exam-001', name: 'Mathematics (General)' }
+  }
+];
+
+export const INITIAL_APP_NOTIFICATIONS: AppNotification[] = [
+  {
+    id: 'notif-001',
+    role: 'SUPER_ADMIN',
+    title: 'System Security Audit Completed',
+    message: 'Periodic user permission and allocation integrity check completed. All database records intact.',
+    category: 'GOVERNANCE',
+    priority: 'NORMAL',
+    linkView: 'audit-log',
+    createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
+    isRead: false,
+    actorName: 'System Security Daemon',
+    actorRole: 'SUPER_ADMIN'
+  },
+  {
+    id: 'notif-002',
+    role: 'PRINCIPAL',
+    title: 'Terminal Result Clearance Pending',
+    message: 'Form Master completed score collation for SS 1 Gold. Executive endorsement and sealing requested.',
+    category: 'ACADEMICS',
+    priority: 'URGENT',
+    linkView: 'principal-remarks',
+    createdAt: new Date(Date.now() - 1000 * 60 * 65).toISOString(),
+    isRead: false,
+    actorName: 'Mr. Babatunde Lawal',
+    actorRole: 'FORM_MASTER'
+  },
+  {
+    id: 'notif-003',
+    role: 'EXAM_OFFICER',
+    title: 'New Marksheet Submitted',
+    message: 'Mathematics marksheet for SS 2 Diamond has been submitted by teacher. Ready for audit.',
+    category: 'ACADEMICS',
+    priority: 'NORMAL',
+    linkView: 'master-broadsheet',
+    createdAt: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
+    isRead: false,
+    actorName: 'Mrs. Victoria Okafor',
+    actorRole: 'TEACHER'
+  },
+  {
+    id: 'notif-004',
+    role: 'FORM_MASTER',
+    title: 'Daily Attendance Register Open',
+    message: "Today's roll call register for your custody arm is open. Please verify student headcount.",
+    category: 'ATTENDANCE',
+    priority: 'NORMAL',
+    linkView: 'attendance-register',
+    createdAt: new Date(Date.now() - 1000 * 60 * 180).toISOString(),
+    isRead: false,
+    actorName: 'Vice Principal Admin',
+    actorRole: 'VICE_PRINCIPAL_ADMIN'
+  },
+  {
+    id: 'notif-005',
+    role: 'TEACHER',
+    title: 'Continuous Assessment Score Window',
+    message: 'CA1 and CA2 score entry window for 2nd Term is active. Please record and verify marks.',
+    category: 'ACADEMICS',
+    priority: 'NORMAL',
+    linkView: 'score-entry',
+    createdAt: new Date(Date.now() - 1000 * 60 * 240).toISOString(),
+    isRead: false,
+    actorName: 'Dr. Michael Adebayo',
+    actorRole: 'PRINCIPAL'
+  },
+  {
+    id: 'notif-006',
+    role: 'PARENT',
+    title: 'Academic Progress Update',
+    message: 'Mid-term assessment reports and attendance records for your ward have been updated.',
+    category: 'ACADEMICS',
+    priority: 'NORMAL',
+    linkView: 'parent-portal',
+    createdAt: new Date(Date.now() - 1000 * 60 * 300).toISOString(),
+    isRead: false,
+    actorName: 'Everest Registry',
+    actorRole: 'EXAM_OFFICER'
+  },
+  {
+    id: 'notif-007',
+    role: 'ALL',
+    title: 'Executive Notice: Academic Calendar',
+    message: 'Second Term examination timetable and moderation schedule is now published in the portal.',
+    category: 'DIRECTIVE',
+    priority: 'NORMAL',
+    linkView: 'communications',
+    createdAt: new Date(Date.now() - 1000 * 60 * 360).toISOString(),
+    isRead: true,
+    actorName: 'Dr. Michael Adebayo',
+    actorRole: 'PRINCIPAL'
   }
 ];
 
@@ -478,6 +582,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [examTimetable, setExamTimetable] = useState<ExamTimetableEntry[]>(() => safeStorageParse('eis_exam_timetable', INITIAL_EXAM_TIMETABLE));
   const [parentInquiries, setParentInquiries] = useState<ParentInquiry[]>(() => safeStorageParse('eis_parent_inquiries', INITIAL_PARENT_INQUIRIES));
   const [portalMessages, setPortalMessages] = useState<PortalMessage[]>(() => safeStorageParse('eis_portal_messages', INITIAL_PORTAL_MESSAGES));
+  const [appNotifications, setAppNotifications] = useState<AppNotification[]>(() => safeStorageParse('eis_app_notifications', INITIAL_APP_NOTIFICATIONS));
 
   useEffect(() => {
     if (localStorage.getItem('eis_data_version') !== DATA_VERSION) {
@@ -502,6 +607,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       localStorage.setItem('eis_parent_inquiries', JSON.stringify(INITIAL_PARENT_INQUIRIES));
       localStorage.setItem('eis_allocations', JSON.stringify(INITIAL_ALLOCATIONS));
       localStorage.setItem('eis_portal_messages', JSON.stringify(INITIAL_PORTAL_MESSAGES));
+      localStorage.setItem('eis_app_notifications', JSON.stringify(INITIAL_APP_NOTIFICATIONS));
       localStorage.setItem('eis_class_levels', JSON.stringify(INITIAL_CLASS_LEVELS));
       localStorage.setItem('eis_class_arms', JSON.stringify(INITIAL_CLASS_ARMS));
       localStorage.setItem('eis_sessions', JSON.stringify(INITIAL_SESSIONS));
@@ -531,8 +637,15 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setParentInquiries(INITIAL_PARENT_INQUIRIES);
       setAllocations(INITIAL_ALLOCATIONS);
       setPortalMessages(INITIAL_PORTAL_MESSAGES);
+      setAppNotifications(INITIAL_APP_NOTIFICATIONS);
     }
   }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('eis_app_notifications', JSON.stringify(appNotifications));
+    } catch (e) {}
+  }, [appNotifications]);
 
   useEffect(() => {
     localStorage.setItem('eis_parents', JSON.stringify(parents));
@@ -556,6 +669,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         auditLogsRes,
         subjectsRes,
         allocationsRes,
+        messagesRes,
       ] = await Promise.allSettled([
         api.get('/academics/sessions/', { page_size: 'all' }),
         api.get('/academics/terms/', { page_size: 'all' }),
@@ -570,6 +684,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         api.get('/governance/audit-logs/', { page_size: 'all' }),
         api.get('/academics/subjects/', { page_size: 'all' }),
         api.get('/academics/allocations/', { page_size: 'all' }),
+        api.get('/communications/messages/', { page_size: 'all' }),
       ]);
 
       if (sessionsRes.status === 'fulfilled') {
@@ -784,6 +899,28 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
       }
 
+      if (messagesRes && messagesRes.status === 'fulfilled') {
+        const raw = (messagesRes.value as any)?.results || messagesRes.value;
+        if (Array.isArray(raw) && raw.length > 0) {
+          const liveMessages = raw.map(adaptPortalMessageFromBackend);
+          setPortalMessages(prev => {
+            const current = [...prev];
+            for (const lm of liveMessages) {
+              const idx = current.findIndex(
+                m => m.id === lm.id || (m.threadId === lm.threadId && m.subject === lm.subject && m.createdAt === lm.createdAt)
+              );
+              if (idx >= 0) {
+                current[idx] = { ...current[idx], ...lm };
+              } else {
+                current.unshift(lm);
+              }
+            }
+            try { localStorage.setItem('eis_portal_messages', JSON.stringify(current)); } catch (e) {}
+            return current;
+          });
+        }
+      }
+
       setIsBackendLoaded(true);
     } catch (err) {
       console.warn('Live backend data hydration skipped:', err);
@@ -814,6 +951,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     localStorage.setItem('eis_subject_submissions', JSON.stringify(INITIAL_SUBJECT_SUBMISSIONS));
     localStorage.setItem('eis_allocations', JSON.stringify(INITIAL_ALLOCATIONS));
     localStorage.setItem('eis_portal_messages', JSON.stringify(INITIAL_PORTAL_MESSAGES));
+    localStorage.setItem('eis_app_notifications', JSON.stringify(INITIAL_APP_NOTIFICATIONS));
     localStorage.removeItem('eis_attendance');
     setStudents(INITIAL_STUDENTS);
     setScores(INITIAL_SCORES);
@@ -833,6 +971,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setSubjectSubmissions(INITIAL_SUBJECT_SUBMISSIONS);
     setAllocations(INITIAL_ALLOCATIONS);
     setPortalMessages(INITIAL_PORTAL_MESSAGES);
+    setAppNotifications(INITIAL_APP_NOTIFICATIONS);
     setAttendanceRecords([]);
     setClassLevels(INITIAL_CLASS_LEVELS);
     setClassArms(INITIAL_CLASS_ARMS);
@@ -1333,6 +1472,28 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     } catch (err) {
       console.warn('Backend attendance sync fallback:', err);
     }
+
+    // Role-based notification for absent students
+    const absentRecords = records.filter(r => r.status === 'ABSENT');
+    if (absentRecords.length > 0) {
+      absentRecords.forEach(ar => {
+        const student = students.find(s => s.id === ar.studentId || s.admissionNumber === ar.studentId);
+        const arm = classArms.find(a => a.id === ar.classArmId);
+        if (student) {
+          sendNotification({
+            userId: student.parentId || undefined,
+            role: 'PARENT',
+            title: 'Attendance Notice: Absence Recorded',
+            message: `${student.name || student.firstName + ' ' + student.lastName} (${student.admissionNumber}) was marked absent on ${date} for ${arm?.fullName || 'Roll Call'}.`,
+            category: 'ATTENDANCE',
+            priority: 'URGENT',
+            linkView: 'parent-portal',
+            actorName: 'Form Master / Roll Call Officer',
+            actorRole: 'FORM_MASTER'
+          });
+        }
+      });
+    }
   };
 
   const updatePsychomotor = (record: AffectiveAndPsychomotor) => {
@@ -1546,6 +1707,18 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       updatedAt: new Date().toISOString()
     }));
     setScores(prev => [...initialScores, ...prev]);
+
+    // Role notification to Principal & Admissions Officer
+    sendNotification({
+      role: 'PRINCIPAL',
+      title: 'New Student Admission Registered',
+      message: `${newStudent.name || (newStudent.firstName + ' ' + newStudent.lastName)} (${newStudent.admissionNumber}) has been admitted into ${newStudent.currentClassArmName || 'Class'}.`,
+      category: 'ADMISSION',
+      priority: 'NORMAL',
+      linkView: 'student-directory',
+      actorName: 'Admissions Office',
+      actorRole: 'ADMISSIONS_OFFICER'
+    });
 
     return newStudent;
   };
@@ -2943,6 +3116,17 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       details: `Form Master ${actorName} officially signed off and endorsed terminal results for ${armName}.`,
       metadata: { classArmId, termId: activeTerm.id, comments }
     });
+
+    sendNotification({
+      role: 'PRINCIPAL',
+      title: `Class Arm Endorsed: ${armName}`,
+      message: `Form Master ${actorName} has endorsed broadsheet and pastoral records for ${armName}. Executive approval requested.`,
+      category: 'ACADEMICS',
+      priority: 'URGENT',
+      linkView: 'principal-remarks',
+      actorName,
+      actorRole: 'FORM_MASTER'
+    });
   };
 
   const submitSubjectMarksheet = (classArmId: string, subjectId: string, comments?: string, actor?: { id: string; name: string; role: any }) => {
@@ -3003,6 +3187,17 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       targetEntity: `Subject Marksheet: ${armName} - ${subjName}`,
       details: `Subject Teacher ${actorName} submitted official mark sheet for ${subjName} in ${armName} (${gradedCount}/${totalArmStudents} students graded, class avg: ${avg}%).`,
       metadata: { classArmId, subjectId, termId: activeTerm.id, comments }
+    });
+
+    sendNotification({
+      role: 'EXAM_OFFICER',
+      title: `Marksheet Submitted: ${subjName}`,
+      message: `${actorName} has submitted the marksheet for ${subjName} in ${armName} (${gradedCount}/${totalArmStudents} students graded).`,
+      category: 'ACADEMICS',
+      priority: 'NORMAL',
+      linkView: 'master-broadsheet',
+      actorName,
+      actorRole: actor?.role || 'TEACHER'
     });
   };
 
@@ -3289,6 +3484,32 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
+  // Unified Role-Based Notifications Handlers
+  const sendNotification = useCallback((notifData: Omit<AppNotification, 'id' | 'createdAt' | 'isRead'>): AppNotification => {
+    const newNotif: AppNotification = {
+      ...notifData,
+      id: `notif-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      createdAt: new Date().toISOString(),
+      isRead: false
+    };
+    setAppNotifications(prev => [newNotif, ...prev]);
+    return newNotif;
+  }, []);
+
+  const markNotificationAsRead = useCallback((notificationId: string) => {
+    setAppNotifications(prev => prev.map(n => n.id === notificationId ? { ...n, isRead: true } : n));
+  }, []);
+
+  const markAllNotificationsAsRead = useCallback((roleOrUserId?: string) => {
+    setAppNotifications(prev => prev.map(n => {
+      if (!roleOrUserId) return { ...n, isRead: true };
+      if (n.userId === roleOrUserId || n.role === roleOrUserId || n.userId === 'ALL' || n.role === 'ALL') {
+        return { ...n, isRead: true };
+      }
+      return n;
+    }));
+  }, []);
+
   // Inter-Role Communications & Directives Handlers
   const sendMessage = (messageData: Omit<PortalMessage, 'id' | 'createdAt' | 'isRead' | 'readAt'>): PortalMessage => {
     const newMessage: PortalMessage = {
@@ -3299,6 +3520,38 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     setPortalMessages(prev => [newMessage, ...prev]);
+
+    // Live backend persistence
+    api.post('/communications/messages/', {
+      thread_id: newMessage.threadId,
+      recipientId: messageData.recipientId,
+      recipientRole: messageData.recipientRole,
+      recipientName: messageData.recipientName,
+      subject: messageData.subject,
+      content: messageData.content,
+      priority: messageData.priority,
+      relatedEntity: messageData.relatedEntity
+    }).then((res: any) => {
+      if (res && res.id) {
+        setPortalMessages(prev => prev.map(m => m.id === newMessage.id ? { ...m, id: String(res.id) } : m));
+      }
+    }).catch(err => {
+      console.warn('Backend message persistence fallback:', err);
+    });
+
+    // Auto-dispatch role notification
+    sendNotification({
+      userId: messageData.recipientId !== 'ALL' ? messageData.recipientId : undefined,
+      role: messageData.recipientRole,
+      title: `New Message from ${messageData.senderName}`,
+      message: `${messageData.subject}: ${messageData.content.slice(0, 80)}${messageData.content.length > 80 ? '...' : ''}`,
+      category: messageData.priority === 'OFFICIAL_DIRECTIVE' ? 'DIRECTIVE' : 'COMMUNICATION',
+      priority: messageData.priority === 'OFFICIAL_DIRECTIVE' ? 'CRITICAL' : messageData.priority === 'URGENT' ? 'URGENT' : 'NORMAL',
+      linkView: 'communications',
+      linkId: newMessage.threadId,
+      actorName: messageData.senderName,
+      actorRole: messageData.senderRole
+    });
 
     if (messageData.priority === 'OFFICIAL_DIRECTIVE' || messageData.priority === 'URGENT') {
       addAuditLog({
@@ -3355,6 +3608,39 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     setPortalMessages(prev => [newReply, ...prev]);
+
+    // Live backend persistence
+    api.post('/communications/messages/', {
+      thread_id: threadId,
+      recipientId,
+      recipientRole,
+      recipientName,
+      subject: replySubject,
+      content,
+      priority: latest.priority,
+      relatedEntity: latest.relatedEntity
+    }).then((res: any) => {
+      if (res && res.id) {
+        setPortalMessages(prev => prev.map(m => m.id === newReply.id ? { ...m, id: String(res.id) } : m));
+      }
+    }).catch(err => {
+      console.warn('Backend reply persistence fallback:', err);
+    });
+
+    // Auto-dispatch reply notification
+    sendNotification({
+      userId: recipientId !== 'ALL' ? recipientId : undefined,
+      role: recipientRole,
+      title: `Reply from ${sender.name}`,
+      message: `${replySubject}: ${content.slice(0, 80)}`,
+      category: 'COMMUNICATION',
+      priority: latest.priority === 'OFFICIAL_DIRECTIVE' ? 'CRITICAL' : 'NORMAL',
+      linkView: 'communications',
+      linkId: threadId,
+      actorName: sender.name,
+      actorRole: sender.role
+    });
+
     return newReply;
   };
 
@@ -3369,6 +3655,11 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
       return m;
     }));
+
+    if (/^\d+$/.test(messageId)) {
+      api.post(`/communications/messages/${messageId}/mark-read/`, {})
+        .catch(err => console.warn('Failed to mark message read on backend:', err));
+    }
   };
 
   const markAllMessagesAsRead = (userIdOrRole: string) => {
@@ -3391,6 +3682,10 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const deleteMessage = (messageId: string) => {
     setPortalMessages(prev => prev.filter(m => m.id !== messageId));
+    if (/^\d+$/.test(messageId)) {
+      api.delete(`/communications/messages/${messageId}/`)
+        .catch(err => console.warn('Failed to delete message on backend:', err));
+    }
   };
 
   return (
@@ -3490,6 +3785,10 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         markMessageAsRead,
         markAllMessagesAsRead,
         deleteMessage,
+        appNotifications,
+        sendNotification,
+        markNotificationAsRead,
+        markAllNotificationsAsRead,
         isBackendLoaded,
         refreshBackendData: fetchLiveSchoolData
       }}

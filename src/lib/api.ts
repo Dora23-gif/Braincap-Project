@@ -16,6 +16,7 @@ import type {
   RoleType,
   Parent,
   TeacherAllocation,
+  PortalMessage,
 } from '../types';
 
 export const API_BASE_URL =
@@ -937,4 +938,25 @@ export async function executeBackendRollover(data: {
   overrides?: Record<string, { decision: string; note: string }>;
 }): Promise<any> {
   return api.post('/academics/sessions/execute-rollover/', data);
+}
+
+export function adaptPortalMessageFromBackend(data: any): PortalMessage {
+  return {
+    id: String(data.id),
+    threadId: data.thread_id || data.threadId || `thread-${data.id}`,
+    senderId: data.sender ? String(data.sender) : (data.senderId || 'unknown'),
+    senderName: data.sender_name || data.senderName || 'Authorized User',
+    senderRole: data.sender_role || data.senderRole || 'TEACHER',
+    senderAvatarUrl: data.sender_avatar_url || data.senderAvatarUrl,
+    recipientId: data.recipient_user ? String(data.recipient_user) : (data.recipientId || 'ALL'),
+    recipientName: data.recipient_name || data.recipientName || 'All Authorized Roles',
+    recipientRole: data.recipient_role || data.recipientRole || 'ALL',
+    subject: data.subject || '',
+    content: data.content || '',
+    createdAt: data.created_at || data.createdAt || new Date().toISOString(),
+    readAt: data.read_at || data.readAt,
+    isRead: Boolean(data.is_read ?? data.isRead),
+    priority: data.priority || 'NORMAL',
+    relatedEntity: data.related_entity || data.relatedEntity,
+  };
 }

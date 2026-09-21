@@ -29,7 +29,35 @@ class PortalMessageSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = ["id", "sender", "created_at", "updated_at"]
+
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        if "threadId" in data and "thread_id" not in data:
+            data["thread_id"] = data["threadId"]
+        if "recipientRole" in data and "recipient_role" not in data:
+            data["recipient_role"] = data["recipientRole"]
+        if "recipientId" in data and "recipient_user" not in data:
+            rec_id = data["recipientId"]
+            if rec_id and rec_id != "ALL":
+                from django.contrib.auth import get_user_model
+                User = get_user_model()
+                cleaned = str(rec_id).replace("usr-", "").replace("stf-", "").replace("prt-", "")
+                if cleaned.isdigit():
+                    data["recipient_user"] = int(cleaned)
+                else:
+                    u = User.objects.filter(username=rec_id).first() or User.objects.filter(identifier=rec_id).first()
+                    if u:
+                        data["recipient_user"] = u.pk
+                    else:
+                        data["recipient_user"] = None
+            else:
+                data["recipient_user"] = None
+        if "isRead" in data and "is_read" not in data:
+            data["is_read"] = data["isRead"]
+        if "relatedEntity" in data and "related_entity" not in data:
+            data["related_entity"] = data["relatedEntity"]
+        return super().to_internal_value(data)
 
     def get_sender_name(self, obj):
         if obj.sender:

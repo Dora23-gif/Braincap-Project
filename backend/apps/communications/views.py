@@ -20,6 +20,28 @@ class PortalMessageViewSet(viewsets.ModelViewSet):
     ordering_fields = ["created_at", "priority"]
     ordering = ["-created_at"]
 
+    def get_queryset(self):
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            return PortalMessage.objects.none()
+
+        active_role = getattr(user, "active_role", "")
+        if user.is_superuser or user.is_staff or active_role in ["SUPER_ADMIN", "PRINCIPAL", "VICE_PRINCIPAL_ADMIN", "VICE_PRINCIPAL"]:
+            return self.queryset
+
+        user_roles = getattr(user, "roles", [])
+        query = Q(sender=user) | Q(recipient_user=user) | Q(recipient_role="ALL")
+        if active_role:
+            query |= Q(recipient_role=active_role)
+            if active_role in ["TEACHER", "SUBJECT_TEACHER"]:
+                query |= Q(recipient_role="TEACHER") | Q(recipient_role="SUBJECT_TEACHER")
+            if active_role in ["EXAM_OFFICER", "EXAMINATION_OFFICER"]:
+                query |= Q(recipient_role="EXAM_OFFICER") | Q(recipient_role="EXAMINATION_OFFICER")
+        for r in user_roles:
+            query |= Q(recipient_role=r)
+
+        return self.queryset.filter(query).distinct()
+
     def perform_create(self, serializer):
         serializer.save(sender=self.request.user)
 
