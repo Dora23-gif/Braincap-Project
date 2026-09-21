@@ -2016,7 +2016,11 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       joinedDate: new Date().toISOString().split('T')[0],
       defaultPin: initialPin
     };
-    setStaff(prev => [newMember, ...prev]);
+    setStaff(prev => {
+      const updated = [newMember, ...prev];
+      try { localStorage.setItem('eis_staff', JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
 
     // Immediately synchronize allocations in local React state
     if (memberData.allocatedSubjects && memberData.allocatedSubjects.length > 0) {
@@ -2029,7 +2033,11 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         teacherId: newId,
         teacherName: memberData.name,
       }));
-      setAllocations(prev => [...prev, ...newAllocs]);
+      setAllocations(prev => {
+        const updated = [...prev, ...newAllocs];
+        try { localStorage.setItem('eis_allocations', JSON.stringify(updated)); } catch (e) {}
+        return updated;
+      });
     }
 
     const backendAllocations = (memberData.allocatedSubjects || []).map(a => ({
@@ -2049,7 +2057,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       email: memberData.email,
       phone_number: memberData.phoneNumber || '',
       identifier: memberData.identifier || memberData.staffId || newId,
-      active_role: memberData.roles[0] || 'TEACHER',
+      active_role: memberData.role || memberData.roles[0] || 'SUBJECT_TEACHER',
       roles: memberData.roles,
       password: initialPin,
       default_pin: initialPin,
@@ -2061,13 +2069,19 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     .then(saved => {
       if (saved && saved.id) {
         const live = adaptStaffFromBackend(saved);
-        setStaff(prev => prev.map(m => (m.id === newId || m.identifier === live.identifier) ? live : m));
+        setStaff(prev => {
+          const merged = prev.map(m => (m.id === newId || m.identifier === live.identifier) ? live : m);
+          try { localStorage.setItem('eis_staff', JSON.stringify(merged)); } catch (e) {}
+          return merged;
+        });
         // Re-sync allocations from backend
         api.get<any>('/academics/allocations/', { page_size: 'all' })
           .then(res => {
             const raw = res?.results || res;
             if (Array.isArray(raw)) {
-              setAllocations(raw.map(adaptTeacherAllocationFromBackend));
+              const adapted = raw.map(adaptTeacherAllocationFromBackend);
+              setAllocations(adapted);
+              try { localStorage.setItem('eis_allocations', JSON.stringify(adapted)); } catch (e) {}
             }
           })
           .catch(() => {});
@@ -2079,21 +2093,50 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const updateStaff = (staffId: string, updates: Partial<StaffMember>) => {
-    setStaff(prev => prev.map(m => m.id === staffId ? { ...m, ...updates } : m));
+    const currentStaff = staff.find(s =>
+      s.id === staffId ||
+      s.staffId === staffId ||
+      s.identifier === staffId ||
+      String(s.backendId) === String(staffId)
+    );
 
-    const currentStaff = staff.find(s => s.id === staffId || s.staffId === staffId || s.identifier === staffId);
+    let targetLookupId: string | number | undefined =
+      currentStaff?.backendId ||
+      (/^\d+$/.test(staffId) ? staffId : (currentStaff && /^\d+$/.test(currentStaff.id) ? currentStaff.id : undefined));
+
+    if (!targetLookupId && currentStaff) {
+      const match = staff.find(s =>
+        (s.backendId || /^\d+$/.test(s.id)) &&
+        ((s.email && currentStaff.email && s.email.toLowerCase() === currentStaff.email.toLowerCase()) ||
+         (s.identifier && currentStaff.identifier && s.identifier === currentStaff.identifier) ||
+         (s.name && currentStaff.name && s.name.toLowerCase() === currentStaff.name.toLowerCase()))
+      );
+      if (match?.backendId) targetLookupId = match.backendId;
+      else if (match?.id && /^\d+$/.test(match.id)) targetLookupId = match.id;
+    }
+
+    setStaff(prev => {
+      const next = prev.map(m =>
+        (m.id === staffId || m.staffId === staffId || m.identifier === staffId || (targetLookupId && String(m.backendId) === String(targetLookupId)))
+          ? { ...m, ...updates }
+          : m
+      );
+      try { localStorage.setItem('eis_staff', JSON.stringify(next)); } catch (e) {}
+      return next;
+    });
 
     // Synchronize Form Master assignments with classArms
-    if (updates.formMasterArmId !== undefined || updates.name !== undefined) {
+    if (updates.formMasterArmId !== undefined || updates.formMasterClassArmId !== undefined || updates.name !== undefined) {
+      const targetFmArmId = updates.formMasterClassArmId || updates.formMasterArmId;
       setClassArms(prev => prev.map(arm => {
-        if (updates.formMasterArmId && arm.id === updates.formMasterArmId) {
+        if (targetFmArmId && (arm.id === targetFmArmId || resolveArmId(arm.id, arm.fullName) === resolveArmId(targetFmArmId))) {
           return {
             ...arm,
             formMasterId: staffId,
             formMasterName: updates.name || (currentStaff?.name || arm.formMasterName)
           };
         }
-        if (arm.formMasterId === staffId && updates.formMasterArmId !== undefined && updates.formMasterArmId !== arm.id) {
+        if (arm.formMasterId === staffId && targetFmArmId !== undefined && targetFmArmId !== arm.id && resolveArmId(arm.id) !== resolveArmId(targetFmArmId)) {
           return {
             ...arm,
             formMasterId: undefined,
@@ -2117,7 +2160,8 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           a => a.teacherId !== staffId &&
                a.teacherId !== currentStaff?.id &&
                a.teacherId !== currentStaff?.staffId &&
-               a.teacherId !== currentStaff?.identifier
+               a.teacherId !== currentStaff?.identifier &&
+               (!currentStaff?.backendId || a.teacherId !== String(currentStaff.backendId))
         );
         const newAllocations: TeacherAllocation[] = (updates.allocatedSubjects || []).map((alloc, idx) => ({
           id: `alloc-live-${staffId}-${alloc.classArmId}-${alloc.subjectId}-${idx}`,
@@ -2128,11 +2172,11 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           teacherId: staffId,
           teacherName: updates.name || currentStaff?.name || '',
         }));
-        return [...filtered, ...newAllocations];
+        const updatedAllocations = [...filtered, ...newAllocations];
+        try { localStorage.setItem('eis_allocations', JSON.stringify(updatedAllocations)); } catch (e) {}
+        return updatedAllocations;
       });
     }
-
-    const targetLookupId = currentStaff?.backendId || (/^\d+$/.test(staffId) ? staffId : (currentStaff && /^\d+$/.test(currentStaff.id) ? currentStaff.id : undefined));
 
     if (targetLookupId) {
       const payload: any = {};
@@ -2164,13 +2208,27 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         payload.form_master_class_arm = fmArm ? (resolveArmPk(fmArm) || fmArm) : null;
       }
       api.patch(`/accounts/users/${targetLookupId}/`, payload)
-        .then(() => {
+        .then((res: any) => {
+          if (res && res.id) {
+            const live = adaptStaffFromBackend(res);
+            setStaff(prev => {
+              const merged = prev.map(m =>
+                (m.id === staffId || m.id === String(res.id) || m.identifier === live.identifier)
+                  ? { ...m, ...live }
+                  : m
+              );
+              try { localStorage.setItem('eis_staff', JSON.stringify(merged)); } catch (e) {}
+              return merged;
+            });
+          }
           // Re-sync allocations from backend
           api.get<any>('/academics/allocations/', { page_size: 'all' })
-            .then(res => {
-              const raw = res?.results || res;
+            .then(allocRes => {
+              const raw = allocRes?.results || allocRes;
               if (Array.isArray(raw)) {
-                setAllocations(raw.map(adaptTeacherAllocationFromBackend));
+                const adapted = raw.map(adaptTeacherAllocationFromBackend);
+                setAllocations(adapted);
+                try { localStorage.setItem('eis_allocations', JSON.stringify(adapted)); } catch (e) {}
               }
             })
             .catch(() => {});
@@ -3104,33 +3162,43 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Teacher Subject Allocations
   const allocateTeacher = (classArmId: string, subjectId: string, teacherId: string, actor?: { id: string; name: string; role: any }) => {
-    const teacher = staff.find(s => s.id === teacherId);
-    const arm = classArms.find(a => a.id === classArmId);
-    const sub = subjects.find(s => s.id === subjectId);
+    const teacher = staff.find(s => s.id === teacherId || s.staffId === teacherId || s.identifier === teacherId || String(s.backendId) === String(teacherId));
+    const arm = classArms.find(a => a.id === classArmId || resolveArmId(a.id, a.fullName) === resolveArmId(classArmId));
+    const sub = subjects.find(s => s.id === subjectId || resolveSubjectId(s.id) === resolveSubjectId(subjectId));
     if (!teacher || !arm || !sub) return;
 
+    const armCanonical = resolveArmId(classArmId, arm.fullName);
+    const subCanonical = resolveSubjectId(subjectId);
+
     setAllocations(prev => {
-      const existingIdx = prev.findIndex(a => a.classArmId === classArmId && a.subjectId === subjectId);
+      const existingIdx = prev.findIndex(a =>
+        resolveArmId(a.classArmId) === armCanonical &&
+        resolveSubjectId(a.subjectId) === subCanonical
+      );
       const newAllocation: TeacherAllocation = {
         id: existingIdx >= 0 ? prev[existingIdx].id : `alloc-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-        classArmId,
+        classArmId: armCanonical,
         classArmName: arm.fullName || arm.name,
-        subjectId,
+        subjectId: subCanonical,
         subjectName: sub.name,
-        teacherId,
+        teacherId: teacher.id,
         teacherName: teacher.name
       };
+      let nextAllocs: TeacherAllocation[];
       if (existingIdx >= 0) {
-        const copy = [...prev];
-        copy[existingIdx] = newAllocation;
-        return copy;
+        nextAllocs = [...prev];
+        nextAllocs[existingIdx] = newAllocation;
+      } else {
+        nextAllocs = [...prev, newAllocation];
       }
-      return [...prev, newAllocation];
+      try { localStorage.setItem('eis_allocations', JSON.stringify(nextAllocs)); } catch (e) {}
+      return nextAllocs;
     });
 
-    const armPk = resolveArmPk(classArmId);
-    const subPk = resolveSubjectPk(subjectId);
-    const teacherPk = /^\d+$/.test(teacherId) ? parseInt(teacherId, 10) : undefined;
+    const armPk = resolveArmPk(classArmId) || resolveArmPk(arm.fullName);
+    const subPk = resolveSubjectPk(subjectId) || resolveSubjectPk(sub.code);
+    const teacherPk = teacher.backendId || (/^\d+$/.test(teacher.id) ? parseInt(teacher.id, 10) : (/^\d+$/.test(teacherId) ? parseInt(teacherId, 10) : undefined));
+
     if (armPk && subPk && teacherPk) {
       api.post('/academics/allocations/', {
         class_arm: armPk,
@@ -3140,13 +3208,19 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         if (res && res.id) {
           const live = adaptTeacherAllocationFromBackend(res);
           setAllocations(prev => {
-            const idx = prev.findIndex(a => a.classArmId === classArmId && a.subjectId === subjectId);
+            const idx = prev.findIndex(a =>
+              resolveArmId(a.classArmId) === armCanonical &&
+              resolveSubjectId(a.subjectId) === subCanonical
+            );
+            let updated: TeacherAllocation[];
             if (idx >= 0) {
-              const cp = [...prev];
-              cp[idx] = live;
-              return cp;
+              updated = [...prev];
+              updated[idx] = live;
+            } else {
+              updated = [...prev, live];
             }
-            return [...prev, live];
+            try { localStorage.setItem('eis_allocations', JSON.stringify(updated)); } catch (e) {}
+            return updated;
           });
         }
       }).catch(err => console.warn('Failed to allocate teacher on backend:', err));
@@ -3169,11 +3243,15 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const removeTeacherAllocation = (allocationId: string, actor?: { id: string; name: string; role: any }) => {
     const target = allocations.find(a => a.id === allocationId);
     if (!target) return;
-    const teacher = staff.find(s => s.id === target.teacherId);
-    const arm = classArms.find(a => a.id === target.classArmId);
-    const sub = subjects.find(s => s.id === target.subjectId);
+    const teacher = staff.find(s => s.id === target.teacherId || s.staffId === target.teacherId || s.identifier === target.teacherId);
+    const arm = classArms.find(a => a.id === target.classArmId || resolveArmId(a.id, a.fullName) === resolveArmId(target.classArmId));
+    const sub = subjects.find(s => s.id === target.subjectId || resolveSubjectId(s.id) === resolveSubjectId(target.subjectId));
 
-    setAllocations(prev => prev.filter(a => a.id !== allocationId));
+    setAllocations(prev => {
+      const next = prev.filter(a => a.id !== allocationId);
+      try { localStorage.setItem('eis_allocations', JSON.stringify(next)); } catch (e) {}
+      return next;
+    });
 
     if (/^\d+$/.test(allocationId)) {
       api.delete(`/academics/allocations/${allocationId}/`)

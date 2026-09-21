@@ -291,6 +291,11 @@ export const UserManagementView: React.FC = () => {
     const isSubjectTeacher = formRoles.includes('SUBJECT_TEACHER') || formPrimaryRole === 'SUBJECT_TEACHER';
     const isFormMaster = formRoles.includes('FORM_MASTER') || formPrimaryRole === 'FORM_MASTER';
 
+    if (isSubjectTeacher && formTeachingArmIds.length > 0 && formSubjectIds.length === 0) {
+      showToast("Please select at least one subject to allocate to the selected class arm(s).");
+      return;
+    }
+
     const armObj = classArms.find(a => a.id === formClassArmId || resolveArmId(a.id, a.fullName) === resolveArmId(formClassArmId));
     const staffCode = `STF/2026/${String(staff.length + 1).padStart(3, '0')}`;
 
@@ -356,6 +361,9 @@ export const UserManagementView: React.FC = () => {
       defaultPin: initialPin,
     });
 
+    setServerStaff(prev => prev ? [newStaff, ...prev] : [newStaff]);
+    setServerTotalCount(prev => prev !== null ? prev + 1 : null);
+
     setIsAddModalOpen(false);
     setRefreshTrigger(prev => prev + 1);
     showToast(`Staff account for ${newStaff.name} created! Password/PIN: ${newStaff.defaultPin}`);
@@ -367,6 +375,11 @@ export const UserManagementView: React.FC = () => {
 
     const isSubjectTeacher = formRoles.includes('SUBJECT_TEACHER') || formPrimaryRole === 'SUBJECT_TEACHER';
     const isFormMaster = formRoles.includes('FORM_MASTER') || formPrimaryRole === 'FORM_MASTER';
+
+    if (isSubjectTeacher && formTeachingArmIds.length > 0 && formSubjectIds.length === 0) {
+      showToast("Please select at least one subject to allocate to the selected class arm(s).");
+      return;
+    }
 
     const armObj = classArms.find(a => a.id === formClassArmId || resolveArmId(a.id, a.fullName) === resolveArmId(formClassArmId));
 
@@ -423,6 +436,11 @@ export const UserManagementView: React.FC = () => {
     }
 
     updateStaff(editingStaff.id, updates);
+
+    setServerStaff(prev => {
+      if (!prev) return prev;
+      return prev.map(m => m.id === editingStaff.id ? { ...m, ...updates } : m);
+    });
 
     setEditingStaff(null);
     setRefreshTrigger(prev => prev + 1);
@@ -1058,6 +1076,20 @@ export const UserManagementView: React.FC = () => {
                       })}
                     </div>
                   </div>
+
+                  {formTeachingArmIds.length > 0 && formSubjectIds.length === 0 && (
+                    <div className="p-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-lg text-[11px] text-amber-800 dark:text-amber-300 flex items-center gap-1.5 font-semibold">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span>Please select at least one subject above to teach in the selected class arm(s).</span>
+                    </div>
+                  )}
+
+                  {formSubjectIds.length > 0 && formTeachingArmIds.length === 0 && (
+                    <div className="p-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-lg text-[11px] text-amber-800 dark:text-amber-300 flex items-center gap-1.5 font-semibold">
+                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span>Please select at least one class arm above to teach the selected subject(s).</span>
+                    </div>
+                  )}
 
                   {/* Workload Intelligence Calculation */}
                   <div className="p-2.5 bg-white/80 dark:bg-slate-800/80 rounded-lg border border-indigo-100 dark:border-indigo-900/40 flex items-center justify-between text-[11px]">

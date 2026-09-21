@@ -87,7 +87,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
             allocs = obj.teaching_allocations.select_related("class_arm", "subject").all()
             res = []
             for a in allocs:
-                name_clean = a.class_arm.full_name.lower().replace(" ", "-")
+                name_clean = a.class_arm.full_name.lower().replace(" ", "-").replace("jss-", "jss").replace("sss-", "sss")
                 arm_slug = f"arm-{name_clean}"
                 subj_slug = f"subj-{a.subject.code.lower()}"
                 res.append({
@@ -132,7 +132,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
         try:
             arm = obj.homeroom_arms.first()
             if arm:
-                name_clean = arm.full_name.lower().replace(" ", "-")
+                name_clean = arm.full_name.lower().replace(" ", "-").replace("jss-", "jss").replace("sss-", "sss")
                 return f"arm-{name_clean}"
         except Exception:
             pass
@@ -160,38 +160,75 @@ class CustomUserSerializer(serializers.ModelSerializer):
 
             # 1. Resolve ClassArm
             arm = None
-            arm_ref = item.get("class_arm") or item.get("classArmId") or item.get("class_arm_id")
-            if arm_ref is not None:
-                if isinstance(arm_ref, int) or (isinstance(arm_ref, str) and str(arm_ref).isdigit()):
-                    arm = ClassArm.objects.filter(pk=int(arm_ref)).first()
-                if not arm and isinstance(arm_ref, str):
-                    arm_name = item.get("classArmName") or item.get("class_arm_name")
-                    if arm_name:
-                        arm = ClassArm.objects.filter(full_name__iexact=arm_name.strip()).first()
-                    if not arm:
-                        clean_ref = arm_ref.lower().replace("arm-", "").replace("-", " ")
+            # Check integer PKs first
+            for key in ("class_arm", "classArmId", "class_arm_id", "classArmPk", "class_arm_pk"):
+                val = item.get(key)
+                if val is not None:
+                    if isinstance(val, int) or (isinstance(val, str) and str(val).isdigit()):
+                        arm = ClassArm.objects.filter(pk=int(val)).first()
+                        if arm:
+                            break
+
+            # If not found by PK, check string slugs or exact names
+            if not arm:
+                for key in ("classArmName", "class_arm_name"):
+                    val = item.get(key)
+                    if val and isinstance(val, str) and val.strip():
+                        arm = ClassArm.objects.filter(full_name__iexact=val.strip()).first()
+                        if arm:
+                            break
+
+            if not arm:
+                for key in ("classArmId", "class_arm", "class_arm_id"):
+                    val = item.get(key)
+                    if val and isinstance(val, str):
+                        clean_ref = val.lower().replace("arm-", "").replace("-", " ")
                         for a in ClassArm.objects.all():
                             normalized_db = a.full_name.lower().replace(" ", "")
                             normalized_ref = clean_ref.replace(" ", "")
                             if normalized_db == normalized_ref or normalized_ref in normalized_db or normalized_db in normalized_ref:
                                 arm = a
                                 break
-            if not arm and item.get("classArmName"):
-                arm = ClassArm.objects.filter(full_name__iexact=item["classArmName"].strip()).first()
+                        if arm:
+                            break
 
             # 2. Resolve Subject
             subject = None
-            sub_ref = item.get("subject") or item.get("subjectId") or item.get("subject_id") or item.get("subject_code")
-            if sub_ref is not None:
-                if isinstance(sub_ref, int) or (isinstance(sub_ref, str) and str(sub_ref).isdigit()):
-                    subject = Subject.objects.filter(pk=int(sub_ref)).first()
-                if not subject and isinstance(sub_ref, str):
-                    clean_code = sub_ref.lower().replace("subj-", "").strip().upper()
-                    subject = Subject.objects.filter(code__iexact=clean_code).first()
-                    if not subject:
+            for key in ("subject", "subjectId", "subject_id", "subject_code", "subjectPk", "subject_pk"):
+                val = item.get(key)
+                if val is not None:
+                    if isinstance(val, int) or (isinstance(val, str) and str(val).isdigit()):
+                        subject = Subject.objects.filter(pk=int(val)).first()
+                        if subject:
+                            break
+                    elif isinstance(val, str):
+                        clean_code = val.lower().replace("subj-", "").strip().upper()
+                        subject = Subject.objects.filter(code__iexact=clean_code).first()
+                        if subject:
+                            break
                         subject = Subject.objects.filter(name__iexact=clean_code).first()
-            if not subject and item.get("subjectName"):
-                subject = Subject.objects.filter(name__iexact=item["subjectName"].strip()).first() or Subject.objects.filter(code__iexact=item["subjectName"].strip()).first()
+                        if subject:
+                            break
+
+            if not subject:
+                for key in ("subjectName", "subject_name"):
+                    val = item.get(key)
+                    if val and isinstance(val, str) and val.strip():
+                        subject = Subject.objects.filter(name__iexact=val.strip()).first() or Subject.objects.filter(code__iexact=val.strip()).first()
+                        if subject:
+                            break
+
+            if not subject:
+                for key in ("subjectId", "subject", "subject_id", "subjectName"):
+                    val = item.get(key)
+                    if val and isinstance(val, str):
+                        ref = val.lower().replace("subj-", "").strip()
+                        for s in Subject.objects.all():
+                            if s.code.lower() == ref or s.name.lower() == ref or ref in s.name.lower():
+                                subject = s
+                                break
+                        if subject:
+                            break
 
             if arm and subject:
                 alloc, _ = TeacherAllocation.objects.update_or_create(
@@ -210,7 +247,8 @@ class CustomUserSerializer(serializers.ModelSerializer):
         form_master_arm = (
             self.initial_data.get("form_master_class_arm") or
             self.initial_data.get("formMasterClassArmId") or
-            self.initial_data.get("form_master_arm")
+            self.initial_data.get("form_master_arm") or
+            self.initial_data.get("formMasterArmId")
         )
         if form_master_arm is not None:
             from apps.academics.models import ClassArm
@@ -219,12 +257,16 @@ class CustomUserSerializer(serializers.ModelSerializer):
                 arm = None
                 if isinstance(form_master_arm, int) or (isinstance(form_master_arm, str) and str(form_master_arm).isdigit()):
                     arm = ClassArm.objects.filter(pk=int(form_master_arm)).first()
-                elif isinstance(form_master_arm, str):
+                if not arm and isinstance(form_master_arm, str):
                     clean_ref = form_master_arm.lower().replace("arm-", "").replace("-", " ")
                     for a in ClassArm.objects.all():
                         if a.full_name.lower().replace(" ", "") == clean_ref.replace(" ", ""):
                             arm = a
                             break
+                if not arm:
+                    fm_name = self.initial_data.get("form_master_class_arm_name") or self.initial_data.get("formMasterClassArmName")
+                    if fm_name and isinstance(fm_name, str):
+                        arm = ClassArm.objects.filter(full_name__iexact=fm_name.strip()).first()
                 if arm:
                     arm.form_master = instance
                     arm.save(update_fields=["form_master"])

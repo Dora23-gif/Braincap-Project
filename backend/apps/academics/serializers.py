@@ -236,3 +236,20 @@ class TeacherAllocationSerializer(serializers.ModelSerializer):
     def get_teacher_name(self, obj):
         return obj.teacher.get_full_name() or obj.teacher.username
 
+    def create(self, validated_data):
+        class_arm = validated_data.get("class_arm")
+        subject = validated_data.get("subject")
+        term = validated_data.get("term")
+        teacher = validated_data.get("teacher")
+        if not term:
+            from apps.academics.models import AcademicTerm
+            term = AcademicTerm.objects.filter(is_active=True).first()
+            validated_data["term"] = term
+        alloc, _ = TeacherAllocation.objects.update_or_create(
+            class_arm=class_arm,
+            subject=subject,
+            term=term,
+            defaults={"teacher": teacher}
+        )
+        return alloc
+
