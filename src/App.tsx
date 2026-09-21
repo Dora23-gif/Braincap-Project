@@ -249,9 +249,11 @@ const AppContent: React.FC = () => {
               setSelectedReportCardStudentId(studentId);
               setActiveView('report-card');
             }}
-            onNavigateToAdmissions={() => {
-              setActiveView('admissions-wizard');
-            }}
+            onNavigateToAdmissions={
+              user?.activeRole === 'PRINCIPAL' || user?.role === 'PRINCIPAL'
+                ? undefined
+                : () => setActiveView('admissions-wizard')
+            }
           />
         );
       case 'admissions-wizard':

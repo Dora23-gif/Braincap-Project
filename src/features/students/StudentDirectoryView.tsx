@@ -23,7 +23,8 @@ export const StudentDirectoryView: React.FC<{
   const isSuperAdmin = user?.activeRole === 'SUPER_ADMIN' || user?.assignedRoles?.includes('SUPER_ADMIN');
   const isFormMaster = user?.activeRole === 'FORM_MASTER';
   const isSubjectTeacher = user?.activeRole === 'SUBJECT_TEACHER' || user?.activeRole === 'TEACHER';
-  const canEnroll = isSuperAdmin || user?.activeRole === 'PRINCIPAL' || user?.activeRole === 'VICE_PRINCIPAL' || user?.activeRole === 'ADMISSIONS_OFFICER';
+  const isPrincipal = user?.activeRole === 'PRINCIPAL' || user?.role === 'PRINCIPAL';
+  const canEnroll = !isPrincipal && (isSuperAdmin || user?.activeRole === 'ADMISSIONS_OFFICER' || user?.activeRole === 'VICE_PRINCIPAL_ADMIN' || user?.activeRole === 'VICE_PRINCIPAL');
 
   // Compute teacher's allocated class arm IDs
   const teacherArmIds = React.useMemo(() => {
