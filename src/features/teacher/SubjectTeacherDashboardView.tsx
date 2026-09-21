@@ -31,7 +31,7 @@ import { DoubleBezelCard } from '../../components/common/DoubleBezelCard';
 import { BarDistributionChart } from '../../components/common/ChartComponents';
 import { ModalPortal } from '../../components/common/ModalPortal';
 import { evaluateGrade } from '../../lib/gradeCalculator';
-import { resolveArmId, resolveSubjectId } from '../../lib/api';
+import { resolveArmId, resolveSubjectId, resolveArmPk, resolveSubjectPk } from '../../lib/api';
 
 interface SubjectTeacherDashboardViewProps {
   onNavigateToScores?: (classArmId?: string, subjectId?: string) => void;
@@ -128,17 +128,130 @@ export const SubjectTeacherDashboardView: React.FC<SubjectTeacherDashboardViewPr
     return periodsList;
   }, [weeklyTimetables, teacherAllocations, uniqueClassArmIds, classArms]);
 
+  // Helper to resolve all students offering a subject in a specific arm
+  const getStudentsOfferingSubjectInArm = (classArmId: string, classArmName?: string, subjectId?: string) => {
+    if (!classArmId || !subjectId) return [];
+
+    const canonicalArmId = resolveArmId(classArmId, classArmName);
+    const armPk = resolveArmPk(classArmId) || resolveArmPk(classArmName) || resolveArmPk(canonicalArmId);
+    const canonicalSubjId = resolveSubjectId(subjectId);
+    const subjPk = resolveSubjectPk(subjectId) || resolveSubjectPk(canonicalSubjId);
+    const subjCode = canonicalSubjId.replace(/^subj-/, '').toUpperCase();
+
+    // Look up subject object and arm object
+    const subjObj = subjects.find(s =>
+      s.id === subjectId ||
+      s.id === canonicalSubjId ||
+      s.code?.toUpperCase() === subjCode ||
+      (subjPk !== undefined && (s as any).pk === subjPk)
+    );
+    const armObj = classArms.find(a =>
+      a.id === classArmId ||
+      a.id === canonicalArmId ||
+      resolveArmId(a.id, a.fullName) === canonicalArmId ||
+      (armPk !== undefined && resolveArmPk(a.id) === armPk)
+    );
+
+    const armFullName = (armObj?.fullName || classArmName || '').toLowerCase();
+    const isJuniorArm = armFullName.includes('jss') || canonicalArmId.includes('jss');
+    const isSeniorArm = armFullName.includes('sss') || canonicalArmId.includes('sss');
+    const isScienceArm =
+      armFullName.includes('science') ||
+      armFullName.includes('diamond') ||
+      armFullName.includes('emerald') ||
+      armFullName.includes('gold') ||
+      canonicalArmId.includes('diamond') ||
+      canonicalArmId.includes('emerald') ||
+      canonicalArmId.includes('gold');
+
+    // Compulsory subject logic (WAEC / Everest core rules):
+    const isCompulsoryForArm = Boolean(
+      (isJuniorArm && (
+        subjObj?.isCompulsoryJunior ||
+        subjObj?.applicableTo === 'JUNIOR' ||
+        subjObj?.applicableTo === 'ALL' ||
+        subjObj?.category === 'CORE'
+      )) ||
+      (isSeniorArm && (
+        subjObj?.category === 'CORE' ||
+        ['ENG', 'MTH', 'CIV', 'HIS'].includes(subjCode) ||
+        (subjObj?.isCompulsorySeniorScience && (isScienceArm || ['PHY', 'CHE', 'BIO'].includes(subjCode))) ||
+        (['PHY', 'CHE', 'BIO'].includes(subjCode) && isScienceArm)
+      ))
+    );
+
+    return students.filter(s => {
+      // 1. Arm matching (resilient against slug, PK, and full name)
+      const matchesArm =
+        s.currentClassArmId === classArmId ||
+        s.currentClassArmId === canonicalArmId ||
+        resolveArmId(s.currentClassArmId, s.currentClassArmName) === canonicalArmId ||
+        (armPk !== undefined && resolveArmPk(s.currentClassArmId) === armPk) ||
+        (Boolean(armObj?.fullName) && Boolean(s.currentClassArmName) && s.currentClassArmName.toLowerCase().trim() === armObj!.fullName.toLowerCase().trim());
+
+      if (!matchesArm) return false;
+
+      // If subject is compulsory for this class arm, every student in the arm offers it!
+      if (isCompulsoryForArm) return true;
+
+      // 2. Subject offering check:
+      const regIds = Array.isArray(s.registeredSubjectIds) ? s.registeredSubjectIds : [];
+      const regCodes = Array.isArray(s.registeredSubjectCodes) ? s.registeredSubjectCodes.map(c => c.toUpperCase()) : [];
+
+      const isRegistered =
+        regIds.includes(subjectId) ||
+        regIds.includes(canonicalSubjId) ||
+        regIds.includes(`subj-${subjCode.toLowerCase()}`) ||
+        regIds.includes(subjCode.toLowerCase()) ||
+        regIds.includes(subjCode) ||
+        (subjPk !== undefined && regIds.includes(String(subjPk))) ||
+        regCodes.includes(subjCode);
+
+      if (isRegistered) return true;
+
+      // 3. Existing score record for this specific subject and term
+      const hasScoreRecord = scores.some(
+        sc => (sc.studentId === s.id || (s.admissionNumber && sc.admissionNumber === s.admissionNumber)) &&
+              (sc.subjectId === subjectId ||
+               sc.subjectId === canonicalSubjId ||
+               sc.subjectId.toLowerCase().replace(/^subj-/, '') === subjCode.toLowerCase() ||
+               (subjPk !== undefined && String(sc.subjectId) === String(subjPk))) &&
+              (sc.classArmId === classArmId ||
+               sc.classArmId === canonicalArmId ||
+               resolveArmId(sc.classArmId) === canonicalArmId ||
+               (armPk !== undefined && resolveArmPk(sc.classArmId) === armPk)) &&
+              sc.termId === activeTerm.id
+      );
+
+      return hasScoreRecord;
+    });
+  };
+
   // Compute analytics for each allocated class
   const allocationCards = useMemo(() => {
     return teacherAllocations.map(alloc => {
-      const armStudents = students.filter(s => s.currentClassArmId === alloc.classArmId && s.registeredSubjectIds?.includes(alloc.subjectId));
+      const armStudents = getStudentsOfferingSubjectInArm(alloc.classArmId, alloc.classArmName, alloc.subjectId);
+      const canonicalArmId = resolveArmId(alloc.classArmId, alloc.classArmName);
+      const armPk = resolveArmPk(alloc.classArmId) || resolveArmPk(alloc.classArmName) || resolveArmPk(canonicalArmId);
+      const canonicalSubjId = resolveSubjectId(alloc.subjectId);
+      const subjPk = resolveSubjectPk(alloc.subjectId) || resolveSubjectPk(canonicalSubjId);
+
       const armScores = scores.filter(
-        s => s.classArmId === alloc.classArmId && s.subjectId === alloc.subjectId && s.termId === activeTerm.id
+        s => (s.classArmId === alloc.classArmId ||
+              s.classArmId === canonicalArmId ||
+              resolveArmId(s.classArmId) === canonicalArmId ||
+              (armPk !== undefined && resolveArmPk(s.classArmId) === armPk)) &&
+             (s.subjectId === alloc.subjectId ||
+              s.subjectId === canonicalSubjId ||
+              resolveSubjectId(s.subjectId) === canonicalSubjId ||
+              (subjPk !== undefined && resolveSubjectPk(s.subjectId) === subjPk)) &&
+             s.termId === activeTerm.id
       );
 
       const gradedScores = armScores.filter(s => s.total > 0);
       const gradedCount = gradedScores.length;
-      const totalCount = armStudents.length;
+      // Safeguard: totalCount cannot be less than gradedCount if scores are recorded
+      const totalCount = Math.max(armStudents.length, gradedCount);
       const percentage = totalCount > 0 ? Math.round((gradedCount / totalCount) * 100) : 0;
 
       const totals = gradedScores.map(s => s.total);
@@ -156,11 +269,21 @@ export const SubjectTeacherDashboardView: React.FC<SubjectTeacherDashboardViewPr
 
       // Submission status
       const submission = subjectSubmissions.find(
-        sub => sub.classArmId === alloc.classArmId && sub.subjectId === alloc.subjectId && sub.termId === activeTerm.id
+        sub => (sub.classArmId === alloc.classArmId ||
+                resolveArmId(sub.classArmId) === canonicalArmId ||
+                (armPk !== undefined && resolveArmPk(sub.classArmId) === armPk)) &&
+               (sub.subjectId === alloc.subjectId ||
+                resolveSubjectId(sub.subjectId) === canonicalSubjId ||
+                (subjPk !== undefined && resolveSubjectPk(sub.subjectId) === subjPk)) &&
+               sub.termId === activeTerm.id
       );
       const isSubmitted = submission?.status === 'SUBMITTED' || submission?.status === 'MODERATED';
 
-      const armObj = classArms.find(a => a.id === alloc.classArmId);
+      const armObj = classArms.find(a =>
+        a.id === alloc.classArmId ||
+        a.id === canonicalArmId ||
+        resolveArmId(a.id, a.fullName) === canonicalArmId
+      );
       const formMasterStaff = staff.find(st => st.id === armObj?.formMasterId);
 
       return {
@@ -181,7 +304,7 @@ export const SubjectTeacherDashboardView: React.FC<SubjectTeacherDashboardViewPr
         submittedAt: submission?.submittedAt
       };
     });
-  }, [teacherAllocations, students, scores, activeTerm, subjectSubmissions, classArms, staff]);
+  }, [teacherAllocations, students, scores, activeTerm, subjectSubmissions, classArms, staff, subjects]);
 
   // Overall totals
   const totalStudentsTaught = allocationCards.reduce((acc, cur) => acc + cur.totalStudents, 0);
@@ -242,13 +365,19 @@ export const SubjectTeacherDashboardView: React.FC<SubjectTeacherDashboardViewPr
     }[] = [];
 
     teacherAllocations.forEach(alloc => {
-      const candidates = students.filter(
-        s => s.currentClassArmId === alloc.classArmId && s.registeredSubjectIds?.includes(alloc.subjectId)
-      );
+      const candidates = getStudentsOfferingSubjectInArm(alloc.classArmId, alloc.classArmName, alloc.subjectId);
+      const canonicalSubjId = resolveSubjectId(alloc.subjectId);
+      const subjPk = resolveSubjectPk(alloc.subjectId) || resolveSubjectPk(canonicalSubjId);
+      const subjCode = canonicalSubjId.replace(/^subj-/, '').toUpperCase();
 
       candidates.forEach(cand => {
         const sc = scores.find(
-          s => s.studentId === cand.id && s.subjectId === alloc.subjectId && s.termId === activeTerm.id
+          s => (s.studentId === cand.id || (cand.admissionNumber && s.admissionNumber === cand.admissionNumber)) &&
+               (s.subjectId === alloc.subjectId ||
+                s.subjectId === canonicalSubjId ||
+                s.subjectId.toLowerCase().replace(/^subj-/, '') === subjCode.toLowerCase() ||
+                (subjPk !== undefined && String(s.subjectId) === String(subjPk))) &&
+               s.termId === activeTerm.id
         );
 
         const ca = (sc?.ca1 || 0) + (sc?.assignment || 0);
@@ -739,10 +868,10 @@ export const SubjectTeacherDashboardView: React.FC<SubjectTeacherDashboardViewPr
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {uniqueSubjectIds.map((subjId, idx) => {
-              const subjObj = subjects.find(s => s.id === subjId);
-              const classesTeachingThis = teacherAllocations.filter(a => a.subjectId === subjId);
+              const subjObj = subjects.find(s => s.id === subjId || resolveSubjectId(s.id) === resolveSubjectId(subjId));
+              const classesTeachingThis = teacherAllocations.filter(a => a.subjectId === subjId || resolveSubjectId(a.subjectId) === resolveSubjectId(subjId));
               const totalCandidates = classesTeachingThis.reduce((acc, cur) => {
-                const count = students.filter(s => s.currentClassArmId === cur.classArmId && s.registeredSubjectIds?.includes(subjId)).length;
+                const count = getStudentsOfferingSubjectInArm(cur.classArmId, cur.classArmName, subjId).length;
                 return acc + count;
               }, 0);
 
