@@ -147,10 +147,10 @@ export const UserManagementView: React.FC = () => {
     }
   };
 
-  const handleTeachingArmToggle = (armId: string) => {
-    const canonical = resolveArmId(armId);
-    if (formTeachingArmIds.some(id => id === canonical || resolveArmId(id) === canonical)) {
-      setFormTeachingArmIds(formTeachingArmIds.filter(id => id !== canonical && resolveArmId(id) !== canonical));
+  const handleTeachingArmToggle = (armId: string, fullName?: string) => {
+    const canonical = resolveArmId(armId, fullName);
+    if (formTeachingArmIds.some(id => resolveArmId(id) === canonical)) {
+      setFormTeachingArmIds(formTeachingArmIds.filter(id => resolveArmId(id) !== canonical));
     } else {
       setFormTeachingArmIds([...formTeachingArmIds, canonical]);
     }
@@ -158,14 +158,14 @@ export const UserManagementView: React.FC = () => {
 
   const handleSelectJuniorArms = () => {
     const juniorIds = classArms
-      .filter(a => (a.fullName || a.name).toLowerCase().includes('jss'))
+      .filter(a => (a.fullName || a.name || '').toLowerCase().includes('jss'))
       .map(a => resolveArmId(a.id, a.fullName));
     setFormTeachingArmIds(prev => Array.from(new Set([...prev, ...juniorIds])));
   };
 
   const handleSelectSeniorArms = () => {
     const seniorIds = classArms
-      .filter(a => (a.fullName || a.name).toLowerCase().includes('sss'))
+      .filter(a => (a.fullName || a.name || '').toLowerCase().includes('sss'))
       .map(a => resolveArmId(a.id, a.fullName));
     setFormTeachingArmIds(prev => Array.from(new Set([...prev, ...seniorIds])));
   };
@@ -1037,14 +1037,15 @@ export const UserManagementView: React.FC = () => {
                     </div>
                     <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1.5 bg-white/70 dark:bg-slate-800/60 rounded-lg border border-indigo-100 dark:border-indigo-900/40">
                       {classArms.map(arm => {
+                        const armCanonical = resolveArmId(arm.id, arm.fullName);
                         const isSelected = formTeachingArmIds.some(
-                          id => id === arm.id || resolveArmId(id, arm.fullName) === arm.id || (arm.fullName && resolveArmId(id, arm.fullName) === resolveArmId(arm.id, arm.fullName))
+                          id => resolveArmId(id) === armCanonical
                         );
                         return (
                           <button
                             key={arm.id}
                             type="button"
-                            onClick={() => handleTeachingArmToggle(arm.id)}
+                            onClick={() => handleTeachingArmToggle(arm.id, arm.fullName)}
                             className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 border ${
                               isSelected
                                 ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
@@ -1338,14 +1339,15 @@ export const UserManagementView: React.FC = () => {
                     </div>
                     <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1.5 bg-white/70 dark:bg-slate-800/60 rounded-lg border border-indigo-100 dark:border-indigo-900/40">
                       {classArms.map(arm => {
+                        const armCanonical = resolveArmId(arm.id, arm.fullName);
                         const isSelected = formTeachingArmIds.some(
-                          id => id === arm.id || resolveArmId(id, arm.fullName) === arm.id || (arm.fullName && resolveArmId(id, arm.fullName) === resolveArmId(arm.id, arm.fullName))
+                          id => resolveArmId(id) === armCanonical
                         );
                         return (
                           <button
                             key={arm.id}
                             type="button"
-                            onClick={() => handleTeachingArmToggle(arm.id)}
+                            onClick={() => handleTeachingArmToggle(arm.id, arm.fullName)}
                             className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 border ${
                               isSelected
                                 ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'

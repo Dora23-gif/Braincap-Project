@@ -414,26 +414,38 @@ export const SUBJECT_PK_BY_CODE: Record<string, number> = {
 
 export function resolveArmId(rawIdOrName?: any, fullName?: string): string {
   const str = String(rawIdOrName || '').trim();
-  const nameToTry = (fullName || str).toLowerCase().trim();
 
-  if (nameToTry && ARM_SLUG_BY_NAME[nameToTry]) {
-    return ARM_SLUG_BY_NAME[nameToTry];
-  }
-
-  const num = parseInt(str.replace(/^arm-/, ''), 10);
-  if (!isNaN(num) && ARM_SLUG_BY_PK[num]) {
-    return ARM_SLUG_BY_PK[num];
-  }
-
+  // 1. If str is already an explicit slug (e.g. arm-jss1-emerald)
   if (str.startsWith('arm-')) {
     const clean = str.replace(/-+/g, '-').replace(/jss-(\d)/, 'jss$1').replace(/sss-(\d)/, 'sss$1');
     return clean;
   }
 
-  if (nameToTry) {
-    const compact = nameToTry.replace(/[\s-_]+/g, '');
+  // 2. If str is numeric PK (or arm-<number>)
+  const num = parseInt(str.replace(/^arm-/, ''), 10);
+  if (!isNaN(num) && ARM_SLUG_BY_PK[num]) {
+    return ARM_SLUG_BY_PK[num];
+  }
+
+  // 3. Try exact lookup on str itself first
+  const strLower = str.toLowerCase().trim();
+  if (strLower && ARM_SLUG_BY_NAME[strLower]) {
+    return ARM_SLUG_BY_NAME[strLower];
+  }
+
+  // 4. Try fullName if provided
+  const nameLower = (fullName || '').toLowerCase().trim();
+  if (nameLower && ARM_SLUG_BY_NAME[nameLower]) {
+    return ARM_SLUG_BY_NAME[nameLower];
+  }
+
+  // 5. Try compact match on nameLower or strLower
+  const targetText = nameLower || strLower;
+  if (targetText) {
+    const compact = targetText.replace(/[\s-_]+/g, '');
     for (const [key, slug] of Object.entries(ARM_SLUG_BY_NAME)) {
-      if (compact.includes(key.replace(/[\s-_]+/g, '')) || key.replace(/[\s-_]+/g, '').includes(compact)) {
+      const keyCompact = key.replace(/[\s-_]+/g, '');
+      if (compact === keyCompact) {
         return slug;
       }
     }
