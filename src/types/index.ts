@@ -39,6 +39,8 @@ export interface UserSession {
   }[];
   formMasterArmId?: string;
   formMasterArmName?: string;
+  formMasterClassArmId?: string;
+  formMasterClassArmName?: string;
 }
 
 export interface AcademicSession {
@@ -157,6 +159,7 @@ export interface Student {
   registeredSubjectCodes?: string[];
   droppedSubjects?: DroppedSubjectRecord[];
   address?: string;
+  backendId?: number;
 }
 
 export type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED';

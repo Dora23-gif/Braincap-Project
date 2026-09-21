@@ -541,6 +541,7 @@ export function adaptStudentFromBackend(d: any): Student {
       date: drop.dropped_at ? drop.dropped_at.split('T')[0] : '',
       reason: drop.reason || '',
     })),
+    backendId: typeof d.id === 'number' ? d.id : !isNaN(Number(d.id)) ? Number(d.id) : undefined,
   };
 }
 
@@ -871,8 +872,10 @@ export function adaptUserSessionFromBackend(d: any): UserSession {
     role: activeRole,
     avatarUrl: d.avatarUrl || d.avatar_url,
     staffId: d.staffId || d.identifier || d.username,
-    formMasterArmId: d.form_master_class_arm ? String(d.form_master_class_arm) : undefined,
+    formMasterArmId: d.form_master_class_arm ? resolveArmId(d.form_master_class_arm, d.form_master_class_arm_name) : undefined,
     formMasterArmName: d.form_master_class_arm_name,
+    formMasterClassArmId: d.form_master_class_arm ? resolveArmId(d.form_master_class_arm, d.form_master_class_arm_name) : undefined,
+    formMasterClassArmName: d.form_master_class_arm_name,
     allocatedSubjects: d.allocated_subjects || [],
     parentId: d.parent_id
       ? String(d.parent_id)

@@ -1,33 +1,94 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSchoolData } from '../../context/SchoolDataContext';
 import { useAuth } from '../../context/AuthContext';
 import type { AttendanceStatus } from '../../types';
-import { Calendar, CheckCircle2, Save, Eye, ShieldAlert } from 'lucide-react';
+import { Calendar, CheckCircle2, Save, Eye, ShieldAlert, Loader2 } from 'lucide-react';
+import { resolveArmId, resolveArmPk } from '../../lib/api';
 
 export const AttendanceRegisterView: React.FC = () => {
-  const { classArms, students, attendanceRecords, recordAttendance } = useSchoolData();
+  const { classArms, students, attendanceRecords, recordAttendance, staff } = useSchoolData();
   const { user } = useAuth();
 
   const isSuperAdmin = user?.activeRole === 'SUPER_ADMIN' || user?.assignedRoles?.includes('SUPER_ADMIN');
-  const isFormMaster = user?.activeRole === 'FORM_MASTER';
-  const isVPAdmin = user?.activeRole === 'VICE_PRINCIPAL_ADMIN' || user?.activeRole === 'VICE_PRINCIPAL';
+  const isFormMaster = user?.activeRole === 'FORM_MASTER' || user?.role === 'FORM_MASTER' || user?.assignedRoles?.includes('FORM_MASTER');
+  const isVPAdmin = user?.activeRole === 'VICE_PRINCIPAL_ADMIN' || user?.activeRole === 'VICE_PRINCIPAL' || user?.activeRole === 'VICE_PRINCIPAL_ACADEMICS';
 
-  const [selectedArmId, setSelectedArmId] = useState(
-    isFormMaster && user?.formMasterArmId ? user.formMasterArmId : classArms[0]?.id || 'arm-sss2-gold'
-  );
+  // Find matching staff record for additional custody verification
+  const matchedStaff = useMemo(() => {
+    if (!user) return null;
+    return staff.find(st =>
+      st.id === user.id ||
+      (st.identifier && (st.identifier === user.identifier || st.identifier === user.staffId)) ||
+      (st.email && user.email && st.email.toLowerCase() === user.email.toLowerCase())
+    );
+  }, [staff, user]);
 
-  const canEditAttendance = (isFormMaster && user?.formMasterArmId === selectedArmId) || isVPAdmin || isSuperAdmin;
+  // Determine Form Master's designated class arm
+  const designatedArmSlug = useMemo(() => {
+    const raw =
+      user?.formMasterArmId ||
+      user?.formMasterClassArmId ||
+      (user as any)?.form_master_class_arm ||
+      matchedStaff?.formMasterArmId ||
+      matchedStaff?.formMasterClassArmId;
+    if (raw) return resolveArmId(raw);
+    const armByTeacher = classArms.find(a =>
+      a.formMasterId === user?.id ||
+      a.formMasterId === user?.staffId ||
+      (user?.identifier && a.formMasterId === user.identifier) ||
+      (a.formMasterName && user?.name && a.formMasterName.toLowerCase() === user.name.toLowerCase())
+    );
+    return armByTeacher?.id;
+  }, [user, matchedStaff, classArms]);
+
+  const [selectedArmId, setSelectedArmId] = useState<string>(() => {
+    if (isFormMaster && designatedArmSlug) return designatedArmSlug;
+    return classArms[0]?.id || 'arm-sss2-gold';
+  });
+
+  useEffect(() => {
+    if (isFormMaster && designatedArmSlug) {
+      setSelectedArmId(designatedArmSlug);
+    }
+  }, [isFormMaster, designatedArmSlug]);
+
+  const isCustodyArm = useMemo(() => {
+    if (!designatedArmSlug) return false;
+    return (
+      resolveArmId(designatedArmSlug) === resolveArmId(selectedArmId) ||
+      (resolveArmPk(designatedArmSlug) !== undefined && resolveArmPk(designatedArmSlug) === resolveArmPk(selectedArmId))
+    );
+  }, [designatedArmSlug, selectedArmId]);
+
+  // Form Masters are fully authorized for their class arm; Admins have statutory school-wide authority
+  const canEditAttendance = isSuperAdmin || isVPAdmin || (isFormMaster && (isCustodyArm || !designatedArmSlug));
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [saveAlert, setSaveAlert] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const currentArm = classArms.find(a => a.id === selectedArmId) || classArms[0];
-  const armStudents = students.filter(s => s.currentClassArmId === selectedArmId);
+  const currentArm = useMemo(() => {
+    return classArms.find(a =>
+      a.id === selectedArmId ||
+      resolveArmId(a.id, a.fullName) === resolveArmId(selectedArmId) ||
+      (resolveArmPk(a.id) !== undefined && resolveArmPk(a.id) === resolveArmPk(selectedArmId))
+    ) || classArms[0];
+  }, [classArms, selectedArmId]);
+
+  const armStudents = useMemo(() => {
+    const canonicalSelected = resolveArmId(selectedArmId);
+    const selectedPk = resolveArmPk(selectedArmId);
+    return students.filter(s =>
+      s.currentClassArmId === selectedArmId ||
+      resolveArmId(s.currentClassArmId) === canonicalSelected ||
+      (selectedPk !== undefined && resolveArmPk(s.currentClassArmId) === selectedPk)
+    );
+  }, [students, selectedArmId]);
 
   // Initialize status map for the day
   const [statusMap, setStatusMap] = useState<Map<string, AttendanceStatus>>(() => {
     const map = new Map<string, AttendanceStatus>();
     armStudents.forEach(s => {
-      const existing = attendanceRecords.find(r => r.studentId === s.id && r.date === selectedDate);
+      const existing = attendanceRecords.find(r => (r.studentId === s.id || (s.admissionNumber && r.studentId === s.admissionNumber)) && r.date === selectedDate);
       map.set(s.id, existing ? existing.status : 'PRESENT');
     });
     return map;
@@ -37,11 +98,11 @@ export const AttendanceRegisterView: React.FC = () => {
   useEffect(() => {
     const map = new Map<string, AttendanceStatus>();
     armStudents.forEach(s => {
-      const existing = attendanceRecords.find(r => r.studentId === s.id && r.date === selectedDate);
+      const existing = attendanceRecords.find(r => (r.studentId === s.id || (s.admissionNumber && r.studentId === s.admissionNumber)) && r.date === selectedDate);
       map.set(s.id, existing ? existing.status : 'PRESENT');
     });
     setStatusMap(map);
-  }, [selectedDate, selectedArmId, students, attendanceRecords]);
+  }, [selectedDate, selectedArmId, armStudents, attendanceRecords]);
 
   const handleStatusChange = (studentId: string, status: AttendanceStatus) => {
     if (!canEditAttendance) return;
@@ -61,16 +122,23 @@ export const AttendanceRegisterView: React.FC = () => {
     });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!canEditAttendance) return;
-    const payload = armStudents.map(s => ({
-      studentId: s.id,
-      classArmId: selectedArmId,
-      status: statusMap.get(s.id) || 'PRESENT'
-    }));
-    recordAttendance(selectedDate, payload);
-    setSaveAlert(true);
-    setTimeout(() => setSaveAlert(false), 2500);
+    setIsSaving(true);
+    try {
+      const payload = armStudents.map(s => ({
+        studentId: s.id,
+        classArmId: selectedArmId,
+        status: statusMap.get(s.id) || 'PRESENT'
+      }));
+      await recordAttendance(selectedDate, payload);
+      setSaveAlert(true);
+      setTimeout(() => setSaveAlert(false), 3000);
+    } catch (err) {
+      console.error('Failed to save attendance register:', err);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const presentCount = Array.from(statusMap.values()).filter(st => st === 'PRESENT').length;
@@ -106,10 +174,10 @@ export const AttendanceRegisterView: React.FC = () => {
 
         <div className="flex flex-wrap items-center gap-3">
           {/* Class Arm Selector / Form Master Custody Badge */}
-          {user?.activeRole === 'FORM_MASTER' && user?.formMasterArmId ? (
+          {isFormMaster && designatedArmSlug ? (
             <div className="px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs font-bold text-emerald-900 dark:text-emerald-300 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>Custody: {currentArm.fullName}</span>
+              <span>Custody: {currentArm?.fullName || designatedArmSlug}</span>
             </div>
           ) : (
             <select
@@ -140,6 +208,7 @@ export const AttendanceRegisterView: React.FC = () => {
           {canEditAttendance ? (
             <>
               <button
+                type="button"
                 onClick={handleMarkAllPresent}
                 className="px-3 py-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-xs cursor-pointer transition-colors"
               >
@@ -147,11 +216,13 @@ export const AttendanceRegisterView: React.FC = () => {
               </button>
 
               <button
+                type="button"
                 onClick={handleSave}
-                className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+                disabled={isSaving || armStudents.length === 0}
+                className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Save className="w-3.5 h-3.5" />
-                <span>Save Register</span>
+                {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                <span>{isSaving ? 'Saving...' : 'Save Register'}</span>
               </button>
             </>
           ) : (
@@ -224,30 +295,7 @@ export const AttendanceRegisterView: React.FC = () => {
                     {s.admissionNumber}
                   </td>
                   <td className="py-3 px-4 text-center">
-                    {isSuperAdmin ? (
-                      <div className="inline-flex items-center">
-                        {currentStatus === 'PRESENT' && (
-                          <span className="px-3.5 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                            Present
-                          </span>
-                        )}
-                        {currentStatus === 'ABSENT' && (
-                          <span className="px-3.5 py-1 rounded-full text-xs font-bold bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
-                            Absent
-                          </span>
-                        )}
-                        {currentStatus === 'LATE' && (
-                          <span className="px-3.5 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
-                            Late Arrival
-                          </span>
-                        )}
-                        {currentStatus === 'EXCUSED' && (
-                          <span className="px-3.5 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
-                            Excused
-                          </span>
-                        )}
-                      </div>
-                    ) : (
+                    {canEditAttendance ? (
                       <div className="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 gap-1">
                         <button
                           type="button"
@@ -296,6 +344,29 @@ export const AttendanceRegisterView: React.FC = () => {
                         >
                           E (Excused)
                         </button>
+                      </div>
+                    ) : (
+                      <div className="inline-flex items-center">
+                        {currentStatus === 'PRESENT' && (
+                          <span className="px-3.5 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                            Present
+                          </span>
+                        )}
+                        {currentStatus === 'ABSENT' && (
+                          <span className="px-3.5 py-1 rounded-full text-xs font-bold bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
+                            Absent
+                          </span>
+                        )}
+                        {currentStatus === 'LATE' && (
+                          <span className="px-3.5 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                            Late Arrival
+                          </span>
+                        )}
+                        {currentStatus === 'EXCUSED' && (
+                          <span className="px-3.5 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
+                            Excused
+                          </span>
+                        )}
                       </div>
                     )}
                   </td>

@@ -132,7 +132,7 @@ interface SchoolDataContextType {
     ticketId: string;
     adminUser: { id: string; name: string; role: any };
   }) => void;
-  recordAttendance: (date: string, records: { studentId: string; classArmId: string; status: any }[]) => void;
+  recordAttendance: (date: string, records: { studentId: string; classArmId: string; status: any }[]) => Promise<void> | void;
   updatePsychomotor: (record: AffectiveAndPsychomotor) => void;
   updateStudentSubjects: (studentId: string, subjectIds: string[]) => void;
   dropStudentSubject: (studentId: string, subjectId: string, level: 'SSS 2' | 'SSS 3', reason?: string) => void;
@@ -1298,7 +1298,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     });
   };
 
-  const recordAttendance = (date: string, records: { studentId: string; classArmId: string; status: any }[]) => {
+  const recordAttendance = async (date: string, records: { studentId: string; classArmId: string; status: any }[]) => {
     setAttendanceRecords(prev => {
       // Remove any existing records for this date and these students
       const filtered = prev.filter(r => !(r.date === date && records.some(rec => rec.studentId === r.studentId)));
@@ -1309,21 +1309,30 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         date,
         status: r.status
       }));
-      return [...filtered, ...newItems];
+      const updated = [...filtered, ...newItems];
+      try {
+        localStorage.setItem('eis_attendance', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
     });
 
     // Live asynchronous POST to Django backend
     const backendRecords = records.map(r => {
-      const student = students.find(s => s.id === r.studentId);
+      const student = students.find(s => s.id === r.studentId || s.admissionNumber === r.studentId);
+      const studentIdentifier = student ? (student.backendId || student.admissionNumber || student.id) : r.studentId;
+      const armPk = resolveArmPk(r.classArmId);
       return {
-        student: student ? student.admissionNumber : r.studentId,
-        class_arm: resolveArmPk(r.classArmId) || r.classArmId,
+        student: studentIdentifier,
+        class_arm: armPk !== undefined ? armPk : r.classArmId,
         date,
         status: r.status,
       };
     });
-    api.post('/students/attendance/bulk/', { records: backendRecords })
-      .catch(err => console.warn('Backend attendance sync fallback:', err));
+    try {
+      await api.post('/students/attendance/bulk/', { records: backendRecords });
+    } catch (err) {
+      console.warn('Backend attendance sync fallback:', err);
+    }
   };
 
   const updatePsychomotor = (record: AffectiveAndPsychomotor) => {

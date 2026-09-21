@@ -56,13 +56,42 @@ export const ScoreEntryGridView: React.FC<ScoreEntryGridViewProps> = ({
     subjectSubmissions,
     submitSubjectMarksheet,
     retractSubjectMarksheet,
-    allocations
+    allocations,
+    staff
   } = useSchoolData();
 
   const { user } = useAuth();
   const isSubjectTeacher = user?.activeRole === 'SUBJECT_TEACHER' || user?.activeRole === 'TEACHER';
-  const isFormMaster = user?.activeRole === 'FORM_MASTER';
+  const isFormMaster = user?.activeRole === 'FORM_MASTER' || user?.role === 'FORM_MASTER' || user?.assignedRoles?.includes('FORM_MASTER');
   
+  // Find matching staff record for additional custody verification
+  const matchedStaff = useMemo(() => {
+    if (!user) return null;
+    return staff.find(st =>
+      st.id === user.id ||
+      (st.identifier && (st.identifier === user.identifier || st.identifier === user.staffId)) ||
+      (st.email && user.email && st.email.toLowerCase() === user.email.toLowerCase())
+    );
+  }, [staff, user]);
+
+  // Determine Form Master's designated class arm
+  const designatedFormMasterArm = useMemo(() => {
+    const raw =
+      user?.formMasterArmId ||
+      user?.formMasterClassArmId ||
+      (user as any)?.form_master_class_arm ||
+      matchedStaff?.formMasterArmId ||
+      matchedStaff?.formMasterClassArmId;
+    if (raw) return resolveArmId(raw);
+    const armByTeacher = classArms.find(a =>
+      a.formMasterId === user?.id ||
+      a.formMasterId === user?.staffId ||
+      (user?.identifier && a.formMasterId === user.identifier) ||
+      (a.formMasterName && user?.name && a.formMasterName.toLowerCase() === user.name.toLowerCase())
+    );
+    return armByTeacher?.id;
+  }, [user, matchedStaff, classArms]);
+
   // Resolve allocations dynamically from context or user session with resilient teacher matching
   const dynamicAllocations = useMemo(() => {
     return allocations.filter(a => {
@@ -80,10 +109,26 @@ export const ScoreEntryGridView: React.FC<ScoreEntryGridViewProps> = ({
   const teacherAllocations = dynamicAllocations.length > 0 ? dynamicAllocations : (user?.allocatedSubjects || []);
 
   // Scoped class arms:
+  // - Form Master: their assigned class arm plus any classes they teach (or all classes if unrestricted)
   // - Subject Teacher: only classes they are assigned to teach
-  // - Form Master: their assigned class arm plus any classes they teach
   // - Admin: all classes
   const allowedClassArms = useMemo(() => {
+    if (isFormMaster) {
+      const designatedArm = designatedFormMasterArm;
+      const filtered = classArms.filter(a =>
+        (designatedArm && (
+          a.id === designatedArm ||
+          resolveArmId(a.id) === resolveArmId(designatedArm) ||
+          (resolveArmPk(a.id) !== undefined && resolveArmPk(a.id) === resolveArmPk(designatedArm))
+        )) ||
+        teacherAllocations.some(alloc =>
+          alloc.classArmId === a.id ||
+          resolveArmId(alloc.classArmId) === resolveArmId(a.id) ||
+          (alloc.classArmName && a.fullName && alloc.classArmName.toLowerCase().trim() === a.fullName.toLowerCase().trim())
+        )
+      );
+      return filtered.length > 0 ? filtered : classArms;
+    }
     if (isSubjectTeacher) {
       const filtered = classArms.filter(a =>
         teacherAllocations.some(alloc =>
@@ -94,20 +139,8 @@ export const ScoreEntryGridView: React.FC<ScoreEntryGridViewProps> = ({
       );
       return filtered.length > 0 ? filtered : classArms.slice(0, 2);
     }
-    if (isFormMaster) {
-      const filtered = classArms.filter(a =>
-        a.id === user?.formMasterArmId ||
-        resolveArmId(a.id) === resolveArmId(user?.formMasterArmId) ||
-        teacherAllocations.some(alloc =>
-          alloc.classArmId === a.id ||
-          resolveArmId(alloc.classArmId) === resolveArmId(a.id) ||
-          (alloc.classArmName && a.fullName && alloc.classArmName.toLowerCase().trim() === a.fullName.toLowerCase().trim())
-        )
-      );
-      return filtered.length > 0 ? filtered : classArms.slice(0, 2);
-    }
     return classArms;
-  }, [isSubjectTeacher, isFormMaster, classArms, teacherAllocations, user?.formMasterArmId]);
+  }, [isSubjectTeacher, isFormMaster, classArms, teacherAllocations, designatedFormMasterArm]);
 
   // Pick default class and subject
   const defaultClassArm = allowedClassArms[0] || classArms[0];
@@ -129,10 +162,10 @@ export const ScoreEntryGridView: React.FC<ScoreEntryGridViewProps> = ({
   }, [initialClassArmId, allowedClassArms]);
 
   // Scoped subjects for currently selected arm:
-  // - Subject teacher: only subjects they are assigned to teach in this class
   // - Form Master / Admin: all subjects offered in this class
+  // - Subject teacher: only subjects they are assigned to teach in this class
   const allowedSubjects = useMemo(() => {
-    if (isSubjectTeacher) {
+    if (isSubjectTeacher && !isFormMaster) {
       const canonicalArmId = resolveArmId(selectedArmId);
       const filtered = subjects.filter(s =>
         teacherAllocations.some(alloc =>
@@ -143,7 +176,7 @@ export const ScoreEntryGridView: React.FC<ScoreEntryGridViewProps> = ({
       return filtered.length > 0 ? filtered : subjects.slice(0, 1);
     }
     return subjects;
-  }, [isSubjectTeacher, subjects, teacherAllocations, selectedArmId]);
+  }, [isSubjectTeacher, isFormMaster, subjects, teacherAllocations, selectedArmId]);
 
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>(() => {
     if (initialSubjectId && allowedSubjects.some(s => s.id === initialSubjectId || resolveSubjectId(s.id) === resolveSubjectId(initialSubjectId))) {
@@ -177,7 +210,9 @@ export const ScoreEntryGridView: React.FC<ScoreEntryGridViewProps> = ({
       (resolveSubjectPk(alloc.subjectId) !== undefined && resolveSubjectPk(alloc.subjectId) === resolveSubjectPk(selectedSubjectId));
     return armMatches && subjMatches;
   });
-  const isReadOnlyForFormMaster = isFormMaster && !userTeachesThisSubject;
+
+  // Form Masters are fully authorized to enter and edit marks for all subjects in their class arm as requested
+  const isReadOnlyForFormMaster = false;
 
   const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
