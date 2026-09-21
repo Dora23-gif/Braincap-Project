@@ -212,11 +212,11 @@ export const api = {
 };
 
 // ============================================================================
-// CANONICAL ID MAPPINGS & RESOLVERS (SQLite PK <-> Full Name <-> Canonical Slug)
+// CANONICAL ID MAPPINGS & RESOLVERS (Neon PostgreSQL PK <-> Full Name <-> Canonical Slug)
 // ============================================================================
 
 export const ARM_SLUG_BY_PK: Record<number, string> = {
-  // Legacy local SQLite IDs:
+  // Authoritative Neon PostgreSQL primary keys:
   25: 'arm-jss1-emerald',
   26: 'arm-jss1-diamond',
   27: 'arm-jss1-gold',
@@ -229,93 +229,81 @@ export const ARM_SLUG_BY_PK: Record<number, string> = {
   34: 'arm-sss1-science-emerald',
   35: 'arm-sss1-science-diamond',
   36: 'arm-sss1-commercial-gold',
-  37: 'arm-jss1-gold', // Neon active
-  38: 'arm-jss1-emerald', // Neon active
-  39: 'arm-jss2-gold', // Neon active
-  40: 'arm-jss2-diamond', // Neon active
-  41: 'arm-jss3-gold', // Neon active
-  42: 'arm-jss3-diamond', // Neon active
-  43: 'arm-sss1-gold', // Neon active
-  44: 'arm-sss1-diamond', // Neon active
-  45: 'arm-sss2-gold', // Neon active
-  46: 'arm-sss2-diamond', // Neon active
-  47: 'arm-sss3-gold', // Neon active
-  48: 'arm-sss3-diamond', // Neon active
-  49: 'arm-jss1-diamond', // Neon active
-  50: 'arm-jss2-emerald', // Neon active
-  51: 'arm-jss3-emerald', // Neon active
-  52: 'arm-sss1-science-emerald', // Neon active
-  53: 'arm-sss1-science-diamond', // Neon active
-  54: 'arm-sss1-commercial-gold', // Neon active
-  55: 'arm-sss1-arts-platinum', // Neon active
-  56: 'arm-sss2-science-emerald', // Neon active
-  57: 'arm-sss2-science-diamond', // Neon active
-  58: 'arm-sss2-commercial-gold', // Neon active
-  59: 'arm-sss2-arts-platinum', // Neon active
-  60: 'arm-sss3-science-emerald', // Neon active
-  61: 'arm-sss3-science-diamond', // Neon active
-  62: 'arm-sss3-commercial-gold', // Neon active
-  63: 'arm-sss3-arts-platinum', // Neon active
+  37: 'arm-sss1-arts-platinum',
+  38: 'arm-sss2-science-emerald',
+  39: 'arm-sss2-science-diamond',
+  40: 'arm-sss2-commercial-gold',
+  41: 'arm-sss2-arts-platinum',
+  42: 'arm-sss3-science-emerald',
+  43: 'arm-sss3-science-diamond',
+  44: 'arm-sss3-commercial-gold',
+  45: 'arm-sss3-arts-platinum',
+  52: 'arm-sss1-gold',
+  53: 'arm-sss1-diamond',
+  54: 'arm-sss2-gold',
+  55: 'arm-sss2-diamond',
+  56: 'arm-sss3-gold',
+  57: 'arm-sss3-diamond',
 };
 
 export const ARM_PK_BY_SLUG: Record<string, number> = {
-  'arm-jss1-emerald': 38,
-  'arm-jss-1-emerald': 38,
-  'arm-jss1-diamond': 49,
-  'arm-jss-1-diamond': 49,
-  'arm-jss1-gold': 37,
-  'arm-jss-1-gold': 37,
-  'arm-jss2-emerald': 50,
-  'arm-jss-2-emerald': 50,
-  'arm-jss2-diamond': 40,
-  'arm-jss-2-diamond': 40,
-  'arm-jss2-gold': 39,
-  'arm-jss-2-gold': 39,
-  'arm-jss3-emerald': 51,
-  'arm-jss-3-emerald': 51,
-  'arm-jss3-diamond': 42,
-  'arm-jss-3-diamond': 42,
-  'arm-jss3-gold': 41,
-  'arm-jss-3-gold': 41,
-  'arm-sss1-gold': 43,
-  'arm-sss-1-gold': 43,
-  'arm-sss1-diamond': 44,
-  'arm-sss-1-diamond': 44,
-  'arm-sss1-science-emerald': 52,
-  'arm-sss-1-science-emerald': 52,
-  'arm-sss1-science-diamond': 53,
-  'arm-sss-1-science-diamond': 53,
-  'arm-sss1-commercial-gold': 54,
-  'arm-sss-1-commercial-gold': 54,
-  'arm-sss1-arts-platinum': 55,
-  'arm-sss-1-arts-platinum': 55,
-  'arm-sss1-platinum': 55,
-  'arm-sss2-gold': 45,
-  'arm-sss-2-gold': 45,
-  'arm-sss2-diamond': 46,
-  'arm-sss-2-diamond': 46,
-  'arm-sss2-science-emerald': 56,
-  'arm-sss-2-science-emerald': 56,
-  'arm-sss2-science-diamond': 57,
-  'arm-sss-2-science-diamond': 57,
-  'arm-sss2-commercial-gold': 58,
-  'arm-sss-2-commercial-gold': 58,
-  'arm-sss2-arts-platinum': 59,
-  'arm-sss-2-arts-platinum': 59,
-  'arm-sss2-platinum': 59,
-  'arm-sss3-gold': 47,
-  'arm-sss-3-gold': 47,
-  'arm-sss3-diamond': 48,
-  'arm-sss-3-diamond': 48,
-  'arm-sss3-science-emerald': 60,
-  'arm-sss-3-science-emerald': 60,
-  'arm-sss3-science-diamond': 61,
-  'arm-sss-3-science-diamond': 61,
-  'arm-sss3-commercial-gold': 62,
-  'arm-sss-3-commercial-gold': 62,
-  'arm-sss3-arts-platinum': 63,
-  'arm-sss-3-arts-platinum': 63,
-  'arm-sss3-platinum': 63,
+  'arm-jss1-emerald': 25,
+  'arm-jss-1-emerald': 25,
+  'arm-jss1-diamond': 26,
+  'arm-jss-1-diamond': 26,
+  'arm-jss1-gold': 27,
+  'arm-jss-1-gold': 27,
+  'arm-jss2-emerald': 28,
+  'arm-jss-2-emerald': 28,
+  'arm-jss2-diamond': 29,
+  'arm-jss-2-diamond': 29,
+  'arm-jss2-gold': 30,
+  'arm-jss-2-gold': 30,
+  'arm-jss3-emerald': 31,
+  'arm-jss-3-emerald': 31,
+  'arm-jss3-diamond': 32,
+  'arm-jss-3-diamond': 32,
+  'arm-jss3-gold': 33,
+  'arm-jss-3-gold': 33,
+  'arm-sss1-science-emerald': 34,
+  'arm-sss-1-science-emerald': 34,
+  'arm-sss1-science-diamond': 35,
+  'arm-sss-1-science-diamond': 35,
+  'arm-sss1-commercial-gold': 36,
+  'arm-sss-1-commercial-gold': 36,
+  'arm-sss1-arts-platinum': 37,
+  'arm-sss-1-arts-platinum': 37,
+  'arm-sss1-platinum': 37,
+  'arm-sss2-science-emerald': 38,
+  'arm-sss-2-science-emerald': 38,
+  'arm-sss2-science-diamond': 39,
+  'arm-sss-2-science-diamond': 39,
+  'arm-sss2-commercial-gold': 40,
+  'arm-sss-2-commercial-gold': 40,
+  'arm-sss2-arts-platinum': 41,
+  'arm-sss-2-arts-platinum': 41,
+  'arm-sss2-platinum': 41,
+  'arm-sss3-science-emerald': 42,
+  'arm-sss-3-science-emerald': 42,
+  'arm-sss3-science-diamond': 43,
+  'arm-sss-3-science-diamond': 43,
+  'arm-sss3-commercial-gold': 44,
+  'arm-sss-3-commercial-gold': 44,
+  'arm-sss3-arts-platinum': 45,
+  'arm-sss-3-arts-platinum': 45,
+  'arm-sss3-platinum': 45,
+  'arm-sss1-gold': 52,
+  'arm-sss-1-gold': 52,
+  'arm-sss1-diamond': 53,
+  'arm-sss-1-diamond': 53,
+  'arm-sss2-gold': 54,
+  'arm-sss-2-gold': 54,
+  'arm-sss2-diamond': 55,
+  'arm-sss-2-diamond': 55,
+  'arm-sss3-gold': 56,
+  'arm-sss-3-gold': 56,
+  'arm-sss3-diamond': 57,
+  'arm-sss-3-diamond': 57,
 };
 
 export const ARM_SLUG_BY_NAME: Record<string, string> = {
@@ -417,29 +405,27 @@ export function resolveArmId(rawIdOrName?: any, fullName?: string): string {
 
   // 1. If str is already an explicit slug (e.g. arm-jss1-emerald)
   if (str.startsWith('arm-')) {
-    const clean = str.replace(/-+/g, '-').replace(/jss-(\d)/, 'jss$1').replace(/sss-(\d)/, 'sss$1');
-    return clean;
+    return str.replace(/-+/g, '-').replace(/jss-(\d)/, 'jss$1').replace(/sss-(\d)/, 'sss$1');
   }
 
-  // 2. If str is numeric PK (or arm-<number>)
-  const num = parseInt(str.replace(/^arm-/, ''), 10);
-  if (!isNaN(num) && ARM_SLUG_BY_PK[num]) {
-    return ARM_SLUG_BY_PK[num];
-  }
-
-  // 3. Try exact lookup on str itself first
-  const strLower = str.toLowerCase().trim();
-  if (strLower && ARM_SLUG_BY_NAME[strLower]) {
-    return ARM_SLUG_BY_NAME[strLower];
-  }
-
-  // 4. Try fullName if provided
+  // 2. Exact lookup by name FIRST if provided (ensures unambiguous resolution)
   const nameLower = (fullName || '').toLowerCase().trim();
   if (nameLower && ARM_SLUG_BY_NAME[nameLower]) {
     return ARM_SLUG_BY_NAME[nameLower];
   }
 
-  // 5. Try compact match on nameLower or strLower
+  const strLower = str.toLowerCase().trim();
+  if (strLower && ARM_SLUG_BY_NAME[strLower]) {
+    return ARM_SLUG_BY_NAME[strLower];
+  }
+
+  // 3. If str is numeric PK (or arm-<number>)
+  const num = parseInt(str.replace(/^arm-/, ''), 10);
+  if (!isNaN(num) && ARM_SLUG_BY_PK[num]) {
+    return ARM_SLUG_BY_PK[num];
+  }
+
+  // 4. Compact match
   const targetText = nameLower || strLower;
   if (targetText) {
     const compact = targetText.replace(/[\s-_]+/g, '');
