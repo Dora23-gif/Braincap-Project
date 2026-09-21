@@ -116,6 +116,8 @@ export const UserManagementView: React.FC = () => {
   const [formTeachingArmIds, setFormTeachingArmIds] = useState<string[]>([]);
   const [formPassword, setFormPassword] = useState('');
   const [editPassword, setEditPassword] = useState('');
+  const [teachingArmFilterLevel, setTeachingArmFilterLevel] = useState<string>('ALL');
+  const [teachingArmSearch, setTeachingArmSearch] = useState<string>('');
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -149,8 +151,8 @@ export const UserManagementView: React.FC = () => {
 
   const handleTeachingArmToggle = (armId: string, fullName?: string) => {
     const canonical = resolveArmId(armId, fullName);
-    if (formTeachingArmIds.some(id => resolveArmId(id) === canonical)) {
-      setFormTeachingArmIds(formTeachingArmIds.filter(id => resolveArmId(id) !== canonical));
+    if (formTeachingArmIds.some(id => id === armId || resolveArmId(id) === canonical)) {
+      setFormTeachingArmIds(formTeachingArmIds.filter(id => id !== armId && resolveArmId(id) !== canonical));
     } else {
       setFormTeachingArmIds([...formTeachingArmIds, canonical]);
     }
@@ -175,7 +177,7 @@ export const UserManagementView: React.FC = () => {
     const matchedIds = classArms
       .filter(a => {
         const full = (a.fullName || a.name || '').toLowerCase().replace(/\s+/g, '');
-        return full.startsWith(cleanLevel) || full.includes(cleanLevel);
+        return full.includes(cleanLevel);
       })
       .map(a => resolveArmId(a.id, a.fullName));
     setFormTeachingArmIds(prev => Array.from(new Set([...prev, ...matchedIds])));
@@ -184,6 +186,27 @@ export const UserManagementView: React.FC = () => {
   const handleClearTeachingArms = () => {
     setFormTeachingArmIds([]);
   };
+
+  // Filtered class arms for Add/Edit Staff Modal
+  const displayedClassArms = React.useMemo(() => {
+    return classArms.filter(arm => {
+      const full = (arm.fullName || arm.name || '').toLowerCase();
+      const matchesLevel =
+        teachingArmFilterLevel === 'ALL'
+          ? true
+          : teachingArmFilterLevel === 'JSS'
+          ? full.includes('jss')
+          : teachingArmFilterLevel === 'SSS'
+          ? full.includes('sss')
+          : full.includes(teachingArmFilterLevel.toLowerCase());
+
+      const matchesSearch =
+        !teachingArmSearch.trim() ||
+        full.includes(teachingArmSearch.trim().toLowerCase());
+
+      return matchesLevel && matchesSearch;
+    });
+  }, [classArms, teachingArmFilterLevel, teachingArmSearch]);
 
   // Filtered staff (client fallback)
   const clientFilteredStaff = React.useMemo(() => {
@@ -1021,77 +1044,117 @@ export const UserManagementView: React.FC = () => {
                   </div>
 
                   {/* Specific Class Arms Taught Multi-Select */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-slate-700 dark:text-slate-300 text-[11px] block">
-                        Assigned Class Arms / Cohorts:
-                      </span>
-                      <div className="flex items-center gap-1.5 text-[10px]">
+                  <div className="space-y-2 p-3 bg-indigo-50/40 dark:bg-indigo-950/20 rounded-xl border border-indigo-100 dark:border-indigo-900/30">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-800 dark:text-slate-200 text-xs block">
+                          Assigned Class Arms / Cohorts:
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">
+                          {formTeachingArmIds.length} selected
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1 text-[10px]">
                         <button
                           type="button"
-                          onClick={handleSelectJuniorArms}
-                          className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700 cursor-pointer"
+                          onClick={() => {
+                            const ids = displayedClassArms.map(a => resolveArmId(a.id, a.fullName));
+                            setFormTeachingArmIds(prev => Array.from(new Set([...prev, ...ids])));
+                          }}
+                          className="px-2 py-0.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white font-bold cursor-pointer transition-colors shadow-2xs"
                         >
-                          All JSS
+                          Select Filtered
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleSelectLevelArms('SSS 1')}
-                          className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-800 cursor-pointer"
+                          onClick={() => {
+                            const ids = new Set(displayedClassArms.map(a => resolveArmId(a.id, a.fullName)));
+                            setFormTeachingArmIds(prev => prev.filter(id => !ids.has(resolveArmId(id))));
+                          }}
+                          className="px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-700 dark:text-slate-200 font-bold cursor-pointer transition-colors"
                         >
-                          SSS 1
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleSelectLevelArms('SSS 2')}
-                          className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-800 cursor-pointer"
-                        >
-                          SSS 2
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleSelectLevelArms('SSS 3')}
-                          className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-800 cursor-pointer"
-                        >
-                          SSS 3
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleSelectSeniorArms}
-                          className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700 cursor-pointer"
-                        >
-                          All SSS
+                          Deselect Filtered
                         </button>
                         <button
                           type="button"
                           onClick={handleClearTeachingArms}
-                          className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-slate-500 dark:text-slate-400 font-bold border border-slate-200 dark:border-slate-700 cursor-pointer"
+                          className="px-2 py-0.5 rounded bg-rose-100 dark:bg-rose-900/40 hover:bg-rose-200 text-rose-700 dark:text-rose-300 font-bold border border-rose-200 dark:border-rose-800 cursor-pointer transition-colors"
                         >
-                          Clear
+                          Clear All
                         </button>
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1.5 bg-white/70 dark:bg-slate-800/60 rounded-lg border border-indigo-100 dark:border-indigo-900/40">
-                      {classArms.map(arm => {
-                        const armCanonical = resolveArmId(arm.id, arm.fullName);
-                        const isSelected = formTeachingArmIds.some(
-                          id => resolveArmId(id) === armCanonical
-                        );
-                        return (
+
+                    {/* Filter & Search Bar */}
+                    <div className="flex flex-col sm:flex-row items-center gap-2">
+                      {/* Search box */}
+                      <div className="relative w-full sm:w-44">
+                        <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type="text"
+                          placeholder="Search class arms..."
+                          value={teachingArmSearch}
+                          onChange={e => setTeachingArmSearch(e.target.value)}
+                          className="w-full pl-8 pr-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+
+                      {/* Level Filter Tabs */}
+                      <div className="flex items-center gap-1 overflow-x-auto w-full pb-1 sm:pb-0 text-[10px]">
+                        {[
+                          { id: 'ALL', label: 'All (20)' },
+                          { id: 'JSS 1', label: 'JSS 1' },
+                          { id: 'JSS 2', label: 'JSS 2' },
+                          { id: 'JSS 3', label: 'JSS 3' },
+                          { id: 'SSS 1', label: 'SSS 1' },
+                          { id: 'SSS 2', label: 'SSS 2' },
+                        ].map(tab => (
                           <button
-                            key={arm.id}
+                            key={tab.id}
                             type="button"
-                            onClick={() => handleTeachingArmToggle(arm.id, arm.fullName)}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 border ${
-                              isSelected
-                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
+                            onClick={() => setTeachingArmFilterLevel(tab.id)}
+                            className={`px-2 py-1 rounded-md font-semibold transition-all cursor-pointer shrink-0 ${
+                              teachingArmFilterLevel === tab.id
+                                ? 'bg-indigo-600 text-white shadow-2xs'
+                                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
                             }`}
                           >
-                            <span>{arm.fullName || arm.name}</span>
+                            {tab.label}
                           </button>
-                        );
-                      })}
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Class Arm Buttons Grid */}
+                    <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto p-2 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
+                      {displayedClassArms.length === 0 ? (
+                        <div className="w-full py-4 text-center text-xs text-slate-400 italic">
+                          No class arms match your search / filter.
+                        </div>
+                      ) : (
+                        displayedClassArms.map(arm => {
+                          const armCanonical = resolveArmId(arm.id, arm.fullName);
+                          const isSelected = formTeachingArmIds.some(
+                            id => id === arm.id || resolveArmId(id) === armCanonical
+                          );
+                          return (
+                            <button
+                              key={arm.id}
+                              type="button"
+                              onClick={() => handleTeachingArmToggle(arm.id, arm.fullName)}
+                              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 border ${
+                                isSelected
+                                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                                  : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
+                              }`}
+                            >
+                              <span className={`w-2 h-2 rounded-full ${isSelected ? 'bg-white' : 'bg-slate-300 dark:bg-slate-600'}`} />
+                              <span>{arm.fullName || arm.name}</span>
+                            </button>
+                          );
+                        })
+                      )}
                     </div>
                   </div>
 

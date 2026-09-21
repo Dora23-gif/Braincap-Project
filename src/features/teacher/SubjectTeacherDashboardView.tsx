@@ -81,13 +81,20 @@ export const SubjectTeacherDashboardView: React.FC<SubjectTeacherDashboardViewPr
 
     const fromAllocations = allocations.filter(isTeacherMatch);
     const source = fromAllocations.length > 0 ? fromAllocations : (user?.allocatedSubjects || []);
-    return source.map((a: any) => ({
-      classArmId: resolveArmId(a.classArmId || a.class_arm || a.class_arm_id, a.classArmName || a.class_arm_name),
-      classArmName: a.classArmName || a.class_arm_name || a.classArmId,
-      subjectId: resolveSubjectId(a.subjectId || a.subject_code || a.subject || a.subject_id),
-      subjectName: a.subjectName || a.subject_name || a.subjectId
-    }));
-  }, [allocations, user]);
+    return source.map((a: any) => {
+      const armCanonical = resolveArmId(a.classArmId || a.class_arm || a.class_arm_id, a.classArmName || a.class_arm_name);
+      const armObj = classArms.find(arm => arm.id === armCanonical || resolveArmId(arm.id, arm.fullName) === armCanonical);
+      const subjCanonical = resolveSubjectId(a.subjectId || a.subject_code || a.subject || a.subject_id);
+      const subjObj = subjects.find(s => s.id === subjCanonical || resolveSubjectId(s.id) === subjCanonical);
+
+      return {
+        classArmId: armCanonical,
+        classArmName: armObj?.fullName || a.classArmName || a.class_arm_name || armCanonical,
+        subjectId: subjCanonical,
+        subjectName: subjObj?.name || a.subjectName || a.subject_name || subjCanonical
+      };
+    });
+  }, [allocations, user, classArms, subjects]);
 
   // Unique classes and subjects
   const uniqueClassArmIds = useMemo(() => {
