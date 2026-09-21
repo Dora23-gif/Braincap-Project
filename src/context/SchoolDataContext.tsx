@@ -151,7 +151,7 @@ interface SchoolDataContextType {
 
   // Enterprise Governance Actions
   addStaff: (member: Omit<StaffMember, 'id' | 'status' | 'joinedDate'>) => StaffMember;
-  updateStaff: (staffId: string, updates: Partial<StaffMember>) => void;
+  updateStaff: (staffId: string, updates: Partial<StaffMember>) => Promise<any> | void;
   toggleStaffStatus: (staffId: string, reason?: string, actor?: { id: string; name: string; role: any }) => void;
   resetStaffPin: (staffId: string, actor?: { id: string; name: string; role: any }) => string;
   addAuditLog: (entry: Omit<AuditLogEntry, 'id' | 'timestamp'>) => void;
@@ -2178,6 +2178,10 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       });
     }
 
+    if (!targetLookupId) {
+      targetLookupId = currentStaff?.identifier || currentStaff?.staffId || staffId;
+    }
+
     if (targetLookupId) {
       const payload: any = {};
       if (updates.name) {
@@ -2207,7 +2211,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const fmArm = updates.formMasterClassArmId || updates.formMasterArmId;
         payload.form_master_class_arm = fmArm ? (resolveArmPk(fmArm) || fmArm) : null;
       }
-      api.patch(`/accounts/users/${targetLookupId}/`, payload)
+      return api.patch(`/accounts/users/${targetLookupId}/`, payload)
         .then((res: any) => {
           if (res && res.id) {
             const live = adaptStaffFromBackend(res);
@@ -2222,7 +2226,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             });
           }
           // Re-sync allocations from backend
-          api.get<any>('/academics/allocations/', { page_size: 'all' })
+          return api.get<any>('/academics/allocations/', { page_size: 'all' })
             .then(allocRes => {
               const raw = allocRes?.results || allocRes;
               if (Array.isArray(raw)) {
@@ -2230,10 +2234,14 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 setAllocations(adapted);
                 try { localStorage.setItem('eis_allocations', JSON.stringify(adapted)); } catch (e) {}
               }
+              return res;
             })
-            .catch(() => {});
+            .catch(() => res);
         })
-        .catch(err => console.warn('Failed to patch staff on backend:', err));
+        .catch(err => {
+          console.warn('Failed to patch staff on backend:', err);
+          throw err;
+        });
     }
   };
 

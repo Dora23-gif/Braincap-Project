@@ -93,11 +93,36 @@ class StudentViewSet(viewsets.ModelViewSet):
         subj_param = self.request.query_params.get("subject") or self.request.query_params.get("registered_subjects")
         if subj_param:
             subj_str = str(subj_param).strip()
+            subj_obj = None
             if subj_str.isdigit():
-                qs = qs.filter(registered_subjects__id=int(subj_str))
+                subj_obj = Subject.objects.filter(pk=int(subj_str)).first()
             else:
                 clean_code = subj_str.upper().replace("SUBJ-", "")
-                qs = qs.filter(registered_subjects__code__iexact=clean_code)
+                subj_obj = Subject.objects.filter(code__iexact=clean_code).first()
+
+            if subj_obj:
+                cond = models.Q(registered_subjects=subj_obj)
+                # Compulsory junior subjects:
+                if subj_obj.is_compulsory_junior or subj_obj.applicable_to == "JUNIOR":
+                    cond |= models.Q(current_class_arm__class_level__section="JUNIOR")
+                # Core subjects for all:
+                if subj_obj.category == "CORE" or subj_obj.code in ["ENG", "MTH", "CIV", "HIS"]:
+                    cond |= models.Q(current_class_arm__isnull=False)
+                # Senior science compulsory subjects (Physics, Chemistry, Biology):
+                if subj_obj.is_compulsory_senior_science or subj_obj.code in ["PHY", "CHE", "BIO"]:
+                    cond |= (
+                        models.Q(current_class_arm__class_level__section="SENIOR", current_class_arm__name__icontains="Diamond") |
+                        models.Q(current_class_arm__class_level__section="SENIOR", current_class_arm__full_name__icontains="Science") |
+                        models.Q(current_class_arm__class_level__section="SENIOR", current_class_arm__name__icontains="Emerald") |
+                        models.Q(current_class_arm__class_level__section="SENIOR", current_class_arm__name__icontains="Gold")
+                    )
+                qs = qs.filter(cond)
+            else:
+                if subj_str.isdigit():
+                    qs = qs.filter(registered_subjects__id=int(subj_str))
+                else:
+                    clean_code = subj_str.upper().replace("SUBJ-", "")
+                    qs = qs.filter(registered_subjects__code__iexact=clean_code)
 
         return qs.distinct()
 

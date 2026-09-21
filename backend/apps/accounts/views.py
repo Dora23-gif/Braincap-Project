@@ -261,4 +261,28 @@ class UserViewSet(viewsets.ModelViewSet):
             qs = qs.filter(active_role="PARENT")
         return qs
 
+    def get_object(self):
+        queryset = self.filter_queryset(self.get_queryset())
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+        val = str(self.kwargs.get(lookup_url_kwarg, "")).strip()
+
+        if val.isdigit():
+            obj = queryset.filter(pk=int(val)).first()
+            if obj:
+                self.check_object_permissions(self.request, obj)
+                return obj
+
+        obj = queryset.filter(
+            models.Q(username__iexact=val) |
+            models.Q(identifier__iexact=val) |
+            models.Q(identifier__iexact=val.replace("-", "/")) |
+            models.Q(email__iexact=val)
+        ).first()
+
+        if obj:
+            self.check_object_permissions(self.request, obj)
+            return obj
+
+        return super().get_object()
+
 

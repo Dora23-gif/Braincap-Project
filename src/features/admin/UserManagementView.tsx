@@ -170,6 +170,17 @@ export const UserManagementView: React.FC = () => {
     setFormTeachingArmIds(prev => Array.from(new Set([...prev, ...seniorIds])));
   };
 
+  const handleSelectLevelArms = (levelPrefix: string) => {
+    const cleanLevel = levelPrefix.toLowerCase().replace(/\s+/g, '');
+    const matchedIds = classArms
+      .filter(a => {
+        const full = (a.fullName || a.name || '').toLowerCase().replace(/\s+/g, '');
+        return full.startsWith(cleanLevel) || full.includes(cleanLevel);
+      })
+      .map(a => resolveArmId(a.id, a.fullName));
+    setFormTeachingArmIds(prev => Array.from(new Set([...prev, ...matchedIds])));
+  };
+
   const handleClearTeachingArms = () => {
     setFormTeachingArmIds([]);
   };
@@ -300,17 +311,10 @@ export const UserManagementView: React.FC = () => {
     const staffCode = `STF/2026/${String(staff.length + 1).padStart(3, '0')}`;
 
     // Generate allocated subjects matrix
+    const effectiveArms = formTeachingArmIds.map(a => resolveArmId(a));
     const allocated = formSubjectIds.flatMap(subId => {
       const canonicalSubId = resolveSubjectId(subId);
       const subObj = subjects.find(s => s.id === canonicalSubId || resolveSubjectId(s.id) === canonicalSubId);
-      const effectiveArms = formTeachingArmIds.length > 0
-        ? formTeachingArmIds.map(a => resolveArmId(a))
-        : classArms.filter(a => {
-            const isJunior = (a.fullName || a.name).toLowerCase().includes('jss');
-            if (subObj?.applicableTo === 'JUNIOR') return isJunior;
-            if (subObj?.applicableTo === 'SENIOR') return !isJunior;
-            return true;
-          }).map(a => resolveArmId(a.id, a.fullName));
 
       return effectiveArms.map(armId => {
         const canonicalArmId = resolveArmId(armId);
@@ -324,9 +328,7 @@ export const UserManagementView: React.FC = () => {
       });
     });
 
-    const effectiveTeachingArms = formTeachingArmIds.length > 0
-      ? formTeachingArmIds.map(a => resolveArmId(a))
-      : Array.from(new Set(allocated.map(a => a.classArmId)));
+    const effectiveTeachingArms = formTeachingArmIds.map(a => resolveArmId(a));
 
     // Combine teaching class arms with form master class arm if applicable
     const allAssignedArms = Array.from(new Set([
@@ -369,7 +371,7 @@ export const UserManagementView: React.FC = () => {
     showToast(`Staff account for ${newStaff.name} created! Password/PIN: ${newStaff.defaultPin}`);
   };
 
-  const handleSaveEdit = (e: React.FormEvent) => {
+  const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingStaff || !formName.trim() || !formEmail.trim()) return;
 
@@ -383,17 +385,10 @@ export const UserManagementView: React.FC = () => {
 
     const armObj = classArms.find(a => a.id === formClassArmId || resolveArmId(a.id, a.fullName) === resolveArmId(formClassArmId));
 
+    const effectiveArms = formTeachingArmIds.map(a => resolveArmId(a));
     const allocated = formSubjectIds.flatMap(subId => {
       const canonicalSubId = resolveSubjectId(subId);
       const subObj = subjects.find(s => s.id === canonicalSubId || resolveSubjectId(s.id) === canonicalSubId);
-      const effectiveArms = formTeachingArmIds.length > 0
-        ? formTeachingArmIds.map(a => resolveArmId(a))
-        : classArms.filter(a => {
-            const isJunior = (a.fullName || a.name).toLowerCase().includes('jss');
-            if (subObj?.applicableTo === 'JUNIOR') return isJunior;
-            if (subObj?.applicableTo === 'SENIOR') return !isJunior;
-            return true;
-          }).map(a => resolveArmId(a.id, a.fullName));
 
       return effectiveArms.map(armId => {
         const canonicalArmId = resolveArmId(armId);
@@ -407,9 +402,7 @@ export const UserManagementView: React.FC = () => {
       });
     });
 
-    const effectiveTeachingArms = formTeachingArmIds.length > 0
-      ? formTeachingArmIds.map(a => resolveArmId(a))
-      : Array.from(new Set(allocated.map(a => a.classArmId)));
+    const effectiveTeachingArms = formTeachingArmIds.map(a => resolveArmId(a));
 
     const allAssignedArms = Array.from(new Set([
       ...effectiveTeachingArms,
@@ -435,12 +428,16 @@ export const UserManagementView: React.FC = () => {
       updates.defaultPin = editPassword.trim();
     }
 
-    updateStaff(editingStaff.id, updates);
-
     setServerStaff(prev => {
       if (!prev) return prev;
       return prev.map(m => m.id === editingStaff.id ? { ...m, ...updates } : m);
     });
+
+    try {
+      await updateStaff(editingStaff.id, updates);
+    } catch (err) {
+      console.warn('Backend updateStaff failed, continuing with local updates:', err);
+    }
 
     setEditingStaff(null);
     setRefreshTrigger(prev => prev + 1);
@@ -1035,14 +1032,35 @@ export const UserManagementView: React.FC = () => {
                           onClick={handleSelectJuniorArms}
                           className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700 cursor-pointer"
                         >
-                          All Junior (JSS)
+                          All JSS
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSelectLevelArms('SSS 1')}
+                          className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-800 cursor-pointer"
+                        >
+                          SSS 1
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSelectLevelArms('SSS 2')}
+                          className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-800 cursor-pointer"
+                        >
+                          SSS 2
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSelectLevelArms('SSS 3')}
+                          className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-800 cursor-pointer"
+                        >
+                          SSS 3
                         </button>
                         <button
                           type="button"
                           onClick={handleSelectSeniorArms}
                           className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700 cursor-pointer"
                         >
-                          All Senior (SSS)
+                          All SSS
                         </button>
                         <button
                           type="button"
@@ -1351,14 +1369,35 @@ export const UserManagementView: React.FC = () => {
                           onClick={handleSelectJuniorArms}
                           className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700 cursor-pointer"
                         >
-                          All Junior (JSS)
+                          All JSS
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSelectLevelArms('SSS 1')}
+                          className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-800 cursor-pointer"
+                        >
+                          SSS 1
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSelectLevelArms('SSS 2')}
+                          className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-800 cursor-pointer"
+                        >
+                          SSS 2
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSelectLevelArms('SSS 3')}
+                          className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200 dark:border-indigo-800 cursor-pointer"
+                        >
+                          SSS 3
                         </button>
                         <button
                           type="button"
                           onClick={handleSelectSeniorArms}
                           className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700 cursor-pointer"
                         >
-                          All Senior (SSS)
+                          All SSS
                         </button>
                         <button
                           type="button"

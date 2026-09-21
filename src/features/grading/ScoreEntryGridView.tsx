@@ -85,11 +85,25 @@ export const ScoreEntryGridView: React.FC<ScoreEntryGridViewProps> = ({
   // - Admin: all classes
   const allowedClassArms = useMemo(() => {
     if (isSubjectTeacher) {
-      const filtered = classArms.filter(a => teacherAllocations.some(alloc => alloc.classArmId === a.id));
+      const filtered = classArms.filter(a =>
+        teacherAllocations.some(alloc =>
+          alloc.classArmId === a.id ||
+          resolveArmId(alloc.classArmId) === resolveArmId(a.id) ||
+          (alloc.classArmName && a.fullName && alloc.classArmName.toLowerCase().trim() === a.fullName.toLowerCase().trim())
+        )
+      );
       return filtered.length > 0 ? filtered : classArms.slice(0, 2);
     }
     if (isFormMaster) {
-      const filtered = classArms.filter(a => a.id === user?.formMasterArmId || teacherAllocations.some(alloc => alloc.classArmId === a.id));
+      const filtered = classArms.filter(a =>
+        a.id === user?.formMasterArmId ||
+        resolveArmId(a.id) === resolveArmId(user?.formMasterArmId) ||
+        teacherAllocations.some(alloc =>
+          alloc.classArmId === a.id ||
+          resolveArmId(alloc.classArmId) === resolveArmId(a.id) ||
+          (alloc.classArmName && a.fullName && alloc.classArmName.toLowerCase().trim() === a.fullName.toLowerCase().trim())
+        )
+      );
       return filtered.length > 0 ? filtered : classArms.slice(0, 2);
     }
     return classArms;
@@ -100,7 +114,7 @@ export const ScoreEntryGridView: React.FC<ScoreEntryGridViewProps> = ({
   const defaultSubject = subjects.find(s => s.id === 'subj-phy') || subjects[0];
 
   const defaultArmId = useMemo(() => {
-    if (initialClassArmId && allowedClassArms.some(a => a.id === initialClassArmId)) {
+    if (initialClassArmId && allowedClassArms.some(a => a.id === initialClassArmId || resolveArmId(a.id) === resolveArmId(initialClassArmId))) {
       return initialClassArmId;
     }
     return teacherAllocations[0]?.classArmId || defaultClassArm.id;
@@ -109,7 +123,7 @@ export const ScoreEntryGridView: React.FC<ScoreEntryGridViewProps> = ({
   const [selectedArmId, setSelectedArmId] = useState<string>(defaultArmId);
 
   useEffect(() => {
-    if (initialClassArmId && allowedClassArms.some(a => a.id === initialClassArmId)) {
+    if (initialClassArmId && allowedClassArms.some(a => a.id === initialClassArmId || resolveArmId(a.id) === resolveArmId(initialClassArmId))) {
       setSelectedArmId(initialClassArmId);
     }
   }, [initialClassArmId, allowedClassArms]);
@@ -119,28 +133,34 @@ export const ScoreEntryGridView: React.FC<ScoreEntryGridViewProps> = ({
   // - Form Master / Admin: all subjects offered in this class
   const allowedSubjects = useMemo(() => {
     if (isSubjectTeacher) {
-      const filtered = subjects.filter(s => teacherAllocations.some(alloc => alloc.classArmId === selectedArmId && alloc.subjectId === s.id));
+      const canonicalArmId = resolveArmId(selectedArmId);
+      const filtered = subjects.filter(s =>
+        teacherAllocations.some(alloc =>
+          (resolveArmId(alloc.classArmId) === canonicalArmId || alloc.classArmId === selectedArmId) &&
+          (alloc.subjectId === s.id || resolveSubjectId(alloc.subjectId) === resolveSubjectId(s.id))
+        )
+      );
       return filtered.length > 0 ? filtered : subjects.slice(0, 1);
     }
     return subjects;
   }, [isSubjectTeacher, subjects, teacherAllocations, selectedArmId]);
 
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>(() => {
-    if (initialSubjectId && allowedSubjects.some(s => s.id === initialSubjectId)) {
+    if (initialSubjectId && allowedSubjects.some(s => s.id === initialSubjectId || resolveSubjectId(s.id) === resolveSubjectId(initialSubjectId))) {
       return initialSubjectId;
     }
-    return teacherAllocations.find(a => a.classArmId === defaultArmId)?.subjectId || allowedSubjects[0]?.id || defaultSubject.id;
+    return teacherAllocations.find(a => a.classArmId === defaultArmId || resolveArmId(a.classArmId) === resolveArmId(defaultArmId))?.subjectId || allowedSubjects[0]?.id || defaultSubject.id;
   });
 
   useEffect(() => {
-    if (initialSubjectId && allowedSubjects.some(s => s.id === initialSubjectId)) {
+    if (initialSubjectId && allowedSubjects.some(s => s.id === initialSubjectId || resolveSubjectId(s.id) === resolveSubjectId(initialSubjectId))) {
       setSelectedSubjectId(initialSubjectId);
     }
   }, [initialSubjectId, allowedSubjects]);
 
   // Sync selectedSubjectId if selectedArmId changes or if selectedSubjectId is not allowed
   useEffect(() => {
-    if (allowedSubjects.length > 0 && !allowedSubjects.some(s => s.id === selectedSubjectId)) {
+    if (allowedSubjects.length > 0 && !allowedSubjects.some(s => s.id === selectedSubjectId || resolveSubjectId(s.id) === resolveSubjectId(selectedSubjectId))) {
       setSelectedSubjectId(allowedSubjects[0].id);
     }
   }, [selectedArmId, allowedSubjects, selectedSubjectId]);
@@ -169,13 +189,18 @@ export const ScoreEntryGridView: React.FC<ScoreEntryGridViewProps> = ({
     studentName: string;
     admissionNumber: string;
   } | null>(null);
+  const [selectedStudentForModal, setSelectedStudentForModal] = useState<{
+    id: string;
+    name: string;
+    admissionNumber: string;
+  } | null>(null);
   const [saveStatus, setSaveStatus] = useState<'IDLE' | 'SAVING' | 'SAVED'>('SAVED');
   const [validationWarning, setValidationWarning] = useState<string | null>(null);
   const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
 
   // Selected arm & subject models
-  const currentArm = classArms.find(a => a.id === selectedArmId) || defaultClassArm;
-  const currentSubject = subjects.find(s => s.id === selectedSubjectId) || defaultSubject;
+  const currentArm = classArms.find(a => a.id === selectedArmId || resolveArmId(a.id, a.fullName) === resolveArmId(selectedArmId)) || defaultClassArm;
+  const currentSubject = subjects.find(s => s.id === selectedSubjectId || resolveSubjectId(s.id) === resolveSubjectId(selectedSubjectId)) || defaultSubject;
 
   // Live query to Django backend for exact registered students for selected arm and subject
   const [isLoadingStudents, setIsLoadingStudents] = useState<boolean>(false);
@@ -197,13 +222,11 @@ export const ScoreEntryGridView: React.FC<ScoreEntryGridViewProps> = ({
         const params: Record<string, any> = { page_size: 'all' };
         if (armPk) {
           params.current_class_arm = armPk;
-          params.class_arm = armPk;
         } else {
           params.class_arm = selectedArmId;
         }
 
         if (subjPk) {
-          params.registered_subjects = subjPk;
           params.subject = subjPk;
         } else {
           params.subject = subjCode || selectedSubjectId;
@@ -212,7 +235,7 @@ export const ScoreEntryGridView: React.FC<ScoreEntryGridViewProps> = ({
         const res = await api.get('/students/students/', params);
         const raw = (res as any)?.results || res;
         if (!isCancelled) {
-          if (Array.isArray(raw)) {
+          if (Array.isArray(raw) && raw.length > 0) {
             const adapted = raw.map(adaptStudentFromBackend);
             setLiveFetchedStudents(adapted);
           } else {
@@ -242,6 +265,30 @@ export const ScoreEntryGridView: React.FC<ScoreEntryGridViewProps> = ({
     const subjCode = (currentSubject.code || selectedSubjectId.replace(/^subj-/, '')).toUpperCase();
     const subjPk = resolveSubjectPk(selectedSubjectId);
 
+    const isJuniorArm = Boolean(currentArm?.fullName?.toLowerCase().includes('jss') || currentArm?.name?.toLowerCase().includes('jss'));
+    const isSeniorArm = Boolean(currentArm?.fullName?.toLowerCase().includes('sss') || currentArm?.name?.toLowerCase().includes('sss'));
+    const armText = `${currentArm?.fullName || ''} ${currentArm?.name || ''}`.toLowerCase();
+    const isScienceArm = armText.includes('science') || armText.includes('diamond') || armText.includes('emerald') || armText.includes('gold');
+
+    // Compulsory subject logic (WAEC / Everest core rules):
+    // 1. Junior: all junior subjects (or CORE) are compulsory for all students in JSS
+    // 2. Senior Core: ENG, MTH, CIV, HIS are compulsory for all senior students
+    // 3. Senior Science: PHY, CHE, BIO are compulsory for senior science arms
+    const isCompulsoryForArm = Boolean(
+      (isJuniorArm && (
+        currentSubject.isCompulsoryJunior ||
+        currentSubject.applicableTo === 'JUNIOR' ||
+        currentSubject.applicableTo === 'ALL' ||
+        currentSubject.category === 'CORE'
+      )) ||
+      (isSeniorArm && (
+        currentSubject.category === 'CORE' ||
+        ['ENG', 'MTH', 'CIV', 'HIS'].includes(subjCode) ||
+        (currentSubject.isCompulsorySeniorScience && (isScienceArm || ['PHY', 'CHE', 'BIO'].includes(subjCode))) ||
+        (['PHY', 'CHE', 'BIO'].includes(subjCode) && isScienceArm)
+      ))
+    );
+
     return students.filter(s => {
       // 1. Arm matching (resilient against slug, PK, and full name)
       const matchesArm =
@@ -251,6 +298,9 @@ export const ScoreEntryGridView: React.FC<ScoreEntryGridViewProps> = ({
         (Boolean(currentArm?.fullName) && Boolean(s.currentClassArmName) && s.currentClassArmName.toLowerCase().trim() === currentArm.fullName.toLowerCase().trim());
 
       if (!matchesArm) return false;
+
+      // If subject is compulsory for this class arm, every student in the arm offers it!
+      if (isCompulsoryForArm) return true;
 
       // 2. Subject offering check:
       const regIds = Array.isArray(s.registeredSubjectIds) ? s.registeredSubjectIds : [];
@@ -276,12 +326,12 @@ export const ScoreEntryGridView: React.FC<ScoreEntryGridViewProps> = ({
     });
   }, [students, selectedArmId, selectedSubjectId, currentArm, currentSubject, scores, activeTerm.id]);
 
-  // Final display list of students (cleared when loading; prefer live backend response if present, else strict context filter)
+  // Final display list of students (prefer live backend response if non-empty, else context filter)
   const displayStudents = useMemo(() => {
     if (isLoadingStudents) {
       return [];
     }
-    if (liveFetchedStudents !== null) {
+    if (liveFetchedStudents !== null && liveFetchedStudents.length > 0) {
       return liveFetchedStudents;
     }
     return armStudents;
