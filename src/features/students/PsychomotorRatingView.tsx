@@ -3,6 +3,7 @@ import { useSchoolData } from '../../context/SchoolDataContext';
 import { useAuth } from '../../context/AuthContext';
 import type { AffectiveAndPsychomotor } from '../../types';
 import { Award, Save, CheckCircle2, Sparkles } from 'lucide-react';
+import { resolveArmId, resolveArmPk } from '../../lib/api';
 
 export const PsychomotorRatingView: React.FC = () => {
   const { classArms, students, affectiveTraits, updatePsychomotor, activeTerm } = useSchoolData();
@@ -12,15 +13,25 @@ export const PsychomotorRatingView: React.FC = () => {
   const isSuperAdmin = user?.activeRole === 'SUPER_ADMIN' || user?.assignedRoles?.includes('SUPER_ADMIN');
   const isPrincipal = user?.activeRole === 'PRINCIPAL' || user?.assignedRoles?.includes('PRINCIPAL');
 
-  const [selectedArmId, setSelectedArmId] = useState(
-    isFormMaster && user?.formMasterArmId ? user.formMasterArmId : classArms[0]?.id || 'arm-sss2-gold'
-  );
+  const initialArm = isFormMaster && user?.formMasterArmId ? resolveArmId(user.formMasterArmId) : classArms[0]?.id || 'arm-sss2-gold';
+  const [selectedArmId, setSelectedArmId] = useState(initialArm);
 
-  const canEditPsychomotor = (isFormMaster && user?.formMasterArmId === selectedArmId) || isSuperAdmin;
-  const currentArm = classArms.find(a => a.id === selectedArmId) || classArms[0];
-  const armStudents = students.filter(s => s.currentClassArmId === selectedArmId);
-  const [selectedStudentId, setSelectedStudentId] = useState(armStudents[0]?.id || students[0].id);
+  const canEditPsychomotor = (isFormMaster && (user?.formMasterArmId === selectedArmId || resolveArmId(user?.formMasterArmId) === resolveArmId(selectedArmId))) || isSuperAdmin;
+  const currentArm = classArms.find(a => a.id === selectedArmId || resolveArmId(a.id) === resolveArmId(selectedArmId)) || classArms[0];
+  const armStudents = students.filter(s =>
+    s.currentClassArmId === selectedArmId ||
+    resolveArmId(s.currentClassArmId) === resolveArmId(selectedArmId) ||
+    (currentArm?.fullName && s.currentClassArmName && s.currentClassArmName.toLowerCase().trim() === currentArm.fullName.toLowerCase().trim())
+  );
+  const [selectedStudentId, setSelectedStudentId] = useState(armStudents[0]?.id || students[0]?.id || '');
   const [saveAlert, setSaveAlert] = useState(false);
+
+  // Sync selectedStudentId when armStudents changes
+  React.useEffect(() => {
+    if (armStudents.length > 0 && !armStudents.some(s => s.id === selectedStudentId)) {
+      setSelectedStudentId(armStudents[0].id);
+    }
+  }, [armStudents, selectedStudentId]);
 
   const currentStudent = students.find(s => s.id === selectedStudentId) || students[0];
 

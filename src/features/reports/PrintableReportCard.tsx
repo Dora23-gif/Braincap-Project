@@ -3,6 +3,7 @@ import { useSchoolData } from '../../context/SchoolDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { formatOrdinal } from '../../lib/gradeCalculator';
 import { Printer, Lock, Clock, AlertTriangle, ShieldAlert, BookOpen } from 'lucide-react';
+import { resolveArmId } from '../../lib/api';
 
 interface PrintableReportCardProps {
   initialStudentId?: string;
@@ -81,21 +82,35 @@ export const PrintableReportCard: React.FC<PrintableReportCardProps> = ({ initia
   // Subject Teacher's allocated students across their assigned class arms
   const teacherArmIds = useMemo(() => {
     if (!isSubjectTeacherOnly) return [];
-    const teacherId = user?.id || user?.staffId;
-    const myAllocs = (allocations || []).filter(
-      a =>
-        a.teacherId === teacherId ||
-        a.teacherId === user?.id ||
-        (a.teacherName && user?.name && a.teacherName.toLowerCase() === user.name.toLowerCase())
-    );
-    const armIds = myAllocs.map(a => a.classArmId).filter(Boolean);
+    const isTeacherMatch = (a: any) => {
+      if (!user) return false;
+      const uId = String(user.id || '').trim();
+      const aId = String(a.teacherId || '').trim();
+      if (aId && uId && aId === uId) return true;
+      if (user.staffId && aId && aId === String(user.staffId).trim()) return true;
+      if ((user as any).identifier && aId && aId === String((user as any).identifier).trim()) return true;
+      if (user.staffId && aId && aId.replace(/[^0-9]/g, '') !== '' && aId.replace(/[^0-9]/g, '') === user.staffId.replace(/[^0-9]/g, '')) return true;
+      if (a.teacherName && user.name) {
+        const cleanA = a.teacherName.toLowerCase().replace(/^(mr\.|mrs\.|ms\.|dr\.|prof\.|engr\.)\s*/, '').trim();
+        const cleanU = user.name.toLowerCase().replace(/^(mr\.|mrs\.|ms\.|dr\.|prof\.|engr\.)\s*/, '').trim();
+        if (cleanA && cleanU && (cleanA === cleanU || cleanA.includes(cleanU) || cleanU.includes(cleanA))) return true;
+      }
+      return false;
+    };
+
+    const myAllocs = (allocations || []).filter(isTeacherMatch);
+    const source = myAllocs.length > 0 ? myAllocs : (user?.allocatedSubjects || []);
+    const armIds = source.map((a: any) => resolveArmId(a.classArmId || a.class_arm || a.class_arm_id, a.classArmName || a.class_arm_name)).filter(Boolean);
     return Array.from(new Set(armIds));
   }, [allocations, user, isSubjectTeacherOnly]);
 
   const teacherStudents = useMemo(() => {
     if (!isSubjectTeacherOnly) return [];
     const direct = teacherArmIds.length > 0
-      ? students.filter(s => teacherArmIds.includes(s.currentClassArmId))
+      ? students.filter(s =>
+          teacherArmIds.includes(s.currentClassArmId) ||
+          teacherArmIds.includes(resolveArmId(s.currentClassArmId))
+        )
       : [];
     return direct.length > 0 ? direct : students;
   }, [isSubjectTeacherOnly, teacherArmIds, students]);

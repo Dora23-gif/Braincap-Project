@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useSchoolData } from '../../context/SchoolDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { calculateTotalAggregate, computeRankings, formatOrdinal } from '../../lib/gradeCalculator';
 import { Printer, Globe, Sparkles, FileSpreadsheet, ShieldCheck, AlertCircle } from 'lucide-react';
 import { FuturisticPageShell } from '../../components/common/FuturisticPageShell';
 import { DoubleBezelCard } from '../../components/common/DoubleBezelCard';
+import { resolveArmId, resolveSubjectId, resolveArmPk, resolveSubjectPk } from '../../lib/api';
 
 export const BroadsheetView: React.FC = () => {
   const { classArms, subjects, students, scores, activeTerm, publishResults, allocations } = useSchoolData();
@@ -13,47 +14,97 @@ export const BroadsheetView: React.FC = () => {
   const isFormMaster = user?.activeRole === 'FORM_MASTER';
   const isSubjectTeacher = user?.activeRole === 'SUBJECT_TEACHER' || user?.activeRole === 'TEACHER';
 
-  // Dynamic allocations for teacher
+  // Dynamic allocations for teacher with robust multi-field identification
   const teacherAllocations = useMemo(() => {
     if (!isSubjectTeacher) return [];
-    const teacherId = user?.id || user?.staffId;
-    const found = allocations.filter(
-      a => a.teacherId === teacherId || a.teacherId === user?.id || (a.teacherName && user?.name && a.teacherName.toLowerCase() === user.name.toLowerCase())
-    );
-    return found.length > 0 ? found : (user?.allocatedSubjects || []);
-  }, [allocations, user, isSubjectTeacher]);
+    const isTeacherMatch = (a: any) => {
+      if (!user) return false;
+      const uId = String(user.id || '').trim();
+      const aId = String(a.teacherId || '').trim();
+      if (aId && uId && aId === uId) return true;
+      if (user.staffId && aId && aId === String(user.staffId).trim()) return true;
+      if ((user as any).identifier && aId && aId === String((user as any).identifier).trim()) return true;
+      if (user.staffId && aId && aId.replace(/[^0-9]/g, '') !== '' && aId.replace(/[^0-9]/g, '') === user.staffId.replace(/[^0-9]/g, '')) return true;
+      if (a.teacherName && user.name) {
+        const cleanA = a.teacherName.toLowerCase().replace(/^(mr\.|mrs\.|ms\.|dr\.|prof\.|engr\.)\s*/, '').trim();
+        const cleanU = user.name.toLowerCase().replace(/^(mr\.|mrs\.|ms\.|dr\.|prof\.|engr\.)\s*/, '').trim();
+        if (cleanA && cleanU && (cleanA === cleanU || cleanA.includes(cleanU) || cleanU.includes(cleanA))) return true;
+      }
+      return false;
+    };
 
-  const teacherArmIds = useMemo(() => {
-    return Array.from(new Set(teacherAllocations.map(a => a.classArmId)));
-  }, [teacherAllocations]);
+    const found = (allocations || []).filter(isTeacherMatch);
+    const source = found.length > 0 ? found : (user?.allocatedSubjects || []);
+    return source.map((a: any) => {
+      const armCanonical = resolveArmId(a.classArmId || a.class_arm || a.class_arm_id, a.classArmName || a.class_arm_name);
+      const armObj = classArms.find(arm => arm.id === armCanonical || resolveArmId(arm.id, arm.fullName) === armCanonical);
+      const subjCanonical = resolveSubjectId(a.subjectId || a.subject_code || a.subject || a.subject_id);
+      const subjObj = subjects.find(s => s.id === subjCanonical || resolveSubjectId(s.id) === subjCanonical);
 
-  // Allowed class arms based strictly on role
+      return {
+        classArmId: armCanonical,
+        classArmName: armObj?.fullName || a.classArmName || a.class_arm_name || armCanonical,
+        subjectId: subjCanonical,
+        subjectName: subjObj?.name || a.subjectName || a.subject_name || subjCanonical
+      };
+    });
+  }, [allocations, user, isSubjectTeacher, classArms, subjects]);
+
+  // Allowed class arms based strictly on role, falling back cleanly to full list if empty
   const allowedArms = useMemo(() => {
     if (isFormMaster && user?.formMasterArmId) {
-      return classArms.filter(a => a.id === user.formMasterArmId);
+      const match = classArms.filter(a => a.id === user.formMasterArmId || resolveArmId(a.id) === resolveArmId(user.formMasterArmId));
+      if (match.length > 0) return match;
     }
     if (isSubjectTeacher) {
-      return classArms.filter(a => teacherArmIds.includes(a.id));
+      const filtered = classArms.filter(a =>
+        teacherAllocations.some(alloc =>
+          alloc.classArmId === a.id ||
+          resolveArmId(alloc.classArmId) === resolveArmId(a.id) ||
+          (alloc.classArmName && a.fullName && alloc.classArmName.toLowerCase().trim() === a.fullName.toLowerCase().trim())
+        )
+      );
+      if (filtered.length > 0) return filtered;
     }
     return classArms;
-  }, [classArms, isFormMaster, isSubjectTeacher, user?.formMasterArmId, teacherArmIds]);
+  }, [classArms, isFormMaster, isSubjectTeacher, user?.formMasterArmId, teacherAllocations]);
 
-  const defaultArmId = allowedArms[0]?.id || classArms[0].id;
+  const defaultArmId = allowedArms[0]?.id || classArms[0]?.id || '';
   const [selectedArmId, setSelectedArmId] = useState(defaultArmId);
   const [isHeatmapActive, setIsHeatmapActive] = useState(true);
   const [assentAlert, setAssentAlert] = useState<string | null>(null);
 
-  const currentArm = classArms.find(a => a.id === selectedArmId) || allowedArms[0] || classArms[0];
-  const armStudents = students.filter(s => s.currentClassArmId === selectedArmId);
+  // Auto-sync selectedArmId if allowedArms updates
+  useEffect(() => {
+    if (allowedArms.length > 0 && !allowedArms.some(a => a.id === selectedArmId || resolveArmId(a.id) === resolveArmId(selectedArmId))) {
+      setSelectedArmId(allowedArms[0].id);
+    }
+  }, [allowedArms, selectedArmId]);
+
+  const currentArm = classArms.find(a => a.id === selectedArmId || resolveArmId(a.id) === resolveArmId(selectedArmId)) || allowedArms[0] || classArms[0];
+  const armStudents = useMemo(() => {
+    return students.filter(s =>
+      s.currentClassArmId === selectedArmId ||
+      resolveArmId(s.currentClassArmId) === resolveArmId(selectedArmId) ||
+      (currentArm?.fullName && s.currentClassArmName && s.currentClassArmName.toLowerCase().trim() === currentArm.fullName.toLowerCase().trim())
+    );
+  }, [students, selectedArmId, currentArm]);
 
   // My subject IDs for this arm (if subject teacher)
   const mySubjectIdsForArm = useMemo(() => {
     if (!isSubjectTeacher) return [];
-    return teacherAllocations.filter(a => a.classArmId === selectedArmId).map(a => a.subjectId);
+    return teacherAllocations
+      .filter(a => a.classArmId === selectedArmId || resolveArmId(a.classArmId) === resolveArmId(selectedArmId))
+      .map(a => a.subjectId);
   }, [isSubjectTeacher, teacherAllocations, selectedArmId]);
 
-  // Get subjects that have scores for this arm or default to senior subjects
-  const armScores = scores.filter(s => s.classArmId === selectedArmId && s.termId === activeTerm.id);
+  // Get subjects that have scores for this arm or default to core subjects
+  const armScores = useMemo(() => {
+    return scores.filter(s =>
+      (s.classArmId === selectedArmId || resolveArmId(s.classArmId) === resolveArmId(selectedArmId)) &&
+      (s.termId === activeTerm.id || resolveArmId(s.termId) === resolveArmId(activeTerm.id))
+    );
+  }, [scores, selectedArmId, activeTerm.id]);
   const activeSubjectIds = Array.from(new Set(armScores.map(s => s.subjectId)));
   const displaySubjects = subjects.filter(s => activeSubjectIds.includes(s.id) || s.category === 'CORE');
 
