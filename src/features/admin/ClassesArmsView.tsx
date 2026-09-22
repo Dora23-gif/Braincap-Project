@@ -122,7 +122,7 @@ export const ClassesArmsView: React.FC = () => {
       badgeText={`${classArms.length} Arms Configured`}
       badgeVariant="cyber"
       actions={
-        <div className="w-full lg:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 min-w-0 max-w-full">
+        <div className="w-full xl:w-auto flex flex-wrap items-center gap-2.5 sm:gap-3 min-w-0 justify-start xl:justify-end">
           {/* Section Filter Pills */}
           <div className="flex bg-slate-100 dark:bg-slate-800/80 p-1 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shrink-0">
             {sectionOptions.map(tab => (
@@ -130,7 +130,7 @@ export const ClassesArmsView: React.FC = () => {
                 key={tab.id}
                 type="button"
                 onClick={() => setSelectedSection(tab.id as any)}
-                className={`px-3 sm:px-4 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   selectedSection === tab.id
                     ? 'bg-white dark:bg-slate-900 text-indigo-900 dark:text-white shadow-2xs'
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -150,14 +150,14 @@ export const ClassesArmsView: React.FC = () => {
 
           {/* Action Buttons */}
           {user?.activeRole === 'SUPER_ADMIN' && (
-            <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => {
                   setSelectedLevelId(classLevels[0]?.id || '');
                   setIsAddArmOpen(true);
                 }}
-                className="flex-1 sm:flex-initial px-3.5 py-2 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add Arm</span>
@@ -168,7 +168,7 @@ export const ClassesArmsView: React.FC = () => {
                   setNewLevelOrder(classLevels.length + 1);
                   setIsAddLevelOpen(true);
                 }}
-                className="flex-1 sm:flex-initial px-3.5 py-2 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5"
               >
                 <PlusCircle className="w-3.5 h-3.5 text-amber-500" />
                 <span>Add Level</span>
@@ -242,18 +242,18 @@ export const ClassesArmsView: React.FC = () => {
       </div>
 
       {/* Add Class Arm Modal */}
-      <ModalPortal isOpen={isAddArmOpen} onClose={() => setIsAddArmOpen(false)} maxWidthClass="max-w-md">
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
+      <ModalPortal isOpen={isAddArmOpen} onClose={() => setIsAddArmOpen(false)} maxWidthClass="max-w-lg">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 sm:p-7 space-y-5 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+          <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200/60 dark:border-amber-800/80 flex items-center justify-center text-amber-600 dark:text-amber-400 shadow-sm">
                 <Plus className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
                   Add New Class Arm
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   Expand classroom cohort with designated Form Master
                 </p>
               </div>
@@ -261,22 +261,22 @@ export const ClassesArmsView: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsAddArmOpen(false)}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          <form onSubmit={handleCreateArm} className="space-y-4 text-xs">
-            <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Parent Class Level *
+          <form onSubmit={handleCreateArm} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                Parent Class Level <span className="text-rose-500">*</span>
               </label>
               <select
                 required
                 value={selectedLevelId}
                 onChange={e => setSelectedLevelId(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-amber-500 cursor-pointer"
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:bg-white dark:focus:bg-slate-850 outline-none transition cursor-pointer"
               >
                 {classLevels.map(lvl => (
                   <option key={lvl.id} value={lvl.id}>
@@ -286,9 +286,9 @@ export const ClassesArmsView: React.FC = () => {
               </select>
             </div>
 
-            <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Arm Designation Name *
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                Arm Designation Name <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
@@ -296,23 +296,23 @@ export const ClassesArmsView: React.FC = () => {
                 placeholder="e.g. Platinum, Bronze, Ruby, Topaz"
                 value={armName}
                 onChange={e => setArmName(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-amber-500"
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-amber-500 focus:bg-white dark:focus:bg-slate-850 outline-none transition"
               />
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                Full name will automatically format as &quot;{classLevels.find(l => l.id === selectedLevelId)?.name || 'Class'} {armName || 'Name'}&quot;.
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Full name will format as &quot;{classLevels.find(l => l.id === selectedLevelId)?.name || 'Class'} {armName || 'Name'}&quot;.
               </p>
             </div>
 
-            <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Assigned Form Master (Optional)
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                Assigned Form Master <span className="text-slate-400 font-normal">(Optional)</span>
               </label>
               <select
                 value={selectedFormMasterId}
                 onChange={e => setSelectedFormMasterId(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-amber-500 cursor-pointer"
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 focus:bg-white dark:focus:bg-slate-850 outline-none transition cursor-pointer"
               >
-                <option value="">Unassigned (Select Later)</option>
+                <option value="">Unassigned (Assign Later)</option>
                 {staff
                   .filter(s => s.status === 'ACTIVE')
                   .map(member => (
@@ -327,13 +327,13 @@ export const ClassesArmsView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsAddArmOpen(false)}
-                className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold cursor-pointer"
+                className="px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
+                className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold flex items-center gap-2 shadow-md hover:shadow-amber-500/20 transition cursor-pointer"
               >
                 <Check className="w-4 h-4" />
                 <span>Create Class Arm</span>
@@ -344,18 +344,18 @@ export const ClassesArmsView: React.FC = () => {
       </ModalPortal>
 
       {/* Add Class Level Modal */}
-      <ModalPortal isOpen={isAddLevelOpen} onClose={() => setIsAddLevelOpen(false)} maxWidthClass="max-w-md">
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
+      <ModalPortal isOpen={isAddLevelOpen} onClose={() => setIsAddLevelOpen(false)} maxWidthClass="max-w-lg">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 sm:p-7 space-y-5 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+          <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200/60 dark:border-blue-800/80 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-sm">
                 <Building2 className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
                   Add Academic Class Level
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   Define a new academic cohort or grade level
                 </p>
               </div>
@@ -363,16 +363,16 @@ export const ClassesArmsView: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsAddLevelOpen(false)}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          <form onSubmit={handleCreateLevel} className="space-y-4 text-xs">
-            <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Class Level Name *
+          <form onSubmit={handleCreateLevel} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                Class Level Name <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
@@ -380,27 +380,27 @@ export const ClassesArmsView: React.FC = () => {
                 placeholder="e.g. JSS 4, SSS 4 / Pre-Degree"
                 value={newLevelName}
                 onChange={e => setNewLevelName(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-amber-500"
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-850 outline-none transition"
               />
             </div>
 
-            <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                School Section *
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                School Section <span className="text-rose-500">*</span>
               </label>
               <select
                 value={newLevelSection}
                 onChange={e => setNewLevelSection(e.target.value as SchoolSection)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-amber-500 cursor-pointer"
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-850 outline-none transition cursor-pointer"
               >
                 <option value="JUNIOR">Junior Secondary School</option>
                 <option value="SENIOR">Senior Secondary School</option>
               </select>
             </div>
 
-            <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Display Hierarchy Order *
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                Display Hierarchy Order <span className="text-rose-500">*</span>
               </label>
               <input
                 type="number"
@@ -408,7 +408,7 @@ export const ClassesArmsView: React.FC = () => {
                 required
                 value={newLevelOrder}
                 onChange={e => setNewLevelOrder(Number(e.target.value))}
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-mono-tabular focus:outline-none focus:border-amber-500"
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white font-mono-tabular focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-850 outline-none transition"
               />
             </div>
 
@@ -416,13 +416,13 @@ export const ClassesArmsView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsAddLevelOpen(false)}
-                className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold cursor-pointer"
+                className="px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold flex items-center gap-1.5 shadow-sm cursor-pointer"
+                className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-2 shadow-md hover:shadow-blue-500/20 transition cursor-pointer"
               >
                 <Check className="w-4 h-4" />
                 <span>Create Level</span>
