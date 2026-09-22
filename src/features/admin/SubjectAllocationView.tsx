@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useSchoolData } from '../../context/SchoolDataContext';
 import { useAuth } from '../../context/AuthContext';
-import { UserCheck, Shield, BookOpen, Plus, Trash2, Search, Filter, AlertTriangle } from 'lucide-react';
+import { UserCheck, Shield, BookOpen, Plus, Trash2, Search, Filter, AlertTriangle, X, Layers, UserPlus } from 'lucide-react';
 import { FuturisticPageShell } from '../../components/common/FuturisticPageShell';
 import { DoubleBezelCard } from '../../components/common/DoubleBezelCard';
 import { ModalPortal } from '../../components/common/ModalPortal';
@@ -258,30 +258,41 @@ export const SubjectAllocationView: React.FC = () => {
 
 
       {/* Allocate Teacher Modal */}
-      <ModalPortal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} maxWidthClass="max-w-md">
-        <div className="p-6">
-          <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-200 dark:border-slate-800">
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">
-              Allocate Subject Teacher
-            </h3>
+      <ModalPortal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} maxWidthClass="max-w-lg">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 sm:p-7 space-y-5 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+          <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200/80 dark:border-amber-800/80 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold shadow-xs">
+                <UserPlus className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Allocate Subject Teacher
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Assign faculty instructor to classroom subject and grant marksheet access
+                </p>
+              </div>
+            </div>
             <button
               onClick={() => setIsModalOpen(false)}
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm"
+              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
             >
-              ✕
+              <X className="w-5 h-5" />
             </button>
           </div>
 
           <form onSubmit={handleAllocate} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Faculty Member (Teacher)
+              <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5 flex items-center gap-1.5">
+                <UserCheck className="w-3.5 h-3.5 text-amber-500" />
+                <span>Faculty Member (Teacher) *</span>
               </label>
               <select
                 required
                 value={selectedTeacherId}
                 onChange={e => setSelectedTeacherId(e.target.value)}
-                className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 font-medium"
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500 transition shadow-2xs"
               >
                 {eligibleTeachers.map(t => (
                   <option key={t.id} value={t.id}>
@@ -289,17 +300,21 @@ export const SubjectAllocationView: React.FC = () => {
                   </option>
                 ))}
               </select>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                Teacher will be authorized to record and submit continuous assessment & exam marks.
+              </p>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Class Arm
+              <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5 flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-amber-500" />
+                <span>Target Class Arm *</span>
               </label>
               <select
                 required
                 value={selectedArmId}
                 onChange={e => setSelectedArmId(e.target.value)}
-                className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 font-medium"
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500 transition shadow-2xs"
               >
                 {classArms.map(arm => (
                   <option key={arm.id} value={arm.id}>
@@ -310,14 +325,15 @@ export const SubjectAllocationView: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Subject
+              <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 mb-1.5 flex items-center gap-1.5">
+                <BookOpen className="w-3.5 h-3.5 text-amber-500" />
+                <span>Subject *</span>
               </label>
               <select
                 required
                 value={selectedSubjectId}
                 onChange={e => setSelectedSubjectId(e.target.value)}
-                className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 font-medium"
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500 transition shadow-2xs"
               >
                 {subjects.map(s => (
                   <option key={s.id} value={s.id}>
@@ -327,19 +343,20 @@ export const SubjectAllocationView: React.FC = () => {
               </select>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition cursor-pointer"
+                className="px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-xl shadow-md transition cursor-pointer"
+                className="px-5 py-2.5 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white text-xs font-bold rounded-xl shadow-md hover:shadow-amber-500/20 transition cursor-pointer flex items-center gap-2"
               >
-                Save Allocation
+                <Plus className="w-4 h-4" />
+                <span>Save Allocation</span>
               </button>
             </div>
           </form>
@@ -348,7 +365,7 @@ export const SubjectAllocationView: React.FC = () => {
 
       {/* Confirmation Modal */}
       <ModalPortal isOpen={!!allocationToDelete} onClose={() => setAllocationToDelete(null)} maxWidthClass="max-w-md">
-        <div className="p-6 text-center space-y-4">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 sm:p-7 text-center space-y-4 animate-in fade-in zoom-in-95 duration-150">
           <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900/60 flex items-center justify-center mx-auto text-rose-600 dark:text-rose-400 shadow-xs">
             <AlertTriangle className="w-6 h-6" />
           </div>
@@ -362,7 +379,7 @@ export const SubjectAllocationView: React.FC = () => {
             <button
               type="button"
               onClick={() => setAllocationToDelete(null)}
-              className="px-4 py-2 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+              className="px-4 py-2.5 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
             >
               Cancel
             </button>
@@ -379,7 +396,7 @@ export const SubjectAllocationView: React.FC = () => {
                   setRefreshTrigger(prev => prev + 1);
                 }
               }}
-              className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white transition-colors cursor-pointer shadow-xs"
+              className="px-5 py-2.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white transition-colors cursor-pointer shadow-xs"
             >
               Confirm Revocation
             </button>

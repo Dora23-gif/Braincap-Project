@@ -13,7 +13,9 @@ import {
   CheckCircle2,
   Reply,
   Trash2,
-  CheckCheck
+  CheckCheck,
+  X,
+  Sparkles
 } from 'lucide-react';
 
 interface CommunicationsHubViewProps {
@@ -659,62 +661,64 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
 
       {/* Compose New Message / Directive Modal */}
       <ModalPortal isOpen={isComposeOpen} onClose={() => setIsComposeOpen(false)} maxWidthClass="max-w-2xl">
-        <div className="p-6">
-          <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-200 dark:border-slate-800">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-xl border border-indigo-100 dark:border-indigo-800">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 sm:p-7 space-y-5 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+          <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/80 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm">
                 <Send className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
                   Dispatch New Message or Executive Directive
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   Transmitted across the unified EIS ledger with real-time receipt notification
                 </p>
               </div>
             </div>
             <button
+              type="button"
               onClick={() => setIsComposeOpen(false)}
-              className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg"
+              className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition"
             >
-              ✕
+              <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Quick Templates Bar */}
-          <div className="mb-4 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-800">
-            <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">
-              Quick Institutional Templates
+          <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200/70 dark:border-slate-800">
+            <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-2 uppercase tracking-wider">
+              <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+              <span>Quick Institutional Templates</span>
             </div>
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={() => applyTemplate('MARKSHEET_REMINDER')}
-                className="px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-indigo-400 rounded-lg transition"
+                className="px-3 py-1.5 text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl shadow-xs transition"
               >
-                Marksheet Reminder
+                📋 Marksheet Reminder
               </button>
               <button
                 type="button"
                 onClick={() => applyTemplate('EXAM_BRIEFING')}
-                className="px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-indigo-400 rounded-lg transition"
+                className="px-3 py-1.5 text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl shadow-xs transition"
               >
-                Exam Duty Briefing
+                📝 Exam Duty Briefing
               </button>
               <button
                 type="button"
                 onClick={() => applyTemplate('EXECUTIVE_DIRECTIVE')}
-                className="px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-indigo-400 rounded-lg transition"
+                className="px-3 py-1.5 text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl shadow-xs transition"
               >
-                Executive Directive
+                ⚖️ Executive Directive
               </button>
               <button
                 type="button"
                 onClick={() => applyTemplate('PARENT_COMMUNICATION')}
-                className="px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-indigo-400 rounded-lg transition"
+                className="px-3 py-1.5 text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl shadow-xs transition"
               >
-                Parent Advisory
+                👨‍👩‍👧 Parent Advisory
               </button>
             </div>
           </div>
@@ -722,9 +726,9 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
           <form onSubmit={handleSendCompose} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Recipient Role */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Recipient Role Group
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                  Recipient Role Group <span className="text-rose-500">*</span>
                 </label>
                 <select
                   value={composeRecipientRole}
@@ -733,7 +737,7 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
                     setComposeRecipientRole(newRole);
                     setComposeRecipientId('ALL');
                   }}
-                  className="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 font-medium"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-slate-850 outline-none transition"
                 >
                   <option value="ALL">All Roles / Global Broadcast</option>
                   <option value="PRINCIPAL">Principal & Head of School</option>
@@ -748,14 +752,14 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
               </div>
 
               {/* Specific Recipient Individual */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Specific Individual
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                  Specific Individual <span className="text-slate-400 font-normal">(Optional)</span>
                 </label>
                 <select
                   value={composeRecipientId}
                   onChange={e => setComposeRecipientId(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 font-medium"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-slate-850 outline-none transition"
                 >
                   {candidateRecipients.map(cand => (
                     <option key={cand.id} value={cand.id}>
@@ -768,24 +772,24 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
 
             {/* Priority & Subject */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="md:col-span-1">
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              <div className="md:col-span-1 space-y-1.5">
+                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
                   Priority Status
                 </label>
                 <select
                   value={composePriority}
                   onChange={e => setComposePriority(e.target.value as any)}
-                  className="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 font-medium"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-slate-850 outline-none transition"
                 >
-                  <option value="NORMAL">Normal Priority</option>
-                  <option value="URGENT">Urgent (Red Alert)</option>
-                  <option value="OFFICIAL_DIRECTIVE">Official Directive (Seal)</option>
+                  <option value="NORMAL">🟢 Normal Priority</option>
+                  <option value="URGENT">🔴 Urgent (High Priority)</option>
+                  <option value="OFFICIAL_DIRECTIVE">⚖️ Official Directive</option>
                 </select>
               </div>
 
-              <div className="md:col-span-2">
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Subject / Heading
+              <div className="md:col-span-2 space-y-1.5">
+                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                  Subject / Heading <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -793,38 +797,38 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
                   placeholder="e.g., SSS 2 Gold: Final Marksheet Submission Deadline"
                   value={composeSubject}
                   onChange={e => setComposeSubject(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 font-medium"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-slate-850 outline-none transition"
                 />
               </div>
             </div>
 
             {/* Message Body */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Message Content / Directive Instructions
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                Message Content / Directive Instructions <span className="text-rose-500">*</span>
               </label>
               <textarea
                 required
-                rows={6}
+                rows={5}
                 placeholder="Enter detailed directives, instructions, or queries..."
                 value={composeContent}
                 onChange={e => setComposeContent(e.target.value)}
-                className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 resize-none font-sans"
+                className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-normal text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-slate-850 outline-none resize-none transition"
               />
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
               <button
                 type="button"
                 onClick={() => setIsComposeOpen(false)}
-                className="px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition"
+                className="px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-md hover:shadow-indigo-500/20 transition flex items-center gap-2"
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md hover:shadow-indigo-500/20 transition flex items-center gap-2"
               >
                 <Send className="w-4 h-4" />
                 <span>Transmit Message</span>
