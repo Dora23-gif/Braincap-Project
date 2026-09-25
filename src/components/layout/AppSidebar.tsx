@@ -571,26 +571,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             )}
           </button>
 
-          {/* Federal MoE Validated Section */}
-          <div
-            className={`rounded-xl bg-slate-50 dark:bg-[#0E1526] border border-slate-200/80 dark:border-white/5 transition-all ${
-              isCollapsed ? 'p-2 flex items-center justify-center' : 'px-2.5 lg:px-3 py-2'
-            }`}
-            title="Federal MoE Validated - Everest Intl. Schools EMIS Enterprise v2.4"
-          >
-            {isCollapsed ? (
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            ) : (
-              <>
-                <div className="text-[9px] lg:text-[9.5px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-cyan-400 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>Federal MoE Validated</span>
-                </div>
-                <div className="text-xs lg:text-[13px] text-slate-800 dark:text-slate-200 font-bold mt-0.5">Everest Intl. Schools</div>
-                <div className="text-[9px] lg:text-[9.5px] text-slate-400 dark:text-slate-500 font-mono-tabular mt-0.5">EMIS Enterprise v2.4</div>
-              </>
-            )}
-          </div>
+
         </div>
       </aside>
 
