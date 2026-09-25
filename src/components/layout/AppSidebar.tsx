@@ -23,7 +23,9 @@ import {
   BarChart3,
   MessageSquare,
   LogOut,
-  KeyRound
+  KeyRound,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react';
 
 export type ActiveNavView =
@@ -71,6 +73,24 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 }) => {
   const { user, logout } = useAuth();
   const { portalMessages } = useSchoolData();
+
+  const [isCollapsed, setIsCollapsed] = React.useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('eis_sidebar_collapsed') === 'true';
+    }
+    return false;
+  });
+
+  const toggleCollapse = () => {
+    setIsCollapsed(prev => {
+      const next = !prev;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('eis_sidebar_collapsed', String(next));
+      }
+      return next;
+    });
+  };
+
   if (!user) return null;
 
   const currentUserId = user.id || user.staffId || '';
@@ -351,8 +371,10 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 
       {/* Futuristic Sidebar Panel */}
       <aside
-        className={`fixed md:sticky top-0 md:top-16 left-0 z-50 md:z-30 w-64 lg:w-72 xl:w-80 shrink-0 h-[100dvh] md:h-[calc(100dvh-4rem)] bg-white/95 dark:bg-[#070B14]/95 backdrop-blur-xl border-r border-slate-200/80 dark:border-white/10 p-3 lg:p-4 flex flex-col transition-all duration-300 m-0 ${
-          isOpenMobile ? 'translate-x-0 shadow-2xl' : '-translate-x-full md:translate-x-0'
+        className={`fixed md:sticky top-0 md:top-16 left-0 z-50 md:z-30 shrink-0 h-[100dvh] md:h-[calc(100dvh-4rem)] bg-white/95 dark:bg-[#070B14]/95 backdrop-blur-xl border-r border-slate-200/80 dark:border-white/10 flex flex-col transition-all duration-300 ease-in-out m-0 ${
+          isOpenMobile ? 'translate-x-0 shadow-2xl w-64 p-3' : '-translate-x-full md:translate-x-0'
+        } ${
+          isCollapsed ? 'md:w-[68px] md:p-2' : 'md:w-64 lg:w-72 xl:w-80 md:p-3 lg:md:p-4'
         }`}
       >
         {/* Mobile Header with close button */}
@@ -362,6 +384,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             <span className="font-serif-title font-bold text-slate-900 dark:text-white text-sm tracking-wide">EVEREST EMIS</span>
           </div>
           <button
+            type="button"
             onClick={onCloseMobile}
             className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 touch-target flex items-center justify-center cursor-pointer"
           >
@@ -369,13 +392,52 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
           </button>
         </div>
 
+        {/* Desktop Header with Collapse/Expand Toggle Button */}
+        <div
+          className={`hidden md:flex items-center pb-2.5 mb-2 border-b border-slate-100 dark:border-white/10 shrink-0 transition-all duration-300 ${
+            isCollapsed ? 'justify-center' : 'justify-between'
+          }`}
+        >
+          {!isCollapsed && (
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 font-sans truncate">
+                Workspace Menu
+              </span>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={toggleCollapse}
+            className={`p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/5 transition-all duration-200 flex items-center justify-center cursor-pointer active:scale-95 ${
+              isCollapsed ? 'w-10 h-10' : ''
+            }`}
+            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {isCollapsed ? (
+              <PanelLeftOpen className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+            ) : (
+              <PanelLeftClose className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+            )}
+          </button>
+        </div>
+
         {/* Nav Sections - fills available vertical space and scrolls if needed */}
-        <div className="flex-1 space-y-3 lg:space-y-4 overflow-y-auto pr-1 -mr-1 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
+        <div
+          className={`flex-1 space-y-3 lg:space-y-4 overflow-y-auto ${
+            isCollapsed ? 'overflow-x-hidden px-0.5' : 'pr-1 -mr-1'
+          } scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800`}
+        >
           {navGroups.map((group, gIdx) => (
-            <div key={gIdx}>
-              <div className="px-2.5 lg:px-3 text-[9.5px] lg:text-[10.5px] font-extrabold tracking-wider text-slate-400 dark:text-slate-500 uppercase mb-1">
-                {group.title}
-              </div>
+            <div key={gIdx} className={isCollapsed ? 'space-y-1' : ''}>
+              {!isCollapsed && (
+                <div className="px-2.5 lg:px-3 text-[9.5px] lg:text-[10.5px] font-extrabold tracking-wider text-slate-400 dark:text-slate-500 uppercase mb-1">
+                  {group.title}
+                </div>
+              )}
+              {isCollapsed && gIdx > 0 && (
+                <div className="my-1.5 border-t border-slate-100 dark:border-white/5" />
+              )}
               <div className="space-y-0.5 lg:space-y-1">
                 {group.items.map(item => {
                   const Icon = item.icon;
@@ -388,17 +450,22 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                         onSelectView(item.id);
                         onCloseMobile();
                       }}
-                      className={`w-full flex items-center justify-between px-2.5 lg:px-3 py-1.5 lg:py-2 rounded-xl text-xs lg:text-[13px] font-semibold lg:font-bold transition-all duration-150 cursor-pointer min-h-[34px] lg:min-h-[40px] active:scale-[0.98] ${
+                      title={item.label + (item.badge ? ` (${item.badge})` : '')}
+                      className={`w-full flex items-center rounded-xl text-xs lg:text-[13px] font-semibold lg:font-bold transition-all duration-150 cursor-pointer min-h-[36px] lg:min-h-[40px] active:scale-[0.98] relative group ${
+                        isCollapsed
+                          ? 'justify-center p-2'
+                          : 'justify-between px-2.5 lg:px-3 py-1.5 lg:py-2'
+                      } ${
                         isActive
                           ? 'bg-gradient-to-r from-amber-600 to-amber-700 dark:from-indigo-600 dark:to-cyan-600 text-white shadow-sm shadow-amber-600/20 dark:shadow-cyan-500/20 font-bold'
                           : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'
                       }`}
                     >
-                      <div className="flex items-center gap-2.5 lg:gap-3 truncate">
-                        <Icon className={`w-3.5 h-3.5 lg:w-4 lg:h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400 dark:text-slate-500'}`} />
-                        <span className="truncate">{item.label}</span>
+                      <div className={`flex items-center gap-2.5 lg:gap-3 truncate ${isCollapsed ? 'justify-center' : ''}`}>
+                        <Icon className={`w-4 h-4 lg:w-4.5 lg:h-4.5 shrink-0 ${isActive ? 'text-white' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-200'}`} />
+                        {!isCollapsed && <span className="truncate">{item.label}</span>}
                       </div>
-                      {item.badge && (
+                      {!isCollapsed && item.badge && (
                         <span
                           className={`text-[9px] lg:text-[9.5px] font-extrabold px-1.5 lg:px-2 py-0.5 rounded-full shrink-0 ${
                             isActive
@@ -409,6 +476,9 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                           {item.badge}
                         </span>
                       )}
+                      {isCollapsed && item.badge && (
+                        <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-500 border border-white dark:border-slate-900" />
+                      )}
                     </button>
                   );
                 })}
@@ -418,10 +488,18 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         </div>
 
         {/* Footer Actions & Info Box - pinned to bottom */}
-        <div className="pt-2.5 lg:pt-3 border-t border-slate-100 dark:border-white/10 mt-auto space-y-1.5 lg:space-y-2 shrink-0">
-
+        <div
+          className={`pt-2.5 lg:pt-3 border-t border-slate-100 dark:border-white/10 mt-auto shrink-0 transition-all duration-300 ${
+            isCollapsed ? 'space-y-1.5' : 'space-y-1.5 lg:space-y-2'
+          }`}
+        >
           {/* User Identity Card */}
-          <div className="px-2.5 lg:px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-[#0E1526] border border-slate-200/80 dark:border-white/5 flex items-center gap-2.5">
+          <div
+            className={`rounded-xl bg-slate-50 dark:bg-[#0E1526] border border-slate-200/80 dark:border-white/5 flex items-center transition-all ${
+              isCollapsed ? 'p-1.5 justify-center' : 'px-2.5 lg:px-3 py-2.5 gap-2.5'
+            }`}
+            title={`${user.name} (${getRoleLabel(user.activeRole)})`}
+          >
             {/* Avatar */}
             {user.avatarUrl ? (
               <img
@@ -435,60 +513,83 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
               </div>
             )}
             {/* Name + Role */}
-            <div className="min-w-0 flex-1">
-              <div className="text-xs lg:text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate leading-tight">
-                {getShortName(user.name)}
+            {!isCollapsed && (
+              <div className="min-w-0 flex-1">
+                <div className="text-xs lg:text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate leading-tight">
+                  {getShortName(user.name)}
+                </div>
+                <div className="text-[10px] lg:text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate leading-tight mt-0.5">
+                  {getRoleLabel(user.activeRole)}
+                </div>
               </div>
-              <div className="text-[10px] lg:text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate leading-tight mt-0.5">
-                {getRoleLabel(user.activeRole)}
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Change Password Button */}
           <button
+            type="button"
             onClick={() => {
               onCloseMobile();
               onOpenChangePassword?.();
             }}
-            className="w-full flex items-center justify-between px-2.5 lg:px-3 py-1.5 lg:py-2 rounded-xl text-xs lg:text-[13px] font-semibold text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-600 dark:hover:text-amber-400 border border-transparent hover:border-amber-200 dark:hover:border-amber-900/50 transition-all duration-150 cursor-pointer min-h-[34px] lg:min-h-[38px] active:scale-[0.98] touch-manipulation"
+            className={`w-full flex items-center rounded-xl text-xs lg:text-[13px] font-semibold text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-600 dark:hover:text-amber-400 border border-transparent hover:border-amber-200 dark:hover:border-amber-900/50 transition-all duration-150 cursor-pointer min-h-[34px] lg:min-h-[38px] active:scale-[0.98] touch-manipulation ${
+              isCollapsed ? 'justify-center p-2' : 'justify-between px-2.5 lg:px-3 py-1.5 lg:py-2'
+            }`}
             title="Change Account Password"
           >
-            <div className="flex items-center gap-2.5 lg:gap-3 truncate">
+            <div className={`flex items-center gap-2.5 lg:gap-3 truncate ${isCollapsed ? 'justify-center' : ''}`}>
               <KeyRound className="w-3.5 h-3.5 lg:w-4 lg:h-4 shrink-0 text-amber-500 dark:text-amber-400" />
-              <span className="truncate">Change Password</span>
+              {!isCollapsed && <span className="truncate">Change Password</span>}
             </div>
-            <span className="text-[10px] uppercase tracking-wider font-semibold opacity-60">
-              Security
-            </span>
+            {!isCollapsed && (
+              <span className="text-[10px] uppercase tracking-wider font-semibold opacity-60">
+                Security
+              </span>
+            )}
           </button>
 
           {/* Sign Out Button */}
           <button
+            type="button"
             onClick={() => {
               onCloseMobile();
               logout();
             }}
-            className="w-full flex items-center justify-between px-2.5 lg:px-3 py-1.5 lg:py-2 rounded-xl text-xs lg:text-[13px] font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-700 dark:hover:text-rose-300 border border-transparent hover:border-rose-200 dark:hover:border-rose-900/50 transition-all duration-150 cursor-pointer min-h-[34px] lg:min-h-[38px] active:scale-[0.98] touch-manipulation"
+            className={`w-full flex items-center rounded-xl text-xs lg:text-[13px] font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-700 dark:hover:text-rose-300 border border-transparent hover:border-rose-200 dark:hover:border-rose-900/50 transition-all duration-150 cursor-pointer min-h-[34px] lg:min-h-[38px] active:scale-[0.98] touch-manipulation ${
+              isCollapsed ? 'justify-center p-2' : 'justify-between px-2.5 lg:px-3 py-1.5 lg:py-2'
+            }`}
             title="Sign Out of Portal"
           >
-            <div className="flex items-center gap-2.5 lg:gap-3 truncate">
+            <div className={`flex items-center gap-2.5 lg:gap-3 truncate ${isCollapsed ? 'justify-center' : ''}`}>
               <LogOut className="w-3.5 h-3.5 lg:w-4 lg:h-4 shrink-0 text-rose-500 dark:text-rose-400" />
-              <span className="truncate">Sign Out</span>
+              {!isCollapsed && <span className="truncate">Sign Out</span>}
             </div>
-            <span className="text-[10px] uppercase tracking-wider font-semibold opacity-60">
-              Exit
-            </span>
+            {!isCollapsed && (
+              <span className="text-[10px] uppercase tracking-wider font-semibold opacity-60">
+                Exit
+              </span>
+            )}
           </button>
 
           {/* Federal MoE Validated Section */}
-          <div className="px-2.5 lg:px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0E1526] border border-slate-200/80 dark:border-white/5">
-            <div className="text-[9px] lg:text-[9.5px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-cyan-400 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Federal MoE Validated</span>
-            </div>
-            <div className="text-xs lg:text-[13px] text-slate-800 dark:text-slate-200 font-bold mt-0.5">Everest Intl. Schools</div>
-            <div className="text-[9px] lg:text-[9.5px] text-slate-400 dark:text-slate-500 font-mono-tabular mt-0.5">EMIS Enterprise v2.4</div>
+          <div
+            className={`rounded-xl bg-slate-50 dark:bg-[#0E1526] border border-slate-200/80 dark:border-white/5 transition-all ${
+              isCollapsed ? 'p-2 flex items-center justify-center' : 'px-2.5 lg:px-3 py-2'
+            }`}
+            title="Federal MoE Validated - Everest Intl. Schools EMIS Enterprise v2.4"
+          >
+            {isCollapsed ? (
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            ) : (
+              <>
+                <div className="text-[9px] lg:text-[9.5px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-cyan-400 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Federal MoE Validated</span>
+                </div>
+                <div className="text-xs lg:text-[13px] text-slate-800 dark:text-slate-200 font-bold mt-0.5">Everest Intl. Schools</div>
+                <div className="text-[9px] lg:text-[9.5px] text-slate-400 dark:text-slate-500 font-mono-tabular mt-0.5">EMIS Enterprise v2.4</div>
+              </>
+            )}
           </div>
         </div>
       </aside>
