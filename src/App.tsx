@@ -323,7 +323,6 @@ const AppContent: React.FC = () => {
       <AppHeader
         onToggleSidebar={() => setIsOpenMobile(!isOpenMobile)}
         onNavigate={view => setActiveView(view as any)}
-        onOpenChangePassword={() => setIsChangePasswordOpen(true)}
       />
 
       <div className="flex-1 flex flex-row w-full min-w-0 items-start">
