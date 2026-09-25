@@ -25,7 +25,8 @@ import {
   LogOut,
   KeyRound,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  ChevronUp
 } from 'lucide-react';
 
 export type ActiveNavView =
@@ -90,6 +91,26 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
       return next;
     });
   };
+
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = React.useState(false);
+  const profileMenuRef = React.useRef<HTMLDivElement>(null);
+
+  const isAdmin = Boolean(
+    user?.activeRole === 'SUPER_ADMIN' ||
+    (user?.activeRole as string) === 'ADMIN' ||
+    user?.role === 'SUPER_ADMIN' ||
+    (user?.role as string) === 'ADMIN'
+  );
+
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   if (!user) return null;
 
@@ -493,33 +514,131 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             isCollapsed ? 'space-y-1.5' : 'space-y-1.5 lg:space-y-2'
           }`}
         >
-          {/* User Identity Card */}
-          <div
-            className={`rounded-xl bg-slate-50 dark:bg-[#0E1526] border border-slate-200/80 dark:border-white/5 flex items-center transition-all ${
-              isCollapsed ? 'p-1.5 justify-center' : 'px-2.5 lg:px-3 py-2.5 gap-2.5'
-            }`}
-            title={`${user.name} (${getRoleLabel(user.activeRole)})`}
-          >
-            {/* Avatar */}
-            {user.avatarUrl ? (
-              <img
-                src={user.avatarUrl}
-                alt={user.name}
-                className="w-8 h-8 rounded-full object-cover border-2 border-amber-500/30 dark:border-cyan-500/30 shrink-0"
-              />
+          {/* User Identity Card (Interactive Dropdown Popout for Admin) */}
+          <div className="relative" ref={profileMenuRef}>
+            {isAdmin ? (
+              <button
+                type="button"
+                onClick={() => setIsProfileMenuOpen(prev => !prev)}
+                className={`w-full rounded-xl bg-slate-50 dark:bg-[#0E1526] border border-slate-200/80 dark:border-white/5 flex items-center transition-all cursor-pointer hover:bg-slate-100/90 dark:hover:bg-white/10 active:scale-[0.98] text-left ${
+                  isCollapsed ? 'p-1.5 justify-center' : 'px-2.5 lg:px-3 py-2.5 gap-2.5 justify-between'
+                } ${isProfileMenuOpen ? 'ring-2 ring-amber-500/40 dark:ring-cyan-500/40' : ''}`}
+                title={`${user.name} (${getRoleLabel(user.activeRole)}) - Click for account menu`}
+                aria-haspopup="true"
+                aria-expanded={isProfileMenuOpen}
+              >
+                <div className={`flex items-center gap-2.5 min-w-0 ${isCollapsed ? 'justify-center' : 'flex-1'}`}>
+                  {user.avatarUrl ? (
+                    <img
+                      src={user.avatarUrl}
+                      alt={user.name}
+                      className="w-8 h-8 rounded-full object-cover border-2 border-amber-500/30 dark:border-cyan-500/30 shrink-0"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-500 to-indigo-600 text-white text-xs font-bold flex items-center justify-center shrink-0 shadow-xs">
+                      {user.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  {!isCollapsed && (
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs lg:text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate leading-tight">
+                        {getShortName(user.name)}
+                      </div>
+                      <div className="text-[10px] lg:text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate leading-tight mt-0.5">
+                        {getRoleLabel(user.activeRole)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {!isCollapsed && (
+                  <ChevronUp
+                    className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 shrink-0 ${
+                      isProfileMenuOpen ? 'rotate-180 text-amber-500 dark:text-cyan-400' : ''
+                    }`}
+                  />
+                )}
+              </button>
             ) : (
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-500 to-indigo-600 text-white text-xs font-bold flex items-center justify-center shrink-0 shadow-xs">
-                {user.name.charAt(0).toUpperCase()}
+              <div
+                className={`rounded-xl bg-slate-50 dark:bg-[#0E1526] border border-slate-200/80 dark:border-white/5 flex items-center transition-all ${
+                  isCollapsed ? 'p-1.5 justify-center' : 'px-2.5 lg:px-3 py-2.5 gap-2.5'
+                }`}
+                title={`${user.name} (${getRoleLabel(user.activeRole)})`}
+              >
+                {user.avatarUrl ? (
+                  <img
+                    src={user.avatarUrl}
+                    alt={user.name}
+                    className="w-8 h-8 rounded-full object-cover border-2 border-amber-500/30 dark:border-cyan-500/30 shrink-0"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-500 to-indigo-600 text-white text-xs font-bold flex items-center justify-center shrink-0 shadow-xs">
+                    {user.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                {!isCollapsed && (
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs lg:text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate leading-tight">
+                      {getShortName(user.name)}
+                    </div>
+                    <div className="text-[10px] lg:text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate leading-tight mt-0.5">
+                      {getRoleLabel(user.activeRole)}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
-            {/* Name + Role */}
-            {!isCollapsed && (
-              <div className="min-w-0 flex-1">
-                <div className="text-xs lg:text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate leading-tight">
-                  {getShortName(user.name)}
+
+            {/* Admin Profile Dropdown Popover */}
+            {isAdmin && isProfileMenuOpen && (
+              <div
+                className={`absolute bottom-full mb-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-bottom-2 duration-150 ${
+                  isCollapsed ? 'left-0 md:left-full md:bottom-0 md:ml-2 w-64' : 'left-0 right-0 w-full'
+                }`}
+              >
+                <div className="p-3.5 bg-slate-50/90 dark:bg-slate-800/80 border-b border-slate-100 dark:border-slate-800">
+                  <div className="font-bold text-slate-900 dark:text-white text-xs truncate">
+                    {user.name}
+                  </div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                    {user.email || 'No email registered'}
+                  </div>
+                  <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                    <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-cyan-950/60 text-amber-700 dark:text-cyan-300 text-[10px] font-bold border border-amber-200/60 dark:border-cyan-800/60">
+                      {user.activeRole.replace(/_/g, ' ')}
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded bg-slate-200/60 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 font-mono-tabular text-[10px]">
+                      {user.identifier}
+                    </span>
+                  </div>
                 </div>
-                <div className="text-[10px] lg:text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate leading-tight mt-0.5">
-                  {getRoleLabel(user.activeRole)}
+
+                <div className="p-2 space-y-1 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      onCloseMobile();
+                      onOpenChangePassword?.();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-600 dark:hover:text-amber-400 font-semibold transition cursor-pointer touch-manipulation text-left"
+                  >
+                    <KeyRound className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0" />
+                    <span>Change My Password</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      onCloseMobile();
+                      logout();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-semibold transition cursor-pointer touch-manipulation text-left"
+                  >
+                    <LogOut className="w-4 h-4 text-rose-500 dark:text-rose-400 shrink-0" />
+                    <span>Sign Out</span>
+                  </button>
                 </div>
               </div>
             )}

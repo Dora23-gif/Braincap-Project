@@ -413,20 +413,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onToggleSidebar, onNavigat
               <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden 2xl:block" />
             </button>
 
-            {/* Quick Change Password Icon Button */}
-            <button
-              onClick={() => {
-                if (onOpenChangePassword) {
-                  onOpenChangePassword();
-                } else {
-                  setIsChangePasswordOpen(true);
-                }
-              }}
-              title="Change Account Password"
-              className="flex p-2 rounded-xl text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors touch-target items-center justify-center cursor-pointer touch-manipulation"
-            >
-              <KeyRound className="w-4 h-4" />
-            </button>
+
 
             {/* Profile Dropdown Popover */}
             {isProfileMenuOpen && (
