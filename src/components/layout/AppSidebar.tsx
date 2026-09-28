@@ -591,54 +591,6 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
               </div>
             )}
           </div>
-
-          {/* Change Password Button */}
-          <button
-            type="button"
-            onClick={() => {
-              onCloseMobile();
-              onOpenChangePassword?.();
-            }}
-            className={`w-full flex items-center rounded-xl text-xs lg:text-[13px] font-semibold text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-600 dark:hover:text-amber-400 border border-transparent hover:border-amber-200 dark:hover:border-amber-900/50 transition-all duration-150 cursor-pointer min-h-[34px] lg:min-h-[38px] active:scale-[0.98] touch-manipulation ${
-              isCollapsed ? 'justify-center p-2' : 'justify-between px-2.5 lg:px-3 py-1.5 lg:py-2'
-            }`}
-            title="Change Account Password"
-          >
-            <div className={`flex items-center gap-2.5 lg:gap-3 truncate ${isCollapsed ? 'justify-center' : ''}`}>
-              <KeyRound className="w-3.5 h-3.5 lg:w-4 lg:h-4 shrink-0 text-amber-500 dark:text-amber-400" />
-              {!isCollapsed && <span className="truncate">Change Password</span>}
-            </div>
-            {!isCollapsed && (
-              <span className="text-[10px] uppercase tracking-wider font-semibold opacity-60">
-                Security
-              </span>
-            )}
-          </button>
-
-          {/* Sign Out Button */}
-          <button
-            type="button"
-            onClick={() => {
-              onCloseMobile();
-              logout();
-            }}
-            className={`w-full flex items-center rounded-xl text-xs lg:text-[13px] font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-700 dark:hover:text-rose-300 border border-transparent hover:border-rose-200 dark:hover:border-rose-900/50 transition-all duration-150 cursor-pointer min-h-[34px] lg:min-h-[38px] active:scale-[0.98] touch-manipulation ${
-              isCollapsed ? 'justify-center p-2' : 'justify-between px-2.5 lg:px-3 py-1.5 lg:py-2'
-            }`}
-            title="Sign Out of Portal"
-          >
-            <div className={`flex items-center gap-2.5 lg:gap-3 truncate ${isCollapsed ? 'justify-center' : ''}`}>
-              <LogOut className="w-3.5 h-3.5 lg:w-4 lg:h-4 shrink-0 text-rose-500 dark:text-rose-400" />
-              {!isCollapsed && <span className="truncate">Sign Out</span>}
-            </div>
-            {!isCollapsed && (
-              <span className="text-[10px] uppercase tracking-wider font-semibold opacity-60">
-                Exit
-              </span>
-            )}
-          </button>
-
-
         </div>
       </aside>
 
