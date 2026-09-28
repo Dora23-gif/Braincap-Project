@@ -161,15 +161,6 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             { id: 'student-directory', label: 'Student Directory', icon: Users },
             { id: 'admissions-wizard', label: 'New Admission', icon: UserPlus, badge: 'New' }
           ]
-        },
-        {
-          title: 'Examinations & Reports',
-          items: [
-            { id: 'master-broadsheet', label: 'Master Broadsheet', icon: FileSpreadsheet },
-            { id: 'score-entry', label: 'Marksheet Overrides', icon: BookOpen },
-            { id: 'psychomotor-matrix', label: 'Behavior & Remarks', icon: Award },
-            { id: 'report-card', label: 'Printable Report Card', icon: FileText }
-          ]
         }
       ];
     }
@@ -271,7 +262,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
           items: [
             { id: 'exam-officer-dashboard', label: 'Exam Command Center', icon: ShieldCheck, badge: 'Live' },
             { id: 'master-broadsheet', label: 'Master Broadsheet', icon: FileSpreadsheet },
-            { id: 'score-entry', label: 'Audit Score Sheets', icon: BookOpen },
+            { id: 'score-entry', label: 'Marksheet Overrides', icon: BookOpen },
             { id: 'report-card', label: 'Terminal Report Cards', icon: FileText }
           ]
         },
