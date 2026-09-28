@@ -262,7 +262,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
           items: [
             { id: 'exam-officer-dashboard', label: 'Exam Command Center', icon: ShieldCheck, badge: 'Live' },
             { id: 'master-broadsheet', label: 'Master Broadsheet', icon: FileSpreadsheet },
-            { id: 'score-entry', label: 'Marksheet Overrides', icon: BookOpen },
+            { id: 'score-entry', label: 'Marksheet & Audit Score overrides', icon: BookOpen },
             { id: 'report-card', label: 'Terminal Report Cards', icon: FileText }
           ]
         },
