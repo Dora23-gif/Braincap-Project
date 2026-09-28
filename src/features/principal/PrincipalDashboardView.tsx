@@ -6,11 +6,6 @@ import { getWelcomeMessage } from '../../lib/userDisplay';
 import { FuturisticKPICard } from '../../components/common/FuturisticKPICard';
 import { DoubleBezelCard } from '../../components/common/DoubleBezelCard';
 import {
-  AreaTrendChart,
-  RadialGauge,
-  BarDistributionChart
-} from '../../components/common/ChartComponents';
-import {
   GraduationCap,
   Users,
   Award,
@@ -23,7 +18,6 @@ import {
   Sparkles,
   ArrowUpRight,
   ShieldCheck,
-  FileSpreadsheet,
   MessageSquare
 } from 'lucide-react';
 
@@ -84,23 +78,6 @@ export const PrincipalDashboardView: React.FC<PrincipalDashboardViewProps> = ({ 
 
   const maleAvg = maleScores.length > 0 ? (maleScores.reduce((acc, s) => acc + s.total, 0) / maleScores.length).toFixed(1) : '0.0';
   const femaleAvg = femaleScores.length > 0 ? (femaleScores.reduce((acc, s) => acc + s.total, 0) / femaleScores.length).toFixed(1) : '0.0';
-
-  // Subject Performance Outliers
-  const subjectPerformanceMap = subjects.map(sub => {
-    const subScores = termScores.filter(s => s.subjectId === sub.id);
-    const avg = subScores.length > 0 ? subScores.reduce((acc, s) => acc + s.total, 0) / subScores.length : 0;
-    return {
-      id: sub.id,
-      name: sub.name,
-      code: sub.code,
-      count: subScores.length,
-      average: Number(avg.toFixed(1))
-    };
-  }).filter(s => s.count > 0);
-
-  const sortedSubjects = [...subjectPerformanceMap].sort((a, b) => b.average - a.average);
-  const topSubjects = sortedSubjects.slice(0, 3);
-  const atRiskSubjects = [...sortedSubjects].reverse().slice(0, 3);
 
   // 3. Teacher Submission Compliance Tracker by Class Arm
   const armCompliance = classArms.map(arm => {
@@ -180,30 +157,6 @@ export const PrincipalDashboardView: React.FC<PrincipalDashboardViewProps> = ({ 
     });
     triggerToast(`Executive deadline reminder broadcast to all pending subject teachers and form masters.`);
   };
-
-  const trendData = [
-    { label: '1st Term 24/25', value: 64.8 },
-    { label: '2nd Term 24/25', value: 66.1 },
-    { label: '3rd Term 24/25', value: 67.5 },
-    { label: '1st Term 25/26', value: 68.2 },
-    { label: '2nd Term 25/26', value: Number(schoolWideAverage) }
-  ];
-
-  const armDistributionData = classArms.slice(0, 6).map((arm, i) => {
-    const aAvg = i % 2 === 0 ? 71.4 + i : 68.2 + i;
-    const full = arm.fullName || arm.name;
-    const short = full.replace('JSS ', 'J').replace('SSS ', 'S');
-    return {
-      label: (
-        <>
-          <span className="hidden sm:inline">{full}</span>
-          <span className="sm:hidden">{short}</span>
-        </>
-      ),
-      value: Number(aAvg.toFixed(1)),
-      highlight: i === 2
-    };
-  });
 
   return (
     <FuturisticPageShell
@@ -285,79 +238,6 @@ export const PrincipalDashboardView: React.FC<PrincipalDashboardViewProps> = ({ 
           badge="Support"
           onClick={() => onNavigateView && onNavigateView('honors-probation')}
         />
-      </div>
-
-      {/* Interactive Charts & Analytics Bento */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Trajectory & Arm Performance (8 cols) */}
-        <div className="lg:col-span-8 space-y-6">
-          <DoubleBezelCard hoverEffect>
-            <AreaTrendChart
-              title="Terminal Academic Trajectory (Session Trend)"
-              data={trendData}
-              unit="%"
-              height={200}
-              color="#6366F1"
-            />
-          </DoubleBezelCard>
-
-          <DoubleBezelCard hoverEffect>
-            <BarDistributionChart
-              title="Class Arm Performance Distribution (Key Cohorts)"
-              data={armDistributionData}
-              unit="%"
-              height={180}
-            />
-          </DoubleBezelCard>
-        </div>
-
-        {/* Continuous Assessment Compliance HUD (4 cols) */}
-        <div className="lg:col-span-4">
-          <DoubleBezelCard innerClassName="h-full flex flex-col justify-between" hoverEffect>
-            <div>
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/10 mb-4">
-                <div>
-                  <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                    CA Submission Health
-                  </h3>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">Institutional Marksheet Ratification</p>
-                </div>
-                <Clock className="w-4 h-4 text-cyan-500" />
-              </div>
-
-              <RadialGauge
-                percentage={overallSubmissionRate}
-                label="Compliance"
-                sublabel={`${fullyLockedArmsCount} of ${totalArms} arms certified`}
-                color="#06B6D4"
-                glowColor="rgba(6, 182, 212, 0.4)"
-                size={160}
-              />
-            </div>
-
-            <div className="mt-6 pt-4 border-t border-slate-100 dark:border-white/10 space-y-2 text-xs">
-              <div className="flex justify-between py-1">
-                <span className="text-slate-500 dark:text-slate-400">Total Graded Scripts:</span>
-                <span className="font-mono-tabular font-bold text-slate-800 dark:text-slate-200">
-                  {termScores.length} records
-                </span>
-              </div>
-              <div className="flex justify-between py-1">
-                <span className="text-slate-500 dark:text-slate-400">Fully Sealed Arms:</span>
-                <span className="font-mono-tabular font-bold text-emerald-600 dark:text-emerald-400">
-                  {fullyLockedArmsCount} of {totalArms}
-                </span>
-              </div>
-              <button
-                onClick={() => onNavigateView && onNavigateView('master-broadsheet')}
-                className="w-full mt-3 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 touch-target cursor-pointer"
-              >
-                <FileSpreadsheet className="w-4 h-4" />
-                <span>Examine Broadsheet</span>
-              </button>
-            </div>
-          </DoubleBezelCard>
-        </div>
       </div>
 
       {/* Cohort Comparative Analytics: Section & Gender */}
@@ -469,87 +349,6 @@ export const PrincipalDashboardView: React.FC<PrincipalDashboardViewProps> = ({ 
                 style={{ width: `${(femaleStudentIds.length / (totalStudents || 1)) * 100}%` }}
               />
             </div>
-          </div>
-        </DoubleBezelCard>
-      </div>
-
-      {/* Subject Health Outliers: Top 3 vs At-Risk 3 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <DoubleBezelCard hoverEffect>
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/10 mb-3">
-            <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
-              <Award className="w-4 h-4" />
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-                Top Performing Subjects
-              </h3>
-            </div>
-            <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-              Distinction Zone
-            </span>
-          </div>
-
-          <div className="space-y-2">
-            {topSubjects.map((sub, idx) => (
-              <div
-                key={sub.id}
-                className="p-3 bg-slate-50/80 dark:bg-slate-900/60 rounded-xl flex items-center justify-between border border-slate-200/60 dark:border-white/5"
-              >
-                <div className="flex items-center gap-2.5">
-                  <span className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold text-xs flex items-center justify-center font-mono-tabular">
-                    #{idx + 1}
-                  </span>
-                  <div>
-                    <div className="font-bold text-xs text-slate-900 dark:text-white">{sub.name}</div>
-                    <span className="text-[10px] text-slate-400 font-mono-tabular">{sub.code} • {sub.count} scored scripts</span>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="font-bold text-sm text-emerald-600 dark:text-emerald-400 font-mono-tabular">
-                    {sub.average}%
-                  </div>
-                  <span className="text-[10px] text-slate-400">Subject Mean</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </DoubleBezelCard>
-
-        <DoubleBezelCard hoverEffect>
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/10 mb-3">
-            <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
-              <AlertTriangle className="w-4 h-4" />
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-                Academic Intervention Outliers
-              </h3>
-            </div>
-            <span className="text-[10px] font-bold text-rose-700 dark:text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20">
-              Remedial Focus
-            </span>
-          </div>
-
-          <div className="space-y-2">
-            {atRiskSubjects.map((sub) => (
-              <div
-                key={sub.id}
-                className="p-3 bg-slate-50/80 dark:bg-slate-900/60 rounded-xl flex items-center justify-between border border-slate-200/60 dark:border-white/5"
-              >
-                <div className="flex items-center gap-2.5">
-                  <span className="w-6 h-6 rounded-lg bg-rose-500/20 text-rose-700 dark:text-rose-300 font-bold text-xs flex items-center justify-center font-mono-tabular">
-                    !
-                  </span>
-                  <div>
-                    <div className="font-bold text-xs text-slate-900 dark:text-white">{sub.name}</div>
-                    <span className="text-[10px] text-slate-400 font-mono-tabular">{sub.code} • Needs curriculum review</span>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="font-bold text-sm text-rose-600 dark:text-rose-400 font-mono-tabular">
-                    {sub.average}%
-                  </div>
-                  <span className="text-[10px] text-rose-600 dark:text-rose-400 font-medium">Flagged</span>
-                </div>
-              </div>
-            ))}
           </div>
         </DoubleBezelCard>
       </div>
