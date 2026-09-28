@@ -306,6 +306,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
           items: [
             { id: 'form-master-dashboard', label: 'Dashboard', icon: LayoutDashboard },
             { id: 'student-directory', label: 'My Class Students', icon: Users },
+            { id: 'attendance-register', label: 'Daily Roll Call Register', icon: CheckSquare },
             { id: 'score-entry', label: 'Enter Marks', icon: FileSpreadsheet, badge: 'Assigned' },
             { id: 'master-broadsheet', label: 'Class Performance', icon: BarChart3 },
             { id: 'psychomotor-matrix', label: 'Psychomotor & Remarks', icon: Award },
