@@ -153,7 +153,7 @@ interface SchoolDataContextType {
   resetToDefaultData: () => void;
 
   // Enterprise Governance Actions
-  addStaff: (member: Omit<StaffMember, 'id' | 'status' | 'joinedDate'>) => StaffMember;
+  addStaff: (member: Omit<StaffMember, 'id' | 'status' | 'joinedDate'>) => Promise<StaffMember>;
   updateStaff: (staffId: string, updates: Partial<StaffMember>) => Promise<any> | void;
   deleteStaff: (staffId: string, reason?: string, actor?: { id: string; name: string; role: any }) => Promise<void>;
   toggleStaffStatus: (staffId: string, reason?: string, actor?: { id: string; name: string; role: any }) => void;
@@ -2189,7 +2189,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   // Staff Management Actions
-  const addStaff = (memberData: Omit<StaffMember, 'id' | 'status' | 'joinedDate'>): StaffMember => {
+  const addStaff = async (memberData: Omit<StaffMember, 'id' | 'status' | 'joinedDate'>): Promise<StaffMember> => {
     const newId = `stf-${String(staff.length + 1).padStart(3, '0')}`;
     const initialPin = memberData.defaultPin || `EIS-${Math.floor(1000 + Math.random() * 9000)}`;
     const newMember: StaffMember = {
@@ -2232,24 +2232,25 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       subjectName: a.subjectName,
     }));
 
-    // Live asynchronous POST to Django backend
-    api.post('/accounts/users/', {
-      username: (memberData.identifier || memberData.staffId || newId).replace(/[\/\s]/g, '_').toLowerCase(),
-      first_name: memberData.name.split(' ')[0] || '',
-      last_name: memberData.name.split(' ').slice(1).join(' ') || 'Staff',
-      email: memberData.email,
-      phone_number: memberData.phoneNumber || '',
-      identifier: memberData.identifier || memberData.staffId || newId,
-      active_role: memberData.role || memberData.roles[0] || 'SUBJECT_TEACHER',
-      roles: memberData.roles,
-      password: initialPin,
-      default_pin: initialPin,
-      address: memberData.address || '',
-      allocated_subjects: backendAllocations,
-      allocatedSubjects: backendAllocations,
-      form_master_class_arm: memberData.formMasterClassArmId ? (resolveArmPk(memberData.formMasterClassArmId) || memberData.formMasterClassArmId) : undefined,
-    })
-    .then(saved => {
+    // Live asynchronous POST to Django backend & Neon DB
+    try {
+      const saved = await api.post('/accounts/users/', {
+        username: (memberData.identifier || memberData.staffId || newId).replace(/[\/\s]/g, '_').toLowerCase(),
+        first_name: memberData.name.split(' ')[0] || '',
+        last_name: memberData.name.split(' ').slice(1).join(' ') || 'Staff',
+        email: memberData.email,
+        phone_number: memberData.phoneNumber || '',
+        identifier: memberData.identifier || memberData.staffId || newId,
+        active_role: memberData.role || memberData.roles[0] || 'SUBJECT_TEACHER',
+        roles: memberData.roles,
+        password: initialPin,
+        default_pin: initialPin,
+        address: memberData.address || '',
+        allocated_subjects: backendAllocations,
+        allocatedSubjects: backendAllocations,
+        form_master_class_arm: memberData.formMasterClassArmId ? (resolveArmPk(memberData.formMasterClassArmId) || memberData.formMasterClassArmId) : undefined,
+      });
+
       if (saved && saved.id) {
         const live = adaptStaffFromBackend(saved);
         setStaff(prev => {
@@ -2257,25 +2258,28 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           try { localStorage.setItem('eis_staff', JSON.stringify(merged)); } catch (e) {}
           return merged;
         });
+
         // Re-sync allocations from backend
-        api.get<any>('/academics/allocations/', { page_size: 'all' })
-          .then(res => {
-            const raw = res?.results || res;
-            if (Array.isArray(raw)) {
-              const adapted = raw.map(adaptTeacherAllocationFromBackend);
-              setAllocations(adapted);
-              try { localStorage.setItem('eis_allocations', JSON.stringify(adapted)); } catch (e) {}
-            }
-          })
-          .catch(() => {});
+        try {
+          const allocRes = await api.get<any>('/academics/allocations/', { page_size: 'all' });
+          const raw = allocRes?.results || allocRes;
+          if (Array.isArray(raw)) {
+            const adapted = raw.map(adaptTeacherAllocationFromBackend);
+            setAllocations(adapted);
+            try { localStorage.setItem('eis_allocations', JSON.stringify(adapted)); } catch (e) {}
+          }
+        } catch (e) {}
+
+        return live;
       }
-    })
-    .catch(err => console.error('Backend staff add error:', err));
+    } catch (err) {
+      console.warn('Backend staff add error:', err);
+    }
 
     return newMember;
   };
 
-  const updateStaff = (staffId: string, updates: Partial<StaffMember>) => {
+  const updateStaff = async (staffId: string, updates: Partial<StaffMember>): Promise<any> => {
     const currentStaff = staff.find(s =>
       s.id === staffId ||
       s.staffId === staffId ||
@@ -2283,24 +2287,10 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       String(s.backendId) === String(staffId)
     );
 
-    let targetLookupId: string | number | undefined =
-      currentStaff?.backendId ||
-      (/^\d+$/.test(staffId) ? staffId : (currentStaff && /^\d+$/.test(currentStaff.id) ? currentStaff.id : undefined));
-
-    if (!targetLookupId && currentStaff) {
-      const match = staff.find(s =>
-        (s.backendId || /^\d+$/.test(s.id)) &&
-        ((s.email && currentStaff.email && s.email.toLowerCase() === currentStaff.email.toLowerCase()) ||
-         (s.identifier && currentStaff.identifier && s.identifier === currentStaff.identifier) ||
-         (s.name && currentStaff.name && s.name.toLowerCase() === currentStaff.name.toLowerCase()))
-      );
-      if (match?.backendId) targetLookupId = match.backendId;
-      else if (match?.id && /^\d+$/.test(match.id)) targetLookupId = match.id;
-    }
-
+    // Apply immediate local state update
     setStaff(prev => {
       const next = prev.map(m =>
-        (m.id === staffId || m.staffId === staffId || m.identifier === staffId || (targetLookupId && String(m.backendId) === String(targetLookupId)))
+        (m.id === staffId || m.staffId === staffId || m.identifier === staffId || (currentStaff?.backendId && String(m.backendId) === String(currentStaff.backendId)))
           ? { ...m, ...updates }
           : m
       );
@@ -2361,70 +2351,134 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       });
     }
 
-    if (!targetLookupId) {
-      targetLookupId = currentStaff?.identifier || currentStaff?.staffId || staffId;
+    // Build backend payload
+    const payload: any = {};
+    if (updates.name) {
+      const parts = updates.name.trim().split(/\s+/);
+      payload.first_name = parts[0] || '';
+      payload.last_name = parts.slice(1).join(' ') || 'Staff';
+    }
+    if (updates.email !== undefined) payload.email = updates.email.trim().toLowerCase();
+    if (updates.phoneNumber !== undefined) payload.phone_number = updates.phoneNumber.trim();
+    if (updates.roles !== undefined) payload.roles = updates.roles;
+    if (updates.role !== undefined) payload.active_role = updates.role;
+    if (updates.defaultPin !== undefined && updates.defaultPin.trim()) {
+      payload.password = updates.defaultPin.trim();
+      payload.default_pin = updates.defaultPin.trim();
+    }
+    if (updates.allocatedSubjects !== undefined) {
+      payload.allocated_subjects = updates.allocatedSubjects.map(a => ({
+        class_arm: resolveArmPk(a.classArmId) || a.classArmId,
+        subject: resolveSubjectPk(a.subjectId) || a.subjectId,
+        classArmId: resolveArmId(a.classArmId, a.classArmName),
+        classArmName: a.classArmName,
+        subjectId: resolveSubjectId(a.subjectId),
+        subjectName: a.subjectName,
+      }));
+      payload.allocatedSubjects = payload.allocated_subjects;
+    }
+    if (updates.formMasterArmId !== undefined || updates.formMasterClassArmId !== undefined) {
+      const fmArm = updates.formMasterClassArmId || updates.formMasterArmId;
+      payload.form_master_class_arm = fmArm ? (resolveArmPk(fmArm) || fmArm) : null;
     }
 
-    if (targetLookupId) {
-      const payload: any = {};
-      if (updates.name) {
-        const parts = updates.name.split(' ');
-        payload.first_name = parts[0];
-        payload.last_name = parts.slice(1).join(' ');
-      }
-      if (updates.email !== undefined) payload.email = updates.email;
-      if (updates.phoneNumber !== undefined) payload.phone_number = updates.phoneNumber;
-      if (updates.roles !== undefined) payload.roles = updates.roles;
-      if (updates.role !== undefined) payload.active_role = updates.role;
-      if (updates.defaultPin !== undefined && updates.defaultPin.trim()) {
-        payload.password = updates.defaultPin.trim();
-        payload.default_pin = updates.defaultPin.trim();
-      }
-      if (updates.allocatedSubjects !== undefined) {
-        payload.allocated_subjects = updates.allocatedSubjects.map(a => ({
-          class_arm: resolveArmPk(a.classArmId) || a.classArmId,
-          subject: resolveSubjectPk(a.subjectId) || a.subjectId,
-          classArmId: resolveArmId(a.classArmId, a.classArmName),
-          classArmName: a.classArmName,
-          subjectId: resolveSubjectId(a.subjectId),
-          subjectName: a.subjectName,
-        }));
-      }
-      if (updates.formMasterArmId !== undefined || updates.formMasterClassArmId !== undefined) {
-        const fmArm = updates.formMasterClassArmId || updates.formMasterArmId;
-        payload.form_master_class_arm = fmArm ? (resolveArmPk(fmArm) || fmArm) : null;
-      }
-      return api.patch(`/accounts/users/${targetLookupId}/`, payload)
-        .then((res: any) => {
-          if (res && res.id) {
-            const live = adaptStaffFromBackend(res);
-            setStaff(prev => {
-              const merged = prev.map(m =>
-                (m.id === staffId || m.id === String(res.id) || m.identifier === live.identifier)
-                  ? { ...m, ...live }
-                  : m
-              );
-              try { localStorage.setItem('eis_staff', JSON.stringify(merged)); } catch (e) {}
-              return merged;
-            });
-          }
-          // Re-sync allocations from backend
-          return api.get<any>('/academics/allocations/', { page_size: 'all' })
-            .then(allocRes => {
-              const raw = allocRes?.results || allocRes;
-              if (Array.isArray(raw)) {
-                const adapted = raw.map(adaptTeacherAllocationFromBackend);
-                setAllocations(adapted);
-                try { localStorage.setItem('eis_allocations', JSON.stringify(adapted)); } catch (e) {}
-              }
-              return res;
-            })
-            .catch(() => res);
-        })
-        .catch(err => {
-          console.warn('Failed to patch staff on backend:', err);
-          throw err;
+    // Determine targetLookupId (must be numeric integer PK for Django endpoint /accounts/users/<pk>/)
+    let targetPk: number | string | undefined = currentStaff?.backendId || (/^\d+$/.test(staffId) ? staffId : undefined);
+
+    // If no numeric PK yet, search backend by email or identifier
+    if (!targetPk) {
+      try {
+        const searchIdentifier = currentStaff?.identifier || currentStaff?.staffId || staffId;
+        const searchEmail = currentStaff?.email || updates.email;
+        const searchRes = await api.get<any>('/accounts/users/', {
+          search: searchIdentifier || searchEmail,
+          page_size: 10
         });
+        const list = Array.isArray(searchRes?.results) ? searchRes.results : (Array.isArray(searchRes) ? searchRes : []);
+        const found = list.find((u: any) =>
+          String(u.id) === staffId ||
+          (u.email && searchEmail && u.email.toLowerCase() === searchEmail.toLowerCase()) ||
+          (u.identifier && searchIdentifier && u.identifier === searchIdentifier) ||
+          (u.username && searchIdentifier && u.username.toLowerCase() === searchIdentifier.toLowerCase().replace(/[\/\s]/g, '_'))
+        );
+        if (found && found.id) {
+          targetPk = found.id;
+        }
+      } catch (err) {
+        console.warn('Could not query user by search:', err);
+      }
+    }
+
+    if (targetPk) {
+      // User exists in Neon DB -> PATCH
+      try {
+        const res = await api.patch(`/accounts/users/${targetPk}/`, payload);
+        if (res && res.id) {
+          const live = adaptStaffFromBackend(res);
+          setStaff(prev => {
+            const merged = prev.map(m =>
+              (m.id === staffId || m.id === String(res.id) || m.identifier === live.identifier)
+                ? { ...m, ...live }
+                : m
+            );
+            try { localStorage.setItem('eis_staff', JSON.stringify(merged)); } catch (e) {}
+            return merged;
+          });
+        }
+        // Re-sync allocations from backend
+        try {
+          const allocRes = await api.get<any>('/academics/allocations/', { page_size: 'all' });
+          const raw = allocRes?.results || allocRes;
+          if (Array.isArray(raw)) {
+            const adapted = raw.map(adaptTeacherAllocationFromBackend);
+            setAllocations(adapted);
+            try { localStorage.setItem('eis_allocations', JSON.stringify(adapted)); } catch (e) {}
+          }
+        } catch (e) {}
+        return res;
+      } catch (err) {
+        console.error('Failed to patch staff in database:', err);
+        throw err;
+      }
+    } else {
+      // User not in Neon DB yet -> POST to create in Neon DB!
+      try {
+        const initialPin = updates.defaultPin || currentStaff?.defaultPin || 'Everest2026!';
+        const staffCode = currentStaff?.identifier || currentStaff?.staffId || `STF/2026/${Math.floor(100 + Math.random() * 900)}`;
+        const createPayload = {
+          username: staffCode.replace(/[\/\s]/g, '_').toLowerCase(),
+          first_name: payload.first_name || currentStaff?.name?.split(' ')[0] || 'Staff',
+          last_name: payload.last_name || currentStaff?.name?.split(' ').slice(1).join(' ') || 'Member',
+          email: payload.email || currentStaff?.email || `${staffCode.replace(/[\/\s]/g, '_').toLowerCase()}@everest.edu.ng`,
+          phone_number: payload.phone_number || currentStaff?.phoneNumber || '',
+          identifier: staffCode,
+          active_role: payload.active_role || currentStaff?.role || 'SUBJECT_TEACHER',
+          roles: payload.roles || currentStaff?.roles || ['SUBJECT_TEACHER'],
+          password: initialPin,
+          default_pin: initialPin,
+          address: updates.address || currentStaff?.address || '',
+          allocated_subjects: payload.allocated_subjects || [],
+          allocatedSubjects: payload.allocated_subjects || [],
+          form_master_class_arm: payload.form_master_class_arm,
+        };
+        const saved = await api.post('/accounts/users/', createPayload);
+        if (saved && saved.id) {
+          const live = adaptStaffFromBackend(saved);
+          setStaff(prev => {
+            const merged = prev.map(m =>
+              (m.id === staffId || m.identifier === live.identifier)
+                ? { ...m, ...live }
+                : m
+            );
+            try { localStorage.setItem('eis_staff', JSON.stringify(merged)); } catch (e) {}
+            return merged;
+          });
+        }
+        return saved;
+      } catch (err) {
+        console.error('Failed to create staff in database:', err);
+        throw err;
+      }
     }
   };
 

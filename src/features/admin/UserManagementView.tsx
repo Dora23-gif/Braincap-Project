@@ -24,7 +24,8 @@ import {
   BookOpen,
   Camera,
   MapPin,
-  Trash2
+  Trash2,
+  Loader2
 } from 'lucide-react';
 import { DoubleBezelCard } from '../../components/common/DoubleBezelCard';
 import { FuturisticKPICard } from '../../components/common/FuturisticKPICard';
@@ -105,6 +106,8 @@ export const UserManagementView: React.FC = () => {
   const [deleteReason, setDeleteReason] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
 
@@ -264,6 +267,8 @@ export const UserManagementView: React.FC = () => {
     setFormSubjectIds([]);
     setFormTeachingArmIds([]);
     setFormPassword(`EIS-${Math.floor(1000 + Math.random() * 9000)}`);
+    setSaveError(null);
+    setIsSaving(false);
     setIsAddModalOpen(true);
   };
 
@@ -308,6 +313,8 @@ export const UserManagementView: React.FC = () => {
     setFormSubjectIds(existingSubjectIds);
     setFormTeachingArmIds(existingArmIds);
     setEditPassword('');
+    setSaveError(null);
+    setIsSaving(false);
   };
 
   const handleRoleToggle = (role: UserRole) => {
@@ -323,153 +330,173 @@ export const UserManagementView: React.FC = () => {
     }
   };
 
-  const handleSaveAdd = (e: React.FormEvent) => {
+  const handleSaveAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formName.trim() || !formEmail.trim()) return;
+    if (!formName.trim() || !formEmail.trim()) {
+      setSaveError("Please provide both full name and email address.");
+      return;
+    }
 
     const isSubjectTeacher = formRoles.includes('SUBJECT_TEACHER') || formPrimaryRole === 'SUBJECT_TEACHER';
     const isFormMaster = formRoles.includes('FORM_MASTER') || formPrimaryRole === 'FORM_MASTER';
 
     if (isSubjectTeacher && formTeachingArmIds.length > 0 && formSubjectIds.length === 0) {
-      showToast("Please select at least one subject to allocate to the selected class arm(s).");
+      setSaveError("Please select at least one subject to allocate to the selected class arm(s).");
       return;
     }
 
-    const armObj = classArms.find(a => a.id === formClassArmId || resolveArmId(a.id, a.fullName) === resolveArmId(formClassArmId));
-    const staffCode = `STF/2026/${String(staff.length + 1).padStart(3, '0')}`;
+    setIsSaving(true);
+    setSaveError(null);
 
-    // Generate allocated subjects matrix
-    const effectiveArms = formTeachingArmIds.map(a => resolveArmId(a));
-    const allocated = formSubjectIds.flatMap(subId => {
-      const canonicalSubId = resolveSubjectId(subId);
-      const subObj = subjects.find(s => s.id === canonicalSubId || resolveSubjectId(s.id) === canonicalSubId);
+    try {
+      const armObj = classArms.find(a => a.id === formClassArmId || resolveArmId(a.id, a.fullName) === resolveArmId(formClassArmId));
+      const staffCode = `STF/2026/${String(staff.length + 1).padStart(3, '0')}`;
 
-      return effectiveArms.map(armId => {
-        const canonicalArmId = resolveArmId(armId);
-        const aObj = classArms.find(a => a.id === canonicalArmId || resolveArmId(a.id, a.fullName) === canonicalArmId);
-        return {
-          classArmId: canonicalArmId,
-          classArmName: aObj?.fullName || canonicalArmId,
-          subjectId: canonicalSubId,
-          subjectName: subObj?.name || canonicalSubId
-        };
+      // Generate allocated subjects matrix
+      const effectiveArms = formTeachingArmIds.map(a => resolveArmId(a));
+      const allocated = formSubjectIds.flatMap(subId => {
+        const canonicalSubId = resolveSubjectId(subId);
+        const subObj = subjects.find(s => s.id === canonicalSubId || resolveSubjectId(s.id) === canonicalSubId);
+
+        return effectiveArms.map(armId => {
+          const canonicalArmId = resolveArmId(armId);
+          const aObj = classArms.find(a => a.id === canonicalArmId || resolveArmId(a.id, a.fullName) === canonicalArmId);
+          return {
+            classArmId: canonicalArmId,
+            classArmName: aObj?.fullName || canonicalArmId,
+            subjectId: canonicalSubId,
+            subjectName: subObj?.name || canonicalSubId
+          };
+        });
       });
-    });
 
-    const effectiveTeachingArms = formTeachingArmIds.map(a => resolveArmId(a));
+      const effectiveTeachingArms = formTeachingArmIds.map(a => resolveArmId(a));
 
-    // Combine teaching class arms with form master class arm if applicable
-    const allAssignedArms = Array.from(new Set([
-      ...effectiveTeachingArms,
-      ...(isFormMaster && formClassArmId ? [resolveArmId(formClassArmId)] : [])
-    ]));
+      // Combine teaching class arms with form master class arm if applicable
+      const allAssignedArms = Array.from(new Set([
+        ...effectiveTeachingArms,
+        ...(isFormMaster && formClassArmId ? [resolveArmId(formClassArmId)] : [])
+      ]));
 
-    const initialPin = formPassword.trim() || `EIS-${Math.floor(1000 + Math.random() * 9000)}`;
+      const initialPin = formPassword.trim() || `EIS-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    const newStaff = addStaff({
-      name: formName.trim(),
-      identifier: staffCode,
-      staffId: staffCode,
-      title: isFormMaster && isSubjectTeacher
-        ? 'Form Master & Subject Teacher'
-        : isFormMaster
-        ? 'Form Master / Class Head'
-        : isSubjectTeacher
-        ? 'Senior Academic Subject Teacher'
-        : 'Academic Staff',
-      email: formEmail.trim().toLowerCase(),
-      phoneNumber: formPhone.trim() || '+234 800 000 0000',
-      address: formAddress.trim(),
-      photoUrl: formPhotoUrl || undefined,
-      role: formPrimaryRole,
-      roles: formRoles,
-      assignedClassArms: allAssignedArms,
-      assignedSubjectIds: formSubjectIds.map(resolveSubjectId),
-      allocatedSubjects: allocated,
-      formMasterClassArmId: isFormMaster ? resolveArmId(formClassArmId) : undefined,
-      formMasterClassArmName: isFormMaster && armObj ? armObj.fullName : undefined,
-      defaultPin: initialPin,
-    });
+      const newStaff = await addStaff({
+        name: formName.trim(),
+        identifier: staffCode,
+        staffId: staffCode,
+        title: isFormMaster && isSubjectTeacher
+          ? 'Form Master & Subject Teacher'
+          : isFormMaster
+          ? 'Form Master / Class Head'
+          : isSubjectTeacher
+          ? 'Senior Academic Subject Teacher'
+          : 'Academic Staff',
+        email: formEmail.trim().toLowerCase(),
+        phoneNumber: formPhone.trim() || '+234 800 000 0000',
+        address: formAddress.trim(),
+        photoUrl: formPhotoUrl || undefined,
+        role: formPrimaryRole,
+        roles: formRoles,
+        assignedClassArms: allAssignedArms,
+        assignedSubjectIds: formSubjectIds.map(resolveSubjectId),
+        allocatedSubjects: allocated,
+        formMasterClassArmId: isFormMaster ? resolveArmId(formClassArmId) : undefined,
+        formMasterClassArmName: isFormMaster && armObj ? armObj.fullName : undefined,
+        defaultPin: initialPin,
+      });
 
-    setServerStaff(prev => prev ? [newStaff, ...prev] : [newStaff]);
-    setServerTotalCount(prev => prev !== null ? prev + 1 : null);
+      setServerStaff(prev => prev ? [newStaff, ...prev] : [newStaff]);
+      setServerTotalCount(prev => prev !== null ? prev + 1 : null);
 
-    setIsAddModalOpen(false);
-    setRefreshTrigger(prev => prev + 1);
-    showToast(`Staff account for ${newStaff.name} created! Password/PIN: ${newStaff.defaultPin}`);
+      setIsAddModalOpen(false);
+      setRefreshTrigger(prev => prev + 1);
+      showToast(`Staff account for ${newStaff.name} created! Password/PIN: ${newStaff.defaultPin}`);
+    } catch (err: any) {
+      setSaveError(err?.message || 'Failed to save staff account in database. Please verify information and try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingStaff || !formName.trim() || !formEmail.trim()) return;
+    if (!editingStaff || !formName.trim() || !formEmail.trim()) {
+      setSaveError("Please provide both full name and email address.");
+      return;
+    }
 
     const isSubjectTeacher = formRoles.includes('SUBJECT_TEACHER') || formPrimaryRole === 'SUBJECT_TEACHER';
     const isFormMaster = formRoles.includes('FORM_MASTER') || formPrimaryRole === 'FORM_MASTER';
 
     if (isSubjectTeacher && formTeachingArmIds.length > 0 && formSubjectIds.length === 0) {
-      showToast("Please select at least one subject to allocate to the selected class arm(s).");
+      setSaveError("Please select at least one subject to allocate to the selected class arm(s).");
       return;
     }
 
-    const armObj = classArms.find(a => a.id === formClassArmId || resolveArmId(a.id, a.fullName) === resolveArmId(formClassArmId));
-
-    const effectiveArms = formTeachingArmIds.map(a => resolveArmId(a));
-    const allocated = formSubjectIds.flatMap(subId => {
-      const canonicalSubId = resolveSubjectId(subId);
-      const subObj = subjects.find(s => s.id === canonicalSubId || resolveSubjectId(s.id) === canonicalSubId);
-
-      return effectiveArms.map(armId => {
-        const canonicalArmId = resolveArmId(armId);
-        const aObj = classArms.find(a => a.id === canonicalArmId || resolveArmId(a.id, a.fullName) === canonicalArmId);
-        return {
-          classArmId: canonicalArmId,
-          classArmName: aObj?.fullName || canonicalArmId,
-          subjectId: canonicalSubId,
-          subjectName: subObj?.name || canonicalSubId
-        };
-      });
-    });
-
-    const effectiveTeachingArms = formTeachingArmIds.map(a => resolveArmId(a));
-
-    const allAssignedArms = Array.from(new Set([
-      ...effectiveTeachingArms,
-      ...(isFormMaster && formClassArmId ? [resolveArmId(formClassArmId)] : [])
-    ]));
-
-    const updates: Partial<StaffMember> = {
-      name: formName.trim(),
-      email: formEmail.trim().toLowerCase(),
-      phoneNumber: formPhone.trim(),
-      address: formAddress.trim(),
-      photoUrl: formPhotoUrl || undefined,
-      role: formPrimaryRole,
-      roles: formRoles,
-      assignedClassArms: allAssignedArms,
-      assignedSubjectIds: formSubjectIds.map(resolveSubjectId),
-      allocatedSubjects: allocated,
-      formMasterClassArmId: isFormMaster ? resolveArmId(formClassArmId) : undefined,
-      formMasterClassArmName: isFormMaster && armObj ? armObj.fullName : undefined
-    };
-
-    if (editPassword.trim()) {
-      updates.defaultPin = editPassword.trim();
-    }
-
-    setServerStaff(prev => {
-      if (!prev) return prev;
-      return prev.map(m => m.id === editingStaff.id ? { ...m, ...updates } : m);
-    });
+    setIsSaving(true);
+    setSaveError(null);
 
     try {
-      await updateStaff(editingStaff.id, updates);
-    } catch (err) {
-      console.warn('Backend updateStaff failed, continuing with local updates:', err);
-    }
+      const armObj = classArms.find(a => a.id === formClassArmId || resolveArmId(a.id, a.fullName) === resolveArmId(formClassArmId));
 
-    setEditingStaff(null);
-    setRefreshTrigger(prev => prev + 1);
-    showToast(`Updated profile for ${formName}${editPassword.trim() ? ' and password changed!' : ''}`);
+      const effectiveArms = formTeachingArmIds.map(a => resolveArmId(a));
+      const allocated = formSubjectIds.flatMap(subId => {
+        const canonicalSubId = resolveSubjectId(subId);
+        const subObj = subjects.find(s => s.id === canonicalSubId || resolveSubjectId(s.id) === canonicalSubId);
+
+        return effectiveArms.map(armId => {
+          const canonicalArmId = resolveArmId(armId);
+          const aObj = classArms.find(a => a.id === canonicalArmId || resolveArmId(a.id, a.fullName) === canonicalArmId);
+          return {
+            classArmId: canonicalArmId,
+            classArmName: aObj?.fullName || canonicalArmId,
+            subjectId: canonicalSubId,
+            subjectName: subObj?.name || canonicalSubId
+          };
+        });
+      });
+
+      const effectiveTeachingArms = formTeachingArmIds.map(a => resolveArmId(a));
+
+      const allAssignedArms = Array.from(new Set([
+        ...effectiveTeachingArms,
+        ...(isFormMaster && formClassArmId ? [resolveArmId(formClassArmId)] : [])
+      ]));
+
+      const updates: Partial<StaffMember> = {
+        name: formName.trim(),
+        email: formEmail.trim().toLowerCase(),
+        phoneNumber: formPhone.trim(),
+        address: formAddress.trim(),
+        photoUrl: formPhotoUrl || undefined,
+        role: formPrimaryRole,
+        roles: formRoles,
+        assignedClassArms: allAssignedArms,
+        assignedSubjectIds: formSubjectIds.map(resolveSubjectId),
+        allocatedSubjects: allocated,
+        formMasterClassArmId: isFormMaster ? resolveArmId(formClassArmId) : undefined,
+        formMasterClassArmName: isFormMaster && armObj ? armObj.fullName : undefined
+      };
+
+      if (editPassword.trim()) {
+        updates.defaultPin = editPassword.trim();
+      }
+
+      setServerStaff(prev => {
+        if (!prev) return prev;
+        return prev.map(m => m.id === editingStaff.id ? { ...m, ...updates } : m);
+      });
+
+      await updateStaff(editingStaff.id, updates);
+
+      setEditingStaff(null);
+      setRefreshTrigger(prev => prev + 1);
+      showToast(`Updated profile for ${formName}${editPassword.trim() ? ' and password changed!' : ''}`);
+    } catch (err: any) {
+      setSaveError(err?.message || 'Failed to save staff updates in database.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleConfirmToggle = () => {
@@ -1277,19 +1304,28 @@ export const UserManagementView: React.FC = () => {
                 />
               </div>
 
+              {saveError && (
+                <div className="p-2.5 bg-rose-100 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-800 rounded-xl text-rose-700 dark:text-rose-300 text-xs font-semibold">
+                  {saveError}
+                </div>
+              )}
+
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
+                  disabled={isSaving}
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold cursor-pointer"
+                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold cursor-pointer disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-xs cursor-pointer"
+                  disabled={isSaving}
+                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-bold shadow-xs cursor-pointer flex items-center gap-2"
                 >
-                  Create Staff Account
+                  {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                  <span>{isSaving ? 'Creating...' : 'Create Staff Account'}</span>
                 </button>
               </div>
             </form>
@@ -1599,19 +1635,28 @@ export const UserManagementView: React.FC = () => {
                 />
               </div>
 
+              {saveError && (
+                <div className="p-2.5 bg-rose-100 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-800 rounded-xl text-rose-700 dark:text-rose-300 text-xs font-semibold">
+                  {saveError}
+                </div>
+              )}
+
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
+                  disabled={isSaving}
                   onClick={() => setEditingStaff(null)}
-                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold cursor-pointer"
+                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold cursor-pointer disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-xs cursor-pointer"
+                  disabled={isSaving}
+                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-bold shadow-xs cursor-pointer flex items-center gap-2"
                 >
-                  Save Changes
+                  {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                  <span>{isSaving ? 'Saving...' : 'Save Changes'}</span>
                 </button>
               </div>
             </form>
