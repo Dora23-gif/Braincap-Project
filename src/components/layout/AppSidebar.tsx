@@ -205,8 +205,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         {
           title: 'Institutional Identity',
           items: [
-            { id: 'school-settings', label: 'Institutional Settings & Seal', icon: ShieldCheck },
-            { id: 'audit-log', label: 'Activity History', icon: History }
+            { id: 'school-settings', label: 'Institutional Settings & Seal', icon: ShieldCheck }
           ]
         }
       ];
@@ -262,7 +261,6 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         {
           title: 'Institutional Oversight',
           items: [
-            { id: 'audit-log', label: 'Activity History', icon: History },
             { id: 'report-card', label: 'Terminal Report Cards', icon: FileText }
           ]
         }
