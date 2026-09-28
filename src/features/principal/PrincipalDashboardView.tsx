@@ -181,10 +181,6 @@ export const PrincipalDashboardView: React.FC<PrincipalDashboardViewProps> = ({ 
     triggerToast(`Executive deadline reminder broadcast to all pending subject teachers and form masters.`);
   };
 
-  // Sparkline data models
-  const enrollmentSparkline = [56, 58, 59, 60, 60, totalStudents];
-  const academicTrajectorySparkline = [64.2, 65.8, 66.4, 67.1, 68.2, Number(schoolWideAverage)];
-
   const trendData = [
     { label: '1st Term 24/25', value: 64.8 },
     { label: '2nd Term 24/25', value: 66.1 },
@@ -244,13 +240,12 @@ export const PrincipalDashboardView: React.FC<PrincipalDashboardViewProps> = ({ 
       )}
 
       {/* Macro Institutional KPIs Bento Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 gap-2.5 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         <FuturisticKPICard
           title="Total Enrollment"
           value={totalStudents}
-          subtitle={`Across ${totalArms} arms (${totalStaff} faculty)`}
+          subtitle={`Across ${totalArms} arms (${totalStaff} staff)`}
           icon={GraduationCap}
-          sparklineData={enrollmentSparkline}
           glowColor="indigo"
           trend={{ value: '+3.2%', isPositive: true }}
           onClick={() => onNavigateView && onNavigateView('student-directory')}
@@ -259,18 +254,17 @@ export const PrincipalDashboardView: React.FC<PrincipalDashboardViewProps> = ({ 
         <FuturisticKPICard
           title="School-Wide Average"
           value={`${schoolWideAverage}%`}
-          subtitle="Weighted CA (40%) + Exam (60%)"
+          subtitle="Weighted CA & Exam Score"
           icon={TrendingUp}
-          sparklineData={academicTrajectorySparkline}
           glowColor="cyan"
           trend={{ value: '+2.4% vs Term 1', isPositive: true }}
           onClick={() => onNavigateView && onNavigateView('master-broadsheet')}
         />
 
         <FuturisticKPICard
-          title="Honors Students (≥75%)"
-          value={`${honorsCandidatesCount} Students`}
-          subtitle="Average of 75% or higher"
+          title="Honors Students"
+          value={honorsCandidatesCount}
+          subtitle="Average score ≥ 75%"
           icon={Award}
           glowColor="amber"
           badge="Honors"
@@ -278,14 +272,14 @@ export const PrincipalDashboardView: React.FC<PrincipalDashboardViewProps> = ({ 
         />
 
         <FuturisticKPICard
-          title="Students Needing Support"
-          value={`${probationCandidatesCount || students.filter(student => {
+          title="Needs Support"
+          value={probationCandidatesCount || students.filter(student => {
             const sScores = termScores.filter(s => s.studentId === student.id || (student.admissionNumber && s.admissionNumber === student.admissionNumber));
             if (sScores.length === 0) return false;
             const avg = sScores.reduce((acc, s) => acc + s.total, 0) / sScores.length;
             return avg < 77 || sScores.some(s => s.total < 70);
-          }).length} Students`}
-          subtitle="Need academic support"
+          }).length}
+          subtitle="Targeted intervention"
           icon={AlertTriangle}
           glowColor="rose"
           badge="Support"
