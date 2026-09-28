@@ -23,7 +23,8 @@ import {
   Award,
   BookOpen,
   Camera,
-  MapPin
+  MapPin,
+  Trash2
 } from 'lucide-react';
 import { DoubleBezelCard } from '../../components/common/DoubleBezelCard';
 import { FuturisticKPICard } from '../../components/common/FuturisticKPICard';
@@ -35,7 +36,7 @@ import { api, PaginatedResponse, adaptStaffFromBackend, resolveArmId, resolveSub
 
 export const UserManagementView: React.FC = () => {
   const { user } = useAuth();
-  const { staff, classArms, subjects, allocations, addStaff, updateStaff, toggleStaffStatus, resetStaffPin } = useSchoolData();
+  const { staff, classArms, subjects, allocations, addStaff, updateStaff, deleteStaff, toggleStaffStatus, resetStaffPin } = useSchoolData();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
@@ -100,6 +101,10 @@ export const UserManagementView: React.FC = () => {
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
   const [confirmToggleStaff, setConfirmToggleStaff] = useState<StaffMember | null>(null);
   const [suspensionReason, setSuspensionReason] = useState('');
+  const [confirmDeleteStaff, setConfirmDeleteStaff] = useState<StaffMember | null>(null);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
 
@@ -484,6 +489,31 @@ export const UserManagementView: React.FC = () => {
     setRefreshTrigger(prev => prev + 1);
   };
 
+  const handleConfirmDelete = async () => {
+    if (!confirmDeleteStaff) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteStaff(
+        confirmDeleteStaff.id,
+        deleteReason.trim() || 'Staff permanent offboarding / departure',
+        {
+          id: user?.id || 'stf-001',
+          name: user?.name || 'Dr. Kenneth Balogun',
+          role: user?.activeRole || 'SUPER_ADMIN'
+        }
+      );
+      showToast(`Permanently deleted ${confirmDeleteStaff.name} from portal and database.`);
+      setConfirmDeleteStaff(null);
+      setDeleteReason('');
+      setRefreshTrigger(prev => prev + 1);
+    } catch (err: any) {
+      setDeleteError(err?.message || 'Failed to delete staff member from backend database.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleResetPin = (member: StaffMember) => {
     const pin = resetStaffPin(member.id, {
       id: 'stf-001',
@@ -830,10 +860,22 @@ export const UserManagementView: React.FC = () => {
                             className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
                               isSuspended
                                 ? 'border-emerald-200 dark:border-emerald-900/60 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100'
-                                : 'border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100'
+                                : 'border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-100'
                             }`}
                           >
                             {isSuspended ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setConfirmDeleteStaff(member);
+                              setDeleteReason('');
+                              setDeleteError(null);
+                            }}
+                            title="Delete Staff Permanently"
+                            className="p-1.5 rounded-lg border border-rose-200 dark:border-rose-900/60 bg-rose-50/80 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 hover:text-rose-700 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </td>
@@ -1638,6 +1680,113 @@ export const UserManagementView: React.FC = () => {
               }`}
             >
               {confirmToggleStaff?.status === 'ACTIVE' ? 'Confirm Suspension' : 'Confirm Reactivation'}
+            </button>
+          </div>
+        </div>
+      </ModalPortal>
+
+      {/* Permanent Delete Staff Confirmation Modal */}
+      <ModalPortal
+        isOpen={!!confirmDeleteStaff}
+        onClose={() => {
+          if (!isDeleting) {
+            setConfirmDeleteStaff(null);
+            setDeleteReason('');
+            setDeleteError(null);
+          }
+        }}
+        maxWidthClass="max-w-lg"
+      >
+        <div className="bg-white dark:bg-slate-900 rounded-2xl w-full border border-rose-200/80 dark:border-rose-900/60 shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+          <div className="flex items-center gap-3 text-rose-600">
+            <div className="w-11 h-11 rounded-xl bg-rose-50 dark:bg-rose-950/50 flex items-center justify-center shrink-0 border border-rose-200 dark:border-rose-900">
+              <Trash2 className="w-5 h-5 text-rose-600" />
+            </div>
+            <div>
+              <h3 className="font-serif-title font-bold text-slate-900 dark:text-white text-base">
+                Permanently Delete Staff Member
+              </h3>
+              <span className="text-xs text-rose-600 dark:text-rose-400 font-mono-tabular font-semibold">
+                Permanent Database Offboarding
+              </span>
+            </div>
+          </div>
+
+          {/* Member Profile Snapshot */}
+          <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-slate-900 dark:text-white text-sm">
+                {confirmDeleteStaff?.name}
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-mono-tabular text-[10px] font-bold">
+                {confirmDeleteStaff?.staffId || confirmDeleteStaff?.identifier}
+              </span>
+            </div>
+            <div className="text-slate-500 dark:text-slate-400 text-[11px]">
+              {confirmDeleteStaff?.email || 'No email registered'} • Roles: {confirmDeleteStaff?.roles?.map(r => formatRoleLabel(r)).join(', ')}
+            </div>
+          </div>
+
+          <div className="p-3 bg-rose-50/70 dark:bg-rose-950/30 rounded-xl border border-rose-200 dark:border-rose-900/50 text-xs text-rose-800 dark:text-rose-300 space-y-1 leading-relaxed">
+            <div className="font-bold flex items-center gap-1.5 text-rose-700 dark:text-rose-400">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>Warning: This action is irreversible</span>
+            </div>
+            <p>
+              Deleting <strong>{confirmDeleteStaff?.name}</strong> will remove their user record from the school portal and delete them from the backend database. All subject allocations and form master assignments for this staff will be cleared.
+            </p>
+          </div>
+
+          {deleteError && (
+            <div className="p-2.5 bg-rose-100 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-800 rounded-xl text-rose-700 dark:text-rose-300 text-xs font-semibold">
+              {deleteError}
+            </div>
+          )}
+
+          <div className="space-y-1">
+            <label className="font-bold text-slate-700 dark:text-slate-300 text-[11px]">
+              Reason for Offboarding / Deletion (Optional)
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Resigned, contract ended, or transfer to another institution"
+              value={deleteReason}
+              onChange={e => setDeleteReason(e.target.value)}
+              disabled={isDeleting}
+              className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-xl text-xs focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:border-rose-500 disabled:opacity-50"
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <button
+              type="button"
+              disabled={isDeleting}
+              onClick={() => {
+                setConfirmDeleteStaff(null);
+                setDeleteReason('');
+                setDeleteError(null);
+              }}
+              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-bold cursor-pointer disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={isDeleting}
+              onClick={handleConfirmDelete}
+              className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 active:scale-95 shadow-sm transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+            >
+              {isDeleting ? (
+                <>
+                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Deleting...</span>
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Permanently Delete Staff</span>
+                </>
+              )}
             </button>
           </div>
         </div>

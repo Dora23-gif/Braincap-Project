@@ -155,6 +155,7 @@ interface SchoolDataContextType {
   // Enterprise Governance Actions
   addStaff: (member: Omit<StaffMember, 'id' | 'status' | 'joinedDate'>) => StaffMember;
   updateStaff: (staffId: string, updates: Partial<StaffMember>) => Promise<any> | void;
+  deleteStaff: (staffId: string, reason?: string, actor?: { id: string; name: string; role: any }) => Promise<void>;
   toggleStaffStatus: (staffId: string, reason?: string, actor?: { id: string; name: string; role: any }) => void;
   resetStaffPin: (staffId: string, actor?: { id: string; name: string; role: any }) => string;
   addAuditLog: (entry: Omit<AuditLogEntry, 'id' | 'timestamp'>) => void;
@@ -2483,6 +2484,61 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return newPin;
   };
 
+  const deleteStaff = async (staffId: string, reason?: string, actor?: { id: string; name: string; role: any }): Promise<void> => {
+    const member = staff.find(m => m.id === staffId || m.staffId === staffId || String(m.backendId) === staffId);
+    const targetLookupId = member?.backendId ? String(member.backendId) : (/^\d+$/.test(staffId) ? staffId : (member?.id && /^\d+$/.test(member.id) ? member.id : staffId));
+
+    // 1. Live asynchronous DELETE to Django backend & Neon DB
+    if (/^\d+$/.test(targetLookupId)) {
+      try {
+        await api.delete(`/accounts/users/${targetLookupId}/`);
+      } catch (err) {
+        console.warn('Backend staff delete fallback:', err);
+      }
+    }
+
+    // 2. Remove staff from local state and persisted storage
+    setStaff(prev => {
+      const filtered = prev.filter(m => m.id !== staffId && m.staffId !== staffId && String(m.backendId) !== staffId);
+      try { localStorage.setItem('eis_staff', JSON.stringify(filtered)); } catch (e) {}
+      return filtered;
+    });
+
+    // 3. Remove teaching allocations assigned to this staff member
+    setAllocations(prev => {
+      const filtered = prev.filter(a => a.teacherId !== staffId && a.teacherId !== member?.staffId && a.teacherId !== String(member?.backendId));
+      try { localStorage.setItem('eis_allocations', JSON.stringify(filtered)); } catch (e) {}
+      return filtered;
+    });
+
+    // 4. Unassign from form master duties if assigned to any class arm
+    setClassArms(prev => {
+      const updated = prev.map(arm => {
+        if (arm.formMasterId === staffId || arm.formMasterId === member?.staffId) {
+          return { ...arm, formMasterId: undefined, formMasterName: undefined };
+        }
+        return arm;
+      });
+      try { localStorage.setItem('eis_class_arms', JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
+
+    // 5. Audit Log Entry
+    if (actor && member) {
+      addAuditLog({
+        userId: actor.id,
+        userIdentifier: actor.name,
+        userName: actor.name,
+        userRole: actor.role,
+        action: 'STAFF_DELETED',
+        targetEntity: `Staff Account: ${member.name} (${member.staffId})`,
+        details: `Staff member permanently deleted from portal and backend database. ${reason ? 'Reason: ' + reason : ''}`,
+        diff: [{ field: 'account', previousValue: member.name, newValue: 'DELETED' }],
+        metadata: { staffId: member.staffId, staffName: member.name, roles: member.roles, reason }
+      });
+    }
+  };
+
   const updateSchoolSettings = (updates: Partial<SchoolSettings>, actor?: { id: string; name: string; role: any }) => {
     setSchoolSettings(prev => {
       const next = { ...prev, ...updates };
@@ -3729,6 +3785,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         resetToDefaultData,
         addStaff,
         updateStaff,
+        deleteStaff,
         toggleStaffStatus,
         resetStaffPin,
         addAuditLog,

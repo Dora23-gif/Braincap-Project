@@ -248,7 +248,9 @@ export type AuditLogAction =
   | 'STUDENT_DELETED'
   | 'TEACHER_ALLOCATED'
   | 'ALLOCATION_REMOVED'
-  | 'DIRECTIVE_ISSUED';
+  | 'DIRECTIVE_ISSUED'
+  | 'STAFF_DELETED'
+  | 'USER_DELETED';
 
 export interface AuditLogEntry {
   id: string;
