@@ -37,7 +37,8 @@ import {
   Trash2,
   Edit,
   Download,
-  Globe
+  Globe,
+  Unlock
 } from 'lucide-react';
 
 import { FuturisticPageShell } from '../../components/common/FuturisticPageShell';
@@ -63,6 +64,7 @@ export const ExamOfficerDashboardView: React.FC = () => {
     updateInvigilationStatus,
     updateExternalCandidateStatus,
     sealClassBroadsheet,
+    unsealClassBroadsheet,
     nudgeDefaultingTeachers,
     activeSession,
     activeTerm,
@@ -101,6 +103,8 @@ export const ExamOfficerDashboardView: React.FC = () => {
   // Modal states
   const [sealingArm, setSealingArm] = useState<{ id: string; name: string } | null>(null);
   const [sealNotes, setSealNotes] = useState('');
+  const [unsealingArm, setUnsealingArm] = useState<{ id: string; name: string } | null>(null);
+  const [unsealReason, setUnsealReason] = useState('');
   const [nudgeFeedback, setNudgeFeedback] = useState<string>('');
 
   const [viewingCandidateCard, setViewingCandidateCard] = useState<ExternalCandidateProfile | null>(null);
@@ -205,6 +209,19 @@ export const ExamOfficerDashboardView: React.FC = () => {
 
     setSealingArm(null);
     setSealNotes('');
+  };
+
+  const handleUnsealSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!unsealingArm) return;
+    unsealClassBroadsheet(unsealingArm.id, unsealReason, {
+      id: user?.id || user?.staffId || 'usr-exam',
+      name: user?.name || 'Dr. Michael Adebayo',
+      role: 'EXAM_OFFICER'
+    });
+
+    setUnsealingArm(null);
+    setUnsealReason('');
   };
 
   const handleNudge = (armId: string, subjectName: string) => {
@@ -448,22 +465,22 @@ export const ExamOfficerDashboardView: React.FC = () => {
           </DoubleBezelCard>
 
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <div>
                 <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-                  Class Arm Broadsheet Collation Progress & Sealing Gate
+                  Class Broadsheets & Score Collation Status
                 </h3>
-                <p className="text-xs text-slate-500">
-                  Track mark sheet completion across cohorts. Broadsheets with 100% entry can be sealed and transmitted to Principal clearance.
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Track score submissions per class arm. Once all subject marks are entered, seal the broadsheet to submit for Principal approval. If adjustments are needed after sealing, click <strong>Unlock / Edit Scores</strong>.
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <Filter className="w-4 h-4 text-slate-400" />
                 <select
                   value={broadsheetArmFilter}
                   onChange={e => setBroadsheetArmFilter(e.target.value)}
-                  className="px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium"
+                  className="px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium cursor-pointer"
                 >
                   <option value="ALL">All 12 Class Arms</option>
                   {classArms.map(arm => (
@@ -475,25 +492,28 @@ export const ExamOfficerDashboardView: React.FC = () => {
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 uppercase tracking-wider font-semibold">
+                <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-100 dark:border-slate-800">
                   <tr>
-                    <th className="p-4">Class Arm</th>
-                    <th className="p-4 text-center">Enrolled Pupils</th>
-                    <th className="p-4 text-center">Marks Entered / Expected</th>
-                    <th className="p-4 text-center">Collation Progress</th>
-                    <th className="p-4 text-center">Missing Marks</th>
-                    <th className="p-4">Sealing Status</th>
-                    <th className="p-4 text-right">Officer Action</th>
+                    <th className="p-4">Class & Form Master</th>
+                    <th className="p-4 text-center">Enrolled Students</th>
+                    <th className="p-4 text-center">Scores Entered</th>
+                    <th className="p-4 text-center">Progress</th>
+                    <th className="p-4 text-center">Missing Scores</th>
+                    <th className="p-4">Broadsheet Status</th>
+                    <th className="p-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {armCollationStats
                     .filter(item => broadsheetArmFilter === 'ALL' || item.arm.id === broadsheetArmFilter)
                     .map(item => (
-                      <tr key={item.arm.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                      <tr key={item.arm.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                         <td className="p-4">
                           <div className="font-bold text-slate-900 dark:text-white text-sm">{item.arm.fullName}</div>
-                          <div className="text-[11px] text-slate-400">{item.arm.formMasterName} (Form Master)</div>
+                          <div className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600"></span>
+                            <span>{item.arm.formMasterName || 'Unassigned'} (Form Master)</span>
+                          </div>
                         </td>
                         <td className="p-4 text-center font-bold text-slate-800 dark:text-slate-200">
                           {item.studentCount}
@@ -524,45 +544,60 @@ export const ExamOfficerDashboardView: React.FC = () => {
                           ) : (
                             <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center gap-1">
                               <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>Complete</span>
+                              <span>All Entered</span>
                             </span>
                           )}
                         </td>
                         <td className="p-4">
                           {item.isSealed ? (
                             <div>
-                              <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold text-[10px] uppercase tracking-wide flex items-center gap-1 w-fit">
-                                <Lock className="w-3 h-3" />
-                                <span>SEALED & TRANSMITTED</span>
+                              <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold text-[10px] uppercase tracking-wide flex items-center gap-1.5 w-fit border border-emerald-300 dark:border-emerald-800">
+                                <Lock className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                                <span>Sealed & Locked</span>
                               </span>
-                              <div className="text-[10px] text-slate-400 mt-1">{item.sealRecord?.sealedBy}</div>
+                              <div className="text-[10px] text-slate-400 mt-1">
+                                {item.sealRecord?.sealedBy ? `By ${item.sealRecord.sealedBy}` : 'Ready for Principal'}
+                              </div>
                             </div>
                           ) : (
-                            <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-bold text-[10px] uppercase tracking-wide">
-                              UNSEALED / IN PROGRESS
+                            <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 font-bold text-[10px] uppercase tracking-wide border border-amber-200 dark:border-amber-800 flex items-center gap-1.5 w-fit">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                              <span>Open / In Progress</span>
                             </span>
                           )}
                         </td>
                         <td className="p-4 text-right">
                           <div className="flex items-center justify-end gap-1.5">
-                            {item.missingScoresCount > 0 && (
+                            {item.isSealed ? (
                               <button
-                                onClick={() => handleNudge(item.arm.id, 'Continuous Assessment & Examination')}
-                                className="px-2.5 py-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 text-rose-700 dark:text-rose-300 font-semibold text-xs border border-rose-200 dark:border-rose-900 cursor-pointer flex items-center gap-1"
-                                title="Broadcast compliance reminder to subject masters"
+                                onClick={() => setUnsealingArm({ id: item.arm.id, name: item.arm.fullName })}
+                                className="touch-target px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs border border-slate-300 dark:border-slate-700 cursor-pointer flex items-center gap-1.5 transition-all active:scale-95"
+                                title="Unlock broadsheet to allow score corrections or teacher edits"
                               >
-                                <Bell className="w-3 h-3" />
-                                <span>Nudge Masters</span>
+                                <Unlock className="w-3.5 h-3.5 text-amber-500" />
+                                <span>Unlock / Edit Scores</span>
                               </button>
-                            )}
-                            {!item.isSealed && (
-                              <button
-                                onClick={() => setSealingArm({ id: item.arm.id, name: item.arm.fullName })}
-                                className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-xs cursor-pointer flex items-center gap-1"
-                              >
-                                <Lock className="w-3 h-3" />
-                                <span>Seal Broadsheet</span>
-                              </button>
+                            ) : (
+                              <>
+                                {item.missingScoresCount > 0 && (
+                                  <button
+                                    onClick={() => handleNudge(item.arm.id, 'Continuous Assessment & Examination')}
+                                    className="px-2.5 py-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 text-rose-700 dark:text-rose-300 font-semibold text-xs border border-rose-200 dark:border-rose-900 cursor-pointer flex items-center gap-1 transition-all active:scale-95"
+                                    title="Broadcast compliance reminder to subject teachers"
+                                  >
+                                    <Bell className="w-3 h-3" />
+                                    <span>Nudge Teachers</span>
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => setSealingArm({ id: item.arm.id, name: item.arm.fullName })}
+                                  className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-xs cursor-pointer flex items-center gap-1.5 transition-all active:scale-95"
+                                  title="Lock broadsheet and submit to Principal"
+                                >
+                                  <Lock className="w-3.5 h-3.5" />
+                                  <span>Seal Broadsheet</span>
+                                </button>
+                              </>
                             )}
                           </div>
                         </td>
@@ -1101,6 +1136,67 @@ export const ExamOfficerDashboardView: React.FC = () => {
                 >
                   <Lock className="w-4 h-4" />
                   <span>Seal Broadsheet</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: UNSEAL / UNLOCK BROADSHEET */}
+      {unsealingArm && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold">
+                  <Unlock className="w-4 h-4" />
+                </div>
+                <h3 className="font-bold text-slate-900 dark:text-white text-base">
+                  Unlock Broadsheet for Editing
+                </h3>
+              </div>
+              <button
+                onClick={() => setUnsealingArm(null)}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              You are unlocking the broadsheet for <strong>{unsealingArm.name}</strong> ({activeTerm.name}). This will allow you and subject teachers to adjust marks, make score overrides, or fix errors before re-sealing.
+            </p>
+
+            <form onSubmit={handleUnsealSubmit} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Reason for Unlocking / Override Note
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  value={unsealReason}
+                  onChange={e => setUnsealReason(e.target.value)}
+                  placeholder="e.g. Correcting CA2 mark for student, re-auditing practical scores..."
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setUnsealingArm(null)}
+                  className="px-4 py-2 text-xs font-semibold rounded-xl text-slate-600 dark:text-slate-400"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 text-xs font-bold rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center gap-1.5 shadow-md cursor-pointer"
+                >
+                  <Unlock className="w-4 h-4" />
+                  <span>Unlock & Allow Edits</span>
                 </button>
               </div>
             </form>

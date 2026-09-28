@@ -199,6 +199,7 @@ interface SchoolDataContextType {
   updateInvigilationStatus: (shiftId: string, status: InvigilationShift['status']) => void;
   updateExternalCandidateStatus: (candidateId: string, status: ExternalCandidateProfile['registrationStatus'], indexNumber?: string, actor?: { id: string; name: string; role: any }) => void;
   sealClassBroadsheet: (classArmId: string, notes?: string, actor?: { id: string; name: string; role: any }) => void;
+  unsealClassBroadsheet: (classArmId: string, reason?: string, actor?: { id: string; name: string; role: any }) => void;
   nudgeDefaultingTeachers: (classArmId: string, subjectName: string, actor?: { id: string; name: string; role: any }) => void;
 
   // Form Master Pastoral & Class Arm Operations
@@ -3144,6 +3145,35 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     });
   };
 
+  const unsealClassBroadsheet = (classArmId: string, reason?: string, actor?: { id: string; name: string; role: any }) => {
+    const armObj = classArms.find(a => a.id === classArmId);
+    const armName = armObj ? armObj.fullName : classArmId;
+
+    setBroadsheetSeals(prev => {
+      return prev.map(s => {
+        if (s.classArmId === classArmId && s.termId === activeTerm.id) {
+          return {
+            ...s,
+            isSealed: false,
+            submissionNotes: reason ? `Unsealed: ${reason}` : 'Unsealed for score revisions and corrections by Examination Officer'
+          };
+        }
+        return s;
+      });
+    });
+
+    addAuditLog({
+      userId: actor?.id || 'stf-003',
+      userIdentifier: actor?.name || 'Mr. Samuel Danjuma',
+      userName: actor?.name || 'Mr. Samuel Danjuma',
+      userRole: actor?.role || 'EXAM_OFFICER',
+      action: 'BROADSHEET_UNSEALED',
+      targetEntity: `Master Broadsheet Unsealed: ${armName}`,
+      details: `Broadsheet unlocked for score adjustments/corrections. Reason: ${reason || 'Score override / marksheet revision'}.`,
+      metadata: { classArmId, termId: activeTerm.id, reason }
+    });
+  };
+
   const nudgeDefaultingTeachers = (classArmId: string, subjectName: string, actor?: { id: string; name: string; role: any }) => {
     const armObj = classArms.find(a => a.id === classArmId);
     const armName = armObj ? armObj.fullName : classArmId;
@@ -3866,6 +3896,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         updateInvigilationStatus,
         updateExternalCandidateStatus,
         sealClassBroadsheet,
+        unsealClassBroadsheet,
         nudgeDefaultingTeachers,
         pastoralLogs,
         armEndorsements,
