@@ -143,7 +143,6 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
           items: [
             { id: 'user-management', label: 'User Management', icon: ShieldCheck, badge: 'Admin' },
             { id: 'academic-rollover', label: 'Academic Rollover', icon: RotateCw, badge: 'Annual' },
-            { id: 'audit-log', label: 'Activity History', icon: History },
             { id: 'school-settings', label: 'Institutional Settings', icon: Stamp }
           ]
         },
