@@ -42,6 +42,7 @@ import {
 
 import { FuturisticPageShell } from '../../components/common/FuturisticPageShell';
 import { getWelcomeMessage } from '../../lib/userDisplay';
+import { FuturisticKPICard } from '../../components/common/FuturisticKPICard';
 import { DoubleBezelCard } from '../../components/common/DoubleBezelCard';
 import { SegmentedControl, SegmentedControlOption } from '../../components/common/SegmentedControl';
 import { ModalPortal } from '../../components/common/ModalPortal';
@@ -327,6 +328,50 @@ export const ExamOfficerDashboardView: React.FC = () => {
       badgeText={activeTerm.isResultsPublished ? 'Broadsheets Published' : 'Moderation In Progress'}
       badgeVariant={activeTerm.isResultsPublished ? 'success' : 'warning'}
     >
+      {/* 4 Metric Summary Bento Grid - Compact 4-column row */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+        <FuturisticKPICard
+          title="Collation Rate"
+          value={`${overallCollationRate}%`}
+          subtitle={`${sealedArmsCount}/${classArms.length} Broadsheets Sealed`}
+          icon={FileSpreadsheet}
+          glowColor="emerald"
+          trend={{ value: 'Broadsheet Pace', isPositive: true }}
+          onClick={() => setActiveTab('MISSING_MARKS')}
+        />
+
+        <FuturisticKPICard
+          title="Missing Marks"
+          value={totalMissingMarks}
+          subtitle="Unsubmitted Scores"
+          icon={AlertTriangle}
+          glowColor="rose"
+          badge={totalMissingMarks > 0 ? 'Action Req' : 'Complete'}
+          trend={{ value: totalMissingMarks > 0 ? 'Defaulting Faculty' : 'Zero Deficits', isPositive: totalMissingMarks === 0 }}
+          onClick={() => setActiveTab('MISSING_MARKS')}
+        />
+
+        <FuturisticKPICard
+          title="External Candidates"
+          value={externalCandidates.length}
+          subtitle="WAEC • NECO • BECE"
+          icon={GraduationCap}
+          glowColor="amber"
+          badge="External Reg"
+          onClick={() => setActiveTab('EXTERNAL_EXAMS')}
+        />
+
+        <FuturisticKPICard
+          title="Exam Halls"
+          value={`${examHalls.length} Halls`}
+          subtitle={`${examHalls.reduce((a, b) => a + b.capacity, 0)} Total Seats`}
+          icon={Building}
+          glowColor="cyan"
+          badge="Logistics"
+          onClick={() => setActiveTab('EXAM_HALLS')}
+        />
+      </div>
+
       {/* Navigation Tabs with SegmentedControl */}
       <SegmentedControl
         options={EXAM_TABS}
