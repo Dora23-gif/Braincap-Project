@@ -159,8 +159,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
           title: 'Student Records',
           items: [
             { id: 'student-directory', label: 'Student Directory', icon: Users },
-            { id: 'admissions-wizard', label: 'New Admission', icon: UserPlus, badge: 'New' },
-            { id: 'attendance-register', label: 'School Attendance', icon: CheckSquare }
+            { id: 'admissions-wizard', label: 'New Admission', icon: UserPlus, badge: 'New' }
           ]
         },
         {
@@ -243,10 +242,8 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     if (role === 'VICE_PRINCIPAL_ADMIN' || role === 'VICE_PRINCIPAL') {
       return [
         {
-          title: 'Administration & Discipline',
+          title: 'Student Directory & Records',
           items: [
-            { id: 'vp-admin-dashboard', label: 'Student Affairs Command', icon: ShieldCheck, badge: 'Active' },
-            { id: 'attendance-register', label: 'Daily Roll Call Register', icon: CheckSquare },
             { id: 'student-directory', label: 'Student Directory', icon: Users }
           ]
         },
@@ -311,7 +308,6 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             { id: 'student-directory', label: 'My Class Students', icon: Users },
             { id: 'score-entry', label: 'Enter Marks', icon: FileSpreadsheet, badge: 'Assigned' },
             { id: 'master-broadsheet', label: 'Class Performance', icon: BarChart3 },
-            { id: 'attendance-register', label: 'Attendance', icon: CheckSquare },
             { id: 'psychomotor-matrix', label: 'Psychomotor & Remarks', icon: Award },
             { id: 'report-card', label: 'Report Cards', icon: FileText }
           ]
