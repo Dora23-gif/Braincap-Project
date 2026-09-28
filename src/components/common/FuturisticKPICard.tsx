@@ -1,7 +1,6 @@
 import React from 'react';
 import { clsx } from 'clsx';
 import { TrendingUp, TrendingDown } from 'lucide-react';
-import { MiniSparkline } from './ChartComponents';
 
 interface FuturisticKPICardProps {
   title: string;
@@ -25,7 +24,6 @@ export const FuturisticKPICard: React.FC<FuturisticKPICardProps> = ({
   subtitle,
   icon: Icon,
   trend,
-  sparklineData,
   glowColor = 'indigo',
   badge,
   onClick,
@@ -35,87 +33,75 @@ export const FuturisticKPICard: React.FC<FuturisticKPICardProps> = ({
     switch (glowColor) {
       case 'emerald':
         return {
-          iconBg: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
-          sparkColor: '#10B981',
+          iconBg: 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border-emerald-200/60 dark:border-emerald-800/60',
           accentText: 'text-emerald-600 dark:text-emerald-400'
         };
       case 'amber':
         return {
-          iconBg: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30',
-          sparkColor: '#F59E0B',
+          iconBg: 'bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border-amber-200/60 dark:border-amber-800/60',
           accentText: 'text-amber-600 dark:text-amber-400'
         };
       case 'cyan':
         return {
-          iconBg: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/30',
-          sparkColor: '#06B6D4',
+          iconBg: 'bg-cyan-50 dark:bg-cyan-950/50 text-cyan-600 dark:text-cyan-400 border-cyan-200/60 dark:border-cyan-800/60',
           accentText: 'text-cyan-600 dark:text-cyan-400'
         };
       case 'rose':
         return {
-          iconBg: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30',
-          sparkColor: '#F43F5E',
+          iconBg: 'bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 border-rose-200/60 dark:border-rose-800/60',
           accentText: 'text-rose-600 dark:text-rose-400'
         };
       case 'indigo':
       default:
         return {
-          iconBg: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/30',
-          sparkColor: '#6366F1',
+          iconBg: 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border-indigo-200/60 dark:border-indigo-800/60',
           accentText: 'text-indigo-600 dark:text-indigo-400'
         };
     }
   };
 
-  const { iconBg, sparkColor, accentText } = getGlowStyles();
+  const { iconBg } = getGlowStyles();
 
   return (
     <div
       onClick={onClick}
       className={clsx(
-        'group relative rounded-2xl sm:rounded-3xl p-1 bg-slate-900/[0.03] dark:bg-white/[0.03] border border-slate-900/5 dark:border-white/10 transition-all duration-300',
-        'hover:-translate-y-1 hover:shadow-xl hover:border-slate-300 dark:hover:border-white/20',
+        'group relative rounded-2xl p-4 sm:p-5 bg-white dark:bg-slate-900/90 border border-slate-200/90 dark:border-slate-800 shadow-xs transition-all duration-200',
+        'hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-md',
         onClick ? 'cursor-pointer active:scale-98' : 'cursor-default',
         className
       )}
     >
-      <div className="rounded-[calc(1rem-0.25rem)] sm:rounded-[calc(1.5rem-0.25rem)] bg-white dark:bg-[#0E1526] border border-slate-200/80 dark:border-white/5 p-3 sm:p-5 flex flex-col justify-between h-full transition-all duration-300 group-hover:border-slate-300/80 dark:group-hover:border-white/15">
-        
-        {/* Top Header Strip */}
-        <div className="flex items-center justify-between gap-1.5 sm:gap-2 mb-2 sm:mb-3">
-          <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
-            {title}
-          </span>
+      {/* Top Row: Title + Icon */}
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <span className="text-xs sm:text-[13px] font-semibold text-slate-500 dark:text-slate-400 truncate">
+          {title}
+        </span>
 
-          <div className="flex items-center gap-1 sm:gap-1.5">
-            {badge && (
-              <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[8px] sm:text-[9px] font-extrabold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                {badge}
-              </span>
-            )}
-            <div className={clsx('w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl flex items-center justify-center border shadow-2xs shrink-0 transition-transform duration-300 group-hover:scale-110', iconBg)}>
-              <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            </div>
-          </div>
-        </div>
-
-        {/* Main Number & Sparkline Row */}
-        <div className="flex items-baseline justify-between gap-2 my-0.5 sm:my-1">
-          <div className="text-xl sm:text-3xl font-bold font-mono-tabular text-slate-900 dark:text-white tracking-tight">
-            {value}
-          </div>
-
-          {sparklineData && sparklineData.length > 1 && (
-            <div className="hidden sm:block opacity-90 group-hover:opacity-100 transition-opacity">
-              <MiniSparkline data={sparklineData} color={sparkColor} width={64} height={24} />
-            </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {badge && (
+            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+              {badge}
+            </span>
           )}
+          <div className={clsx('w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center border transition-transform duration-200 group-hover:scale-105 shrink-0', iconBg)}>
+            <Icon className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+          </div>
         </div>
+      </div>
 
-        {/* Bottom Subtitle / Trend Badge */}
-        <div className="flex items-center justify-between gap-1.5 sm:gap-2 pt-1.5 sm:pt-2 border-t border-slate-100 dark:border-slate-800/80 text-[10px] sm:text-[11px] mt-1.5 sm:mt-2">
+      {/* Main Number Row */}
+      <div className="my-1.5">
+        <div className="text-2xl sm:text-3xl font-extrabold font-mono-tabular text-slate-900 dark:text-white tracking-tight">
+          {value}
+        </div>
+      </div>
+
+      {/* Bottom Row: Subtitle + Trend Badge */}
+      {(subtitle || trend) && (
+        <div className="flex items-center justify-between gap-2 pt-2.5 mt-2 border-t border-slate-100 dark:border-slate-800/70 text-xs">
           {subtitle && (
-            <span className="text-slate-500 dark:text-slate-400 truncate text-[10px] sm:text-[11px]">
+            <span className="text-slate-500 dark:text-slate-400 truncate text-[11px] sm:text-xs">
               {subtitle}
             </span>
           )}
@@ -123,21 +109,20 @@ export const FuturisticKPICard: React.FC<FuturisticKPICardProps> = ({
           {trend && (
             <div
               className={clsx(
-                'inline-flex items-center gap-0.5 sm:gap-1 font-bold font-mono-tabular shrink-0 text-[10px] sm:text-[11px]',
+                'inline-flex items-center gap-1 font-bold font-mono-tabular shrink-0 text-[11px] sm:text-xs ml-auto',
                 trend.isPositive !== false ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
               )}
             >
               {trend.isPositive !== false ? (
-                <TrendingUp className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                <TrendingUp className="w-3.5 h-3.5" />
               ) : (
-                <TrendingDown className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                <TrendingDown className="w-3.5 h-3.5" />
               )}
               <span>{trend.value}</span>
             </div>
           )}
         </div>
-
-      </div>
+      )}
     </div>
   );
 };
