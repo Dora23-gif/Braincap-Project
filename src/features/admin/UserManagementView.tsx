@@ -581,13 +581,15 @@ export const UserManagementView: React.FC = () => {
       badgeText={`${activeStaff} Active Staff`}
       badgeVariant="cyber"
       actions={
-        <button
-          onClick={openAddModal}
-          className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 cursor-pointer touch-target active:scale-95"
-        >
-          <UserPlus className="w-4 h-4" />
-          <span>Add Staff Member</span>
-        </button>
+        <div className="flex items-center justify-end w-full">
+          <button
+            onClick={openAddModal}
+            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 cursor-pointer touch-target active:scale-95 ml-auto"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>Add Staff Member</span>
+          </button>
+        </div>
       }
     >
       {/* Toast */}
