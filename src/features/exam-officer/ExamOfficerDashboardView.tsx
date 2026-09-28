@@ -406,64 +406,6 @@ export const ExamOfficerDashboardView: React.FC = () => {
       {/* TAB 1: COLLATION & MISSING MARKS AUDIT */}
       {activeTab === 'MISSING_MARKS' && (
         <div className="space-y-6">
-          {/* Executive Clearance & Portal Publication Gate */}
-          <DoubleBezelCard>
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex items-start gap-3">
-                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
-                  activeTerm.isResultsApprovedByPrincipal
-                    ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-                    : 'bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-500/20'
-                }`}>
-                  <ShieldCheck className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-sm text-slate-900 dark:text-white">
-                      Terminal Results Publication &amp; Executive Assent Gate
-                    </h3>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      activeTerm.isResultsApprovedByPrincipal
-                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
-                        : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
-                    }`}>
-                      {activeTerm.isResultsApprovedByPrincipal ? '✓ Principal Assent Granted' : '⏳ Awaiting Principal Assent'}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
-                    {activeTerm.isResultsApprovedByPrincipal
-                      ? 'The Principal has ratified executive clearance and completed pastoral remarking. The Examination Council is authorized to publish broadsheets and student report cards live to portal users.'
-                      : 'Statutory prerequisite: Broadsheets must receive executive clearance and remarking approval from the Principal before terminal release to student and parent dashboards.'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2.5 shrink-0">
-                {!activeTerm.isResultsApprovedByPrincipal ? (
-                  <button
-                    onClick={handleRequestPrincipalAssent}
-                    className="touch-target px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold shadow-md flex items-center gap-2 cursor-pointer transition-all active:scale-95"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    <span>Request Executive Assent</span>
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => publishResults(activeTerm.id, !activeTerm.isResultsPublished)}
-                    className={`touch-target px-5 py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center gap-2 cursor-pointer transition-all active:scale-95 ${
-                      activeTerm.isResultsPublished
-                        ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-950/20'
-                        : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-950/20'
-                    }`}
-                  >
-                    <Globe className="w-4 h-4" />
-                    <span>{activeTerm.isResultsPublished ? 'Revoke Portal Release' : 'Publish Results to Portals'}</span>
-                  </button>
-                )}
-              </div>
-            </div>
-          </DoubleBezelCard>
-
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <div>
