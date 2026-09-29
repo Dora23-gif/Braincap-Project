@@ -135,7 +135,7 @@ const AppContent: React.FC = () => {
       case 'VICE_PRINCIPAL_ADMIN':
       case 'VICE_PRINCIPAL':
       case 'VICE_PRINCIPAL_STUDENT_AFFAIRS':
-        return 'student-directory';
+        return 'vp-admin-dashboard';
       default:
         return 'user-management';
     }
