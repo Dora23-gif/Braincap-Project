@@ -763,8 +763,8 @@ export function adaptStaffFromBackend(d: any): StaffMember {
   const roleTitleMap: Record<string, string> = {
     'SUPER_ADMIN': 'Systems Administrator & IT Director',
     'PRINCIPAL': 'Principal & Head of Academics',
-    'VICE_PRINCIPAL': 'Vice Principal (Administration)',
-    'VICE_PRINCIPAL_ADMIN': 'Vice Principal (Administration)',
+    'VICE_PRINCIPAL': 'Vice Principal',
+    'VICE_PRINCIPAL_ADMIN': 'Vice Principal',
     'VICE_PRINCIPAL_ACADEMICS': 'Vice Principal (Academics)',
     'EXAM_OFFICER': 'Chief Examination Officer',
     'FORM_MASTER': 'Form Master',

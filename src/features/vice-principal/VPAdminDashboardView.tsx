@@ -161,7 +161,7 @@ export const VPAdminDashboardView: React.FC = () => {
       description: newDescription,
       actionTaken: newActionTaken,
       demeritPoints: newDemerits,
-      recordedBy: user?.name || 'Mrs. Ayodele Tinubu (VP Admin)',
+      recordedBy: user?.name || 'Mrs. Ayodele Tinubu (Vice Principal)',
       status: 'OPEN'
     }, {
       id: user?.staffId || 'stf-004',
@@ -202,7 +202,7 @@ export const VPAdminDashboardView: React.FC = () => {
 
   return (
     <FuturisticPageShell
-      title="VICE PRINCIPAL (ADMINISTRATION) COMMAND"
+      title="VICE PRINCIPAL COMMAND"
       subtitle={`${getWelcomeMessage(user?.name || 'Vice-Principal')}. Student discipline, demerit points registry, campus exeat authorization passes, and chronic absenteeism intervention (<85% attendance). Registered: ${students.length} Pupils.`}
       icon={ShieldAlert}
       badgeText={openIncidentsCount > 0 ? `${openIncidentsCount} Open Incidents` : 'Discipline In Order'}
@@ -837,7 +837,7 @@ export const VPAdminDashboardView: React.FC = () => {
                     EVEREST INTERNATIONAL SCHOOLS
                   </h2>
                   <div className="text-[10px] uppercase font-bold tracking-widest text-amber-700">
-                    Office of the Vice Principal (Administration & Student Affairs)
+                    Office of the Vice Principal
                   </div>
                   <div className="text-[10px] text-slate-500">
                     Plot 12, Academic Boulevard, Victoria Island Extension, Lagos &bull; +234 1 800 383 7378
@@ -855,7 +855,7 @@ export const VPAdminDashboardView: React.FC = () => {
             {/* Summons Metadata */}
             <div className="flex justify-between text-xs text-slate-700">
               <div>
-                <div><strong>Ref:</strong> EIS/VPA/SUM/{new Date().getFullYear()}/042</div>
+                <div><strong>Ref:</strong> EIS/VP/SUM/{new Date().getFullYear()}/042</div>
                 <div><strong>Date:</strong> {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
               </div>
               <div className="text-right">
@@ -881,13 +881,13 @@ export const VPAdminDashboardView: React.FC = () => {
             <div className="text-xs text-slate-700 space-y-3 leading-relaxed">
               <p>Dear Parent/Guardian,</p>
               <p>
-                The Office of the Vice Principal (Administration) hereby brings to your urgent notice that your ward, <strong>{summonsStudent.student.name || summonsStudent.student.firstName}</strong> of class <strong>{summonsStudent.classArmName}</strong>, has currently accumulated <strong>{summonsStudent.daysAbsent} days of unexcused absence</strong> out of {summonsStudent.totalDays} academic days in the current 2nd Term 2025/2026.
+                The Office of the Vice Principal hereby brings to your urgent notice that your ward, <strong>{summonsStudent.student.name || summonsStudent.student.firstName}</strong> of class <strong>{summonsStudent.classArmName}</strong>, has currently accumulated <strong>{summonsStudent.daysAbsent} days of unexcused absence</strong> out of {summonsStudent.totalDays} academic days in the current 2nd Term 2025/2026.
               </p>
               <p>
                 This represents an attendance compliance rate of only <strong>{summonsStudent.attendanceRate}%</strong>, which is critically beneath our institutional target of 85% and rapidly jeopardizes the <strong>75% statutory threshold</strong> mandated by the Lagos State Ministry of Basic Education and the West African Examinations Council (WAEC).
               </p>
               <p>
-                Consequently, you are hereby requested to attend a mandatory conference with the Vice Principal (Administration) and the Form Master on <strong>Friday at 10:00 AM prompt</strong> at the Administrative Complex. Failure to attend may result in statutory referral to the School Disciplinary Committee and possible academic rustication.
+                Consequently, you are hereby requested to attend a mandatory conference with the Vice Principal and the Form Master on <strong>Friday at 10:00 AM prompt</strong> at the Administrative Complex. Failure to attend may result in statutory referral to the School Disciplinary Committee and possible academic rustication.
               </p>
             </div>
 
@@ -896,7 +896,7 @@ export const VPAdminDashboardView: React.FC = () => {
               <div>
                 <div className="font-serif italic text-base text-slate-800">Mrs. Ayodele Tinubu</div>
                 <div className="font-bold text-slate-900">Mrs. Ayodele Tinubu</div>
-                <div className="text-[11px] text-slate-500">Vice Principal (Administration)</div>
+                <div className="text-[11px] text-slate-500">Vice Principal</div>
               </div>
 
               <div className="text-right">

@@ -31,7 +31,7 @@ class Command(BaseCommand):
             ("STF/2026/001", "stf_2026_001", "admin@everest.com", "Kenneth", "Balogun", ["SUPER_ADMIN"], "SUPER_ADMIN", "Systems Administrator & IT Director"),
             ("STF/2026/002", "stf_2026_002", "principal@everest.com", "Cordelia", "Okonkwo", ["PRINCIPAL"], "PRINCIPAL", "Principal & Head of Academics"),
             ("STF/2026/003", "stf_2026_003", "exam@everest.com", "Samuel", "Danjuma", ["EXAM_OFFICER"], "EXAM_OFFICER", "Chief Examination & Records Officer"),
-            ("STF/2026/004", "stf_2026_004", "vp.admin@everest.com", "Ayodele", "Tinubu", ["VICE_PRINCIPAL_ADMIN"], "VICE_PRINCIPAL_ADMIN", "Vice Principal (Administration & Student Affairs)"),
+            ("STF/2026/004", "stf_2026_004", "vp.admin@everest.com", "Ayodele", "Tinubu", ["VICE_PRINCIPAL_ADMIN"], "VICE_PRINCIPAL_ADMIN", "Vice Principal"),
             ("STF/2026/019", "stf_2026_019", "vp.academics@everest.com", "Babatunde", "Fashola", ["VICE_PRINCIPAL_ACADEMICS", "SUBJECT_TEACHER"], "VICE_PRINCIPAL_ACADEMICS", "Vice Principal (Academics & Instruction)"),
             ("STF/2026/005", "stf_2026_005", "f.alabi@everest.com", "Folashade", "Alabi", ["SUBJECT_TEACHER", "FORM_MASTER"], "SUBJECT_TEACHER", "Mathematics Teacher & Form Master JSS 1 Gold"),
             ("STF/2026/006", "stf_2026_006", "c.eze@everest.com", "Chukwuma", "Eze", ["SUBJECT_TEACHER", "FORM_MASTER"], "SUBJECT_TEACHER", "English Language Teacher & Form Master JSS 1 Emerald"),

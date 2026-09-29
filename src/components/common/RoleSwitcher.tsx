@@ -6,9 +6,9 @@ import { Check, ChevronDown, ShieldCheck, GraduationCap, Users, UserCheck, BookO
 const ROLE_META: Record<string, { label: string; icon: React.ComponentType<{ className?: string }>; bg: string; text: string }> = {
   SUPER_ADMIN: { label: 'Super Administrator', icon: ShieldCheck, bg: 'bg-indigo-50 dark:bg-indigo-950/60', text: 'text-indigo-700 dark:text-indigo-300' },
   PRINCIPAL: { label: 'School Principal', icon: ShieldCheck, bg: 'bg-purple-50 dark:bg-purple-950/60', text: 'text-purple-700 dark:text-purple-300' },
-  VICE_PRINCIPAL: { label: 'Vice Principal (General)', icon: ShieldCheck, bg: 'bg-sky-50 dark:bg-sky-950/60', text: 'text-sky-700 dark:text-sky-300' },
+  VICE_PRINCIPAL: { label: 'Vice-Principal', icon: ShieldCheck, bg: 'bg-rose-50 dark:bg-rose-950/60', text: 'text-rose-800 dark:text-rose-300' },
   VICE_PRINCIPAL_ACADEMICS: { label: 'VP Academics & Instruction', icon: BookOpen, bg: 'bg-cyan-50 dark:bg-cyan-950/60', text: 'text-cyan-800 dark:text-cyan-300' },
-  VICE_PRINCIPAL_ADMIN: { label: 'VP Administration & Students', icon: ShieldCheck, bg: 'bg-rose-50 dark:bg-rose-950/60', text: 'text-rose-800 dark:text-rose-300' },
+  VICE_PRINCIPAL_ADMIN: { label: 'Vice-Principal', icon: ShieldCheck, bg: 'bg-rose-50 dark:bg-rose-950/60', text: 'text-rose-800 dark:text-rose-300' },
   VICE_PRINCIPAL_STUDENT_AFFAIRS: { label: 'VP Student Affairs', icon: ShieldCheck, bg: 'bg-rose-50 dark:bg-rose-950/60', text: 'text-rose-800 dark:text-rose-300' },
   EXAM_OFFICER: { label: 'Examination Officer', icon: BookOpen, bg: 'bg-amber-50 dark:bg-amber-950/60', text: 'text-amber-800 dark:text-amber-300' },
   EXAMINATION_OFFICER: { label: 'Examination Officer', icon: BookOpen, bg: 'bg-amber-50 dark:bg-amber-950/60', text: 'text-amber-800 dark:text-amber-300' },

@@ -27,7 +27,7 @@ class CustomUser(AbstractUser):
         ("PRINCIPAL", "Principal"),
         ("VICE_PRINCIPAL", "Vice Principal"),
         ("VICE_PRINCIPAL_ACADEMICS", "VP Academics"),
-        ("VICE_PRINCIPAL_ADMIN", "VP Admin"),
+        ("VICE_PRINCIPAL_ADMIN", "Vice Principal"),
         ("EXAM_OFFICER", "Exam Officer"),
         ("FORM_MASTER", "Form Master"),
         ("SUBJECT_TEACHER", "Subject Teacher"),

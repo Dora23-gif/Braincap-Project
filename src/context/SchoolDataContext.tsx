@@ -2970,7 +2970,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         return {
           ...ex,
           status: 'APPROVED',
-          approvedBy: approverName || actor?.name || 'Mrs. Ayodele Tinubu (VP Admin)'
+          approvedBy: approverName || actor?.name || 'Mrs. Ayodele Tinubu (Vice Principal)'
         };
       }
       return ex;
@@ -3005,8 +3005,8 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     addAuditLog({
       userId: actor?.id || 'vp-admin',
-      userIdentifier: actor?.name || 'Security Gate / VP Admin',
-      userName: actor?.name || 'Security Gate / VP Admin',
+      userIdentifier: actor?.name || 'Security Gate / Vice Principal',
+      userName: actor?.name || 'Security Gate / Vice Principal',
       userRole: actor?.role || 'VICE_PRINCIPAL_ADMIN',
       action: 'EXEAT_RETURNED',
       targetEntity: `Exeat Re-entry Confirmed: ${exeatDetails}`,

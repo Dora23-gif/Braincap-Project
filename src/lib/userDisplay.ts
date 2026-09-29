@@ -10,7 +10,7 @@ export function getRoleLabel(role: RoleType | string | undefined): string {
     case 'SUPER_ADMIN':           return 'Administrator';
     case 'PRINCIPAL':             return 'Principal';
     case 'VICE_PRINCIPAL_ACADEMICS': return 'Vice-Principal (Academics)';
-    case 'VICE_PRINCIPAL_ADMIN':  return 'Vice-Principal (Admin)';
+    case 'VICE_PRINCIPAL_ADMIN':  return 'Vice-Principal';
     case 'VICE_PRINCIPAL':        return 'Vice-Principal';
     case 'EXAM_OFFICER':          return 'Exam Officer';
     case 'FORM_MASTER':           return 'Form Teacher';

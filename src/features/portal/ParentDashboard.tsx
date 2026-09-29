@@ -893,7 +893,7 @@ export const ParentDashboard: React.FC<{ onViewReportCard: (studentId: string) =
                   <span>Campus Exeat &amp; Leave of Absence History</span>
                 </h3>
                 <p className="text-[11px] text-slate-500">
-                  Approved campus departures authorized by Vice Principal (Administration)
+                  Approved campus departures authorized by Vice Principal
                 </p>
               </div>
             </div>

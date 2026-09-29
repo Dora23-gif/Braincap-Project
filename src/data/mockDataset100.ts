@@ -160,7 +160,7 @@ export const FULL_STAFF: StaffMember[] = [
     "roles": [
       "VICE_PRINCIPAL_ADMIN"
     ],
-    "title": "Vice Principal (Administration & Student Affairs)",
+    "title": "Vice Principal",
     "status": "ACTIVE",
     "defaultPin": "EIS-4821",
     "phoneNumber": "+234 803 555 1111",

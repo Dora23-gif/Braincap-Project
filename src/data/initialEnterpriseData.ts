@@ -144,7 +144,7 @@ export const INITIAL_DISCIPLINARY_INCIDENTS: DisciplinaryIncident[] = [
     description: 'Appeared at morning assembly in non-regulation sports footwear and without school blazer.',
     actionTaken: 'VERBAL_WARNING',
     demeritPoints: 2,
-    recordedBy: 'Mrs. Ayodele Tinubu (VP Admin)',
+    recordedBy: 'Mrs. Ayodele Tinubu (Vice Principal)',
     status: 'RESOLVED',
     resolutionNotes: 'Scholar complied following advisory. Correct uniform worn the next day.'
   },
@@ -161,7 +161,7 @@ export const INITIAL_DISCIPLINARY_INCIDENTS: DisciplinaryIncident[] = [
     description: 'Repeated unexcused late arrival to 1st period Chemistry practicals (3 consecutive lab sessions).',
     actionTaken: 'CAMPUS_DETENTION',
     demeritPoints: 5,
-    recordedBy: 'Mrs. Ayodele Tinubu (VP Admin)',
+    recordedBy: 'Mrs. Ayodele Tinubu (Vice Principal)',
     status: 'RESOLVED',
     resolutionNotes: 'Served 1-hour Friday detention and submitted apology letter to chemistry master.'
   },
@@ -178,9 +178,9 @@ export const INITIAL_DISCIPLINARY_INCIDENTS: DisciplinaryIncident[] = [
     description: 'Found in possession of unauthorized smart cellular device during evening prep study hours.',
     actionTaken: 'PARENTAL_SUMMONS',
     demeritPoints: 10,
-    recordedBy: 'Mrs. Ayodele Tinubu (VP Admin)',
+    recordedBy: 'Mrs. Ayodele Tinubu (Vice Principal)',
     status: 'OPEN',
-    resolutionNotes: 'Device impounded in VP Admin safe. Guardian invited for conference.'
+    resolutionNotes: 'Device impounded in Vice Principal safe. Guardian invited for conference.'
   },
   {
     id: 'disc-004',
@@ -195,7 +195,7 @@ export const INITIAL_DISCIPLINARY_INCIDENTS: DisciplinaryIncident[] = [
     description: 'Disruptive noise-making in the senior reading room and defying library prefect directives.',
     actionTaken: 'COMMUNITY_SERVICE',
     demeritPoints: 3,
-    recordedBy: 'Mrs. Ayodele Tinubu (VP Admin)',
+    recordedBy: 'Mrs. Ayodele Tinubu (Vice Principal)',
     status: 'RESOLVED',
     resolutionNotes: 'Completed 2 hours of library catalog organization during weekend activity period.'
   },
@@ -212,7 +212,7 @@ export const INITIAL_DISCIPLINARY_INCIDENTS: DisciplinaryIncident[] = [
     description: 'Attempted smuggling of unauthorized formula sheets into mock physics examination hall.',
     actionTaken: 'INTERNAL_SUSPENSION',
     demeritPoints: 15,
-    recordedBy: 'Mrs. Ayodele Tinubu (VP Admin)',
+    recordedBy: 'Mrs. Ayodele Tinubu (Vice Principal)',
     status: 'ESCALATED_TO_PRINCIPAL',
     resolutionNotes: 'Paper cancelled. Case file forwarded to Principal for Disciplinary Committee ratification.'
   }
@@ -234,7 +234,7 @@ export const INITIAL_CAMPUS_EXEATS: CampusExeat[] = [
     authorizedGuardian: 'Alhaji M. Abubakar (Father)',
     guardianPhone: '+234 802 333 4444',
     status: 'RETURNED',
-    approvedBy: 'Mrs. Ayodele Tinubu (VP Admin)',
+    approvedBy: 'Mrs. Ayodele Tinubu (Vice Principal)',
     issuedAt: '2026-03-25T14:00:00Z'
   },
   {
@@ -251,7 +251,7 @@ export const INITIAL_CAMPUS_EXEATS: CampusExeat[] = [
     authorizedGuardian: 'Barrister N. Eze (Father)',
     guardianPhone: '+234 803 444 5555',
     status: 'ACTIVE_OFF_CAMPUS',
-    approvedBy: 'Mrs. Ayodele Tinubu (VP Admin)',
+    approvedBy: 'Mrs. Ayodele Tinubu (Vice Principal)',
     issuedAt: '2026-03-27T11:00:00Z'
   },
   {
@@ -268,7 +268,7 @@ export const INITIAL_CAMPUS_EXEATS: CampusExeat[] = [
     authorizedGuardian: 'Mrs. R. Adeleke (Mother)',
     guardianPhone: '+234 805 666 7777',
     status: 'APPROVED',
-    approvedBy: 'Mrs. Ayodele Tinubu (VP Admin)',
+    approvedBy: 'Mrs. Ayodele Tinubu (Vice Principal)',
     issuedAt: '2026-03-28T16:30:00Z'
   },
   {
@@ -286,7 +286,7 @@ export const INITIAL_CAMPUS_EXEATS: CampusExeat[] = [
     authorizedGuardian: 'Dr. K. Al-Mansoor (Father)',
     guardianPhone: '+234 808 777 8888',
     status: 'RETURNED',
-    approvedBy: 'Mrs. Ayodele Tinubu (VP Admin)',
+    approvedBy: 'Mrs. Ayodele Tinubu (Vice Principal)',
     issuedAt: '2026-03-28T08:15:00Z'
   }
 ];
@@ -603,7 +603,7 @@ export const INITIAL_PASTORAL_LOGS: PastoralLogEntry[] = [
     date: '2026-03-20',
     category: 'PARENT_COMMUNICATION',
     note: 'Conferred with Alhaji Abubakar regarding upcoming orthodontic treatment in V.I. and scheduled absence during Thursday afternoon double periods.',
-    actionTaken: 'Exeat request documented and coordinated with VP Admin.',
+    actionTaken: 'Exeat request documented and coordinated with Vice Principal.',
     recordedBy: 'STF/2026/018',
     recordedByName: 'Dr. Michael Adebayo (Form Master)'
   },
