@@ -551,25 +551,31 @@ export const UserManagementView: React.FC = () => {
     copyToClipboard(pin, `New PIN for ${member.name}`);
   };
 
-  const getRoleBadgeStyle = (role: UserRole) => {
+  const getRoleBadgeStyle = (role: UserRole | string) => {
     switch (role) {
       case 'SUPER_ADMIN':
         return 'bg-purple-50 text-purple-700 border-purple-200';
       case 'PRINCIPAL':
         return 'bg-slate-900 text-amber-400 border-slate-700';
       case 'VICE_PRINCIPAL':
+      case 'VICE_PRINCIPAL_ADMIN':
+      case 'VICE_PRINCIPAL_ACADEMICS':
         return 'bg-indigo-50 text-indigo-700 border-indigo-200';
       case 'EXAM_OFFICER':
+      case 'EXAMINATION_OFFICER':
         return 'bg-amber-50 text-amber-800 border-amber-200';
       case 'FORM_MASTER':
         return 'bg-emerald-50 text-emerald-800 border-emerald-200';
       case 'SUBJECT_TEACHER':
+      case 'TEACHER':
       default:
         return 'bg-slate-100 text-slate-700 border-slate-200';
     }
   };
 
   const formatRoleLabel = (role: string) => {
+    if (role === 'VICE_PRINCIPAL' || role === 'VICE_PRINCIPAL_ADMIN') return 'Vice Principal';
+    if (role === 'VICE_PRINCIPAL_ACADEMICS') return 'VP Academics';
     return role.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
   };
 
