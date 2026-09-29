@@ -204,18 +204,9 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     if (role === 'VICE_PRINCIPAL_ACADEMICS') {
       return [
         {
-          title: 'Instructional Leadership',
-          items: [
-            { id: 'vp-academics-dashboard', label: 'Academics Command', icon: BookOpen, badge: 'Live' },
-            { id: 'master-broadsheet', label: 'Master Broadsheet', icon: FileSpreadsheet },
-            { id: 'subject-allocations', label: 'Teacher Allocations', icon: Settings }
-          ]
-        },
-        {
           title: 'Curriculum & Assessment',
           items: [
             { id: 'score-entry', label: 'Continuous Assessment', icon: BookOpen },
-            { id: 'honors-probation', label: 'Academic Performance', icon: Award },
             { id: 'report-card', label: 'Printable Report Cards', icon: FileText }
           ]
         },
@@ -233,15 +224,19 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     if (role === 'VICE_PRINCIPAL_ADMIN' || role === 'VICE_PRINCIPAL') {
       return [
         {
-          title: 'Student Directory & Records',
+          title: 'Instructional Leadership',
           items: [
-            { id: 'student-directory', label: 'Student Directory', icon: Users }
+            { id: 'vp-admin-dashboard', label: 'Academics & Ops Command', icon: BookOpen, badge: 'Live' },
+            { id: 'master-broadsheet', label: 'Master Broadsheet', icon: FileSpreadsheet },
+            { id: 'subject-allocations', label: 'Teacher Allocations', icon: Settings }
           ]
         },
         {
-          title: 'Student Intake & Classes',
+          title: 'Student Records',
           items: [
+            { id: 'student-directory', label: 'Student Directory', icon: Users },
             { id: 'admissions-wizard', label: 'New Admission', icon: UserPlus, badge: 'New' },
+            { id: 'honors-probation', label: 'Academic Performance', icon: Award },
             { id: 'classes-arms', label: 'Classes & Cohorts', icon: Layers },
             { id: 'subject-management', label: 'Subject Management', icon: BookOpen }
           ]
