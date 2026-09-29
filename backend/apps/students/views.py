@@ -205,7 +205,6 @@ class StudentViewSet(viewsets.ModelViewSet):
                     "PRINCIPAL",
                     "VICE_PRINCIPAL",
                     "VICE_PRINCIPAL_ADMIN",
-                    "VICE_PRINCIPAL_ACADEMICS",
                 ],
             )
         )
@@ -242,7 +241,6 @@ class StudentViewSet(viewsets.ModelViewSet):
                 "PRINCIPAL",
                 "VICE_PRINCIPAL",
                 "VICE_PRINCIPAL_ADMIN",
-                "VICE_PRINCIPAL_ACADEMICS",
                 "VICE_PRINCIPAL_STUDENT_AFFAIRS",
                 "FORM_MASTER",
                 "EXAM_OFFICER",
@@ -301,7 +299,6 @@ class StudentViewSet(viewsets.ModelViewSet):
                 "PRINCIPAL",
                 "VICE_PRINCIPAL",
                 "VICE_PRINCIPAL_ADMIN",
-                "VICE_PRINCIPAL_ACADEMICS",
                 "VICE_PRINCIPAL_STUDENT_AFFAIRS",
                 "FORM_MASTER",
                 "EXAM_OFFICER",
@@ -344,7 +341,6 @@ class StudentViewSet(viewsets.ModelViewSet):
                 "PRINCIPAL",
                 "VICE_PRINCIPAL",
                 "VICE_PRINCIPAL_ADMIN",
-                "VICE_PRINCIPAL_ACADEMICS",
                 "VICE_PRINCIPAL_STUDENT_AFFAIRS",
                 "FORM_MASTER",
                 "EXAM_OFFICER",
@@ -400,7 +396,6 @@ class StudentViewSet(viewsets.ModelViewSet):
                     "SUPER_ADMIN",
                     "PRINCIPAL",
                     "VICE_PRINCIPAL",
-                    "VICE_PRINCIPAL_ACADEMICS",
                     "VICE_PRINCIPAL_ADMIN",
                     "FORM_MASTER",
                 ],
@@ -437,7 +432,6 @@ class StudentViewSet(viewsets.ModelViewSet):
                 "PRINCIPAL",
                 "VICE_PRINCIPAL",
                 "VICE_PRINCIPAL_ADMIN",
-                "VICE_PRINCIPAL_ACADEMICS",
             ],
         ):
             return Response(
@@ -516,7 +510,6 @@ class DailyAttendanceViewSet(viewsets.ModelViewSet):
                 "PRINCIPAL",
                 "VICE_PRINCIPAL",
                 "VICE_PRINCIPAL_ADMIN",
-                "VICE_PRINCIPAL_ACADEMICS",
                 "FORM_MASTER",
             ],
         ):
@@ -602,7 +595,6 @@ class AffectivePsychomotorViewSet(viewsets.ModelViewSet):
                 "SUPER_ADMIN",
                 "PRINCIPAL",
                 "VICE_PRINCIPAL",
-                "VICE_PRINCIPAL_ACADEMICS",
                 "VICE_PRINCIPAL_ADMIN",
                 "FORM_MASTER",
             ],
@@ -620,7 +612,6 @@ class AffectivePsychomotorViewSet(viewsets.ModelViewSet):
                 "SUPER_ADMIN",
                 "PRINCIPAL",
                 "VICE_PRINCIPAL",
-                "VICE_PRINCIPAL_ACADEMICS",
                 "VICE_PRINCIPAL_ADMIN",
                 "FORM_MASTER",
             ],

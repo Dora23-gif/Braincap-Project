@@ -2,14 +2,13 @@ import type { RoleType } from '../types';
 
 /**
  * Returns a human-readable role label for any RoleType.
- * e.g. VICE_PRINCIPAL_ACADEMICS → "Vice-Principal (Academics)"
+ * e.g. VICE_PRINCIPAL → "Vice-Principal"
  */
 export function getRoleLabel(role: RoleType | string | undefined): string {
   if (!role) return '';
   switch (role) {
     case 'SUPER_ADMIN':           return 'Administrator';
     case 'PRINCIPAL':             return 'Principal';
-    case 'VICE_PRINCIPAL_ACADEMICS': return 'Vice-Principal (Academics)';
     case 'VICE_PRINCIPAL_ADMIN':  return 'Vice-Principal';
     case 'VICE_PRINCIPAL':        return 'Vice-Principal';
     case 'EXAM_OFFICER':          return 'Exam Officer';

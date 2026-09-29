@@ -11,7 +11,7 @@ export const AttendanceRegisterView: React.FC = () => {
 
   const isSuperAdmin = user?.activeRole === 'SUPER_ADMIN' || user?.assignedRoles?.includes('SUPER_ADMIN');
   const isFormMaster = user?.activeRole === 'FORM_MASTER' || user?.role === 'FORM_MASTER' || user?.assignedRoles?.includes('FORM_MASTER');
-  const isVPAdmin = user?.activeRole === 'VICE_PRINCIPAL_ADMIN' || user?.activeRole === 'VICE_PRINCIPAL' || user?.activeRole === 'VICE_PRINCIPAL_ACADEMICS';
+  const isVPAdmin = user?.activeRole === 'VICE_PRINCIPAL_ADMIN' || user?.activeRole === 'VICE_PRINCIPAL';
 
   // Find matching staff record for additional custody verification
   const matchedStaff = useMemo(() => {

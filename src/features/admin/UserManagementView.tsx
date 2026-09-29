@@ -559,7 +559,6 @@ export const UserManagementView: React.FC = () => {
         return 'bg-slate-900 text-amber-400 border-slate-700';
       case 'VICE_PRINCIPAL':
       case 'VICE_PRINCIPAL_ADMIN':
-      case 'VICE_PRINCIPAL_ACADEMICS':
         return 'bg-indigo-50 text-indigo-700 border-indigo-200';
       case 'EXAM_OFFICER':
       case 'EXAMINATION_OFFICER':
@@ -575,7 +574,6 @@ export const UserManagementView: React.FC = () => {
 
   const formatRoleLabel = (role: string) => {
     if (role === 'VICE_PRINCIPAL' || role === 'VICE_PRINCIPAL_ADMIN') return 'Vice Principal';
-    if (role === 'VICE_PRINCIPAL_ACADEMICS') return 'VP Academics';
     return role.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
   };
 

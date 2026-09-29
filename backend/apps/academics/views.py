@@ -426,7 +426,7 @@ class TeacherAllocationViewSet(viewsets.ModelViewSet):
         # Elevate access for administrators, principals, vice principals, and exam officers
         elevated_roles = {
             "SUPER_ADMIN", "PRINCIPAL", "VICE_PRINCIPAL",
-            "VICE_PRINCIPAL_ACADEMICS", "VICE_PRINCIPAL_ADMIN", "EXAM_OFFICER"
+            "VICE_PRINCIPAL_ADMIN", "EXAM_OFFICER"
         }
         user_roles = set(user.roles or [])
         if user.active_role:

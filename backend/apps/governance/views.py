@@ -34,7 +34,6 @@ class SchoolSettingsViewSet(viewsets.ViewSet):
                 "PRINCIPAL",
                 "VICE_PRINCIPAL",
                 "VICE_PRINCIPAL_ADMIN",
-                "VICE_PRINCIPAL_ACADEMICS",
             ],
         ):
             return Response(
@@ -63,7 +62,6 @@ class SchoolSettingsViewSet(viewsets.ViewSet):
                     "PRINCIPAL",
                     "VICE_PRINCIPAL",
                     "VICE_PRINCIPAL_ADMIN",
-                    "VICE_PRINCIPAL_ACADEMICS",
                 ],
             ):
                 return Response(

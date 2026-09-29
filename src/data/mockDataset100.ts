@@ -402,12 +402,11 @@ export const FULL_STAFF: StaffMember[] = [
     "id": "stf-019",
     "name": "Mr. Babatunde Fashola",
     "identifier": "STF/2026/019",
-    "email": "vp.academics@everest.com",
+    "email": "b.fashola@everest.com",
     "roles": [
-      "VICE_PRINCIPAL_ACADEMICS",
       "SUBJECT_TEACHER"
     ],
-    "title": "Vice Principal (Academics & Instruction)",
+    "title": "Senior Mathematics Master",
     "status": "ACTIVE",
     "defaultPin": "EIS-4926",
     "phoneNumber": "+234 800 555 1666",
@@ -18917,19 +18916,7 @@ export const FULL_DEMO_USERS: UserSession[] = [
     "activeRole": "EXAM_OFFICER",
     "avatarUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80",
     "staffId": "STF/2026/003"
-  },
-  {
-    "id": "user-vp-academics",
-    "name": "Mr. Babatunde Fashola",
-    "identifier": "STF/2026/019",
-    "email": "vp.academics@everest.com",
-    "assignedRoles": [
-      "VICE_PRINCIPAL_ACADEMICS",
-      "SUBJECT_TEACHER"
-    ],
-    "activeRole": "VICE_PRINCIPAL_ACADEMICS",
-    "avatarUrl": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=120&auto=format&fit=crop&q=80",
-    "staffId": "STF/2026/019"
+
   },
   {
     "id": "user-vp-admin",

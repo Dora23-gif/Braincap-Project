@@ -187,11 +187,8 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
       if (compRole === 'PRINCIPAL') {
         return sRole === 'PRINCIPAL' || sRoles.includes('PRINCIPAL') || sTitle.includes('PRINCIPAL');
       }
-      if (compRole === 'VICE_PRINCIPAL_ACADEMICS') {
-        return sRole === 'VICE_PRINCIPAL_ACADEMICS' || sRoles.includes('VICE_PRINCIPAL_ACADEMICS') || (sRole.includes('VICE_PRINCIPAL') && sTitle.includes('ACADEMIC'));
-      }
-      if (compRole === 'VICE_PRINCIPAL_STUDENT_AFFAIRS' || compRole === 'VICE_PRINCIPAL_ADMIN') {
-        return sRole.includes('VICE_PRINCIPAL') || sRoles.some((r: string) => r.includes('VICE_PRINCIPAL'));
+      if (compRole === 'VICE_PRINCIPAL' || compRole === 'VICE_PRINCIPAL_ADMIN' || compRole === 'VICE_PRINCIPAL_STUDENT_AFFAIRS') {
+        return sRole.includes('VICE_PRINCIPAL') || sRoles.some((r: string) => r.includes('VICE_PRINCIPAL')) || sTitle.includes('VICE PRINCIPAL');
       }
       if (compRole === 'EXAMINATION_OFFICER' || compRole === 'EXAM_OFFICER') {
         return sRole === 'EXAM_OFFICER' || sRole === 'EXAMINATION_OFFICER' || sRoles.includes('EXAM_OFFICER') || sRoles.includes('EXAMINATION_OFFICER') || sTitle.includes('EXAM');
@@ -741,8 +738,7 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
                 >
                   <option value="ALL">All Roles / Global Broadcast</option>
                   <option value="PRINCIPAL">Principal & Head of School</option>
-                  <option value="VICE_PRINCIPAL_ACADEMICS">Vice Principal Academics</option>
-                  <option value="VICE_PRINCIPAL_STUDENT_AFFAIRS">Vice Principal Student Affairs</option>
+                  <option value="VICE_PRINCIPAL">Vice Principal</option>
                   <option value="EXAMINATION_OFFICER">Examination Officer</option>
                   <option value="FORM_MASTER">Form Masters</option>
                   <option value="TEACHER">Subject Teachers</option>

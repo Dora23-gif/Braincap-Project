@@ -566,7 +566,7 @@ class Command(BaseCommand):
                     "roles": roles,
                     "active_role": active_role,
                     "phone_number": s.get("phoneNumber", ""),
-                    "is_staff": active_role in ("SUPER_ADMIN", "PRINCIPAL", "VICE_PRINCIPAL_ACADEMICS", "VICE_PRINCIPAL_ADMIN", "EXAM_OFFICER"),
+                    "is_staff": active_role in ("SUPER_ADMIN", "PRINCIPAL", "VICE_PRINCIPAL", "VICE_PRINCIPAL_ADMIN", "EXAM_OFFICER"),
                     "is_superuser": active_role == "SUPER_ADMIN",
                 },
             )

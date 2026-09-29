@@ -50,7 +50,6 @@ export type ActiveNavView =
   | 'principal-dashboard'
   | 'principal-remarks'
   | 'honors-probation'
-  | 'vp-academics-dashboard'
   | 'vp-admin-dashboard'
   | 'exam-officer-dashboard'
   | 'form-master-dashboard'
@@ -196,26 +195,6 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
           title: 'Institutional Identity',
           items: [
             { id: 'school-settings', label: 'Institutional Settings & Seal', icon: ShieldCheck }
-          ]
-        }
-      ];
-    }
-
-    if (role === 'VICE_PRINCIPAL_ACADEMICS') {
-      return [
-        {
-          title: 'Curriculum & Assessment',
-          items: [
-            { id: 'score-entry', label: 'Continuous Assessment', icon: BookOpen },
-            { id: 'report-card', label: 'Printable Report Cards', icon: FileText }
-          ]
-        },
-        {
-          title: 'Student Records',
-          items: [
-            { id: 'student-directory', label: 'Student Directory', icon: Users },
-            { id: 'classes-arms', label: 'Classes & Arms', icon: Layers },
-            { id: 'sessions-terms', label: 'Sessions & Terms', icon: CalendarDays }
           ]
         }
       ];

@@ -175,8 +175,6 @@ export const AuditLogView: React.FC = () => {
         return 'Super Admin';
       case 'PRINCIPAL':
         return 'Principal';
-      case 'VICE_PRINCIPAL_ACADEMICS':
-        return 'Vice Principal (Academics)';
       case 'VICE_PRINCIPAL_ADMIN':
       case 'VICE_PRINCIPAL':
         return 'Vice Principal';

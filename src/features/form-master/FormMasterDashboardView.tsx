@@ -102,7 +102,7 @@ export const FormMasterDashboardView: React.FC<FormMasterDashboardViewProps> = (
 
   // Inter-Role Direct Message State
   const [isDirectMessageOpen, setIsDirectMessageOpen] = useState(false);
-  const [directRecipientRole, setDirectRecipientRole] = useState<'VICE_PRINCIPAL_ACADEMICS' | 'EXAMINATION_OFFICER' | 'PRINCIPAL'>('VICE_PRINCIPAL_ACADEMICS');
+  const [directRecipientRole, setDirectRecipientRole] = useState<'VICE_PRINCIPAL' | 'EXAMINATION_OFFICER' | 'PRINCIPAL'>('VICE_PRINCIPAL');
   const [directSubject, setDirectSubject] = useState('');
   const [directContent, setDirectContent] = useState('');
   const [isSendingMessage, setIsSendingMessage] = useState(false);
@@ -316,9 +316,9 @@ export const FormMasterDashboardView: React.FC<FormMasterDashboardViewProps> = (
       recId = eo ? eo.id : 'stf-002';
       recName = eo ? eo.name : 'Examination Council';
     } else {
-      const vp = staff.find(s => s.role === 'VICE_PRINCIPAL_ACADEMICS');
-      recId = vp ? vp.id : 'stf-003';
-      recName = vp ? vp.name : 'Mrs. Victoria Okafor';
+      const vp = staff.find(s => s.role === 'VICE_PRINCIPAL' || s.role === 'VICE_PRINCIPAL_ADMIN');
+      recId = vp ? vp.id : 'stf-004';
+      recName = vp ? vp.name : 'Mrs. Ayodele Tinubu';
     }
 
     sendMessage({
@@ -1551,7 +1551,7 @@ export const FormMasterDashboardView: React.FC<FormMasterDashboardViewProps> = (
                     onChange={e => setDirectRecipientRole(e.target.value as any)}
                     className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-amber-500 cursor-pointer"
                   >
-                    <option value="VICE_PRINCIPAL_ACADEMICS">Vice Principal Academics (Mrs. Victoria Okafor)</option>
+                    <option value="VICE_PRINCIPAL">Vice Principal (Mrs. Ayodele Tinubu)</option>
                     <option value="EXAMINATION_OFFICER">Examination Council / Officer</option>
                     <option value="PRINCIPAL">Executive Principal (Dr. Michael Adebayo)</option>
                   </select>

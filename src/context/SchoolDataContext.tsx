@@ -227,7 +227,7 @@ interface SchoolDataContextType {
   updateExamTimetableEntry: (id: string, entry: Partial<ExamTimetableEntry>, actor?: { id: string; name: string; role: any }) => void;
   deleteExamTimetableEntry: (id: string, actor?: { id: string; name: string; role: any }) => void;
 
-  // School Timetable (VP Academics)
+  // School Timetable (Vice-Principal)
   updateClassTimetable: (classArmId: string, days: DayTimetable[], actor?: { id: string; name: string; role: any }) => void;
   addPeriodToTimetable: (classArmId: string, day: string, period: TimetablePeriod, actor?: { id: string; name: string; role: any }) => void;
   deletePeriodFromTimetable: (classArmId: string, day: string, periodNumber: number, actor?: { id: string; name: string; role: any }) => void;
@@ -284,11 +284,11 @@ export const INITIAL_PORTAL_MESSAGES: PortalMessage[] = [
     senderName: 'Engr. Olatunji Adeleke',
     senderRole: 'SUPER_ADMIN',
     senderAvatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-    recipientId: 'stf-003',
-    recipientName: 'Mrs. Victoria Okafor',
-    recipientRole: 'VICE_PRINCIPAL_ACADEMICS',
+    recipientId: 'stf-004',
+    recipientName: 'Mrs. Ayodele Tinubu',
+    recipientRole: 'VICE_PRINCIPAL',
     subject: 'Security Audit & SSS 3 Timetable Generation Synchronization',
-    content: 'Good morning Mrs. Okafor. I noticed the revised timetable for Senior Secondary has been published. Please verify that the double periods for Physics practicals in Laboratory Alpha do not conflict with Chemistry sessions on Thursdays. Let me know if any access adjustments are required on the server ledger.',
+    content: 'Good morning Mrs. Tinubu. I noticed the revised timetable for Senior Secondary has been published. Please verify that the double periods for Physics practicals in Laboratory Alpha do not conflict with Chemistry sessions on Thursdays. Let me know if any access adjustments are required on the server ledger.',
     createdAt: '2026-03-24T09:15:00.000Z',
     isRead: true,
     readAt: '2026-03-24T09:45:00.000Z',
@@ -297,9 +297,9 @@ export const INITIAL_PORTAL_MESSAGES: PortalMessage[] = [
   {
     id: 'msg-003',
     threadId: 'th-admin-vp-sync',
-    senderId: 'stf-003',
-    senderName: 'Mrs. Victoria Okafor',
-    senderRole: 'VICE_PRINCIPAL_ACADEMICS',
+    senderId: 'stf-004',
+    senderName: 'Mrs. Ayodele Tinubu',
+    senderRole: 'VICE_PRINCIPAL',
     senderAvatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150',
     recipientId: 'admin-001',
     recipientName: 'Engr. Olatunji Adeleke',
@@ -3038,10 +3038,10 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     if (updates.vpInspectionRemark) {
       addAuditLog({
-        userId: actor?.id || 'vp-acad',
-        userIdentifier: actor?.name || 'Mr. Babatunde Fashola',
-        userName: actor?.name || 'Mr. Babatunde Fashola',
-        userRole: actor?.role || 'VICE_PRINCIPAL_ACADEMICS',
+        userId: actor?.id || 'vp-001',
+        userIdentifier: actor?.name || 'Mrs. Ayodele Tinubu',
+        userName: actor?.name || 'Mrs. Ayodele Tinubu',
+        userRole: actor?.role || 'VICE_PRINCIPAL',
         action: 'SYLLABUS_AUDITED',
         targetEntity: `Scheme of Work Audit: ${trackerId}`,
         details: `Instructional audit logged: ${updates.vpInspectionRemark}`,
@@ -3461,7 +3461,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     });
   };
 
-  // School Timetable Handlers (VP Academics)
+  // School Timetable Handlers (Vice-Principal)
   const updateClassTimetable = (classArmId: string, days: DayTimetable[], actor?: { id: string; name: string; role: any }) => {
     const updated = { ...weeklyTimetables, [classArmId]: days };
     setWeeklyTimetables(updated);
@@ -3469,10 +3469,10 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const arm = classArms.find(a => a.id === classArmId);
     const actorName = actor?.name || 'Mrs. Ayodele Tinubu';
     addAuditLog({
-      userId: actor?.id || 'stf-003',
+      userId: actor?.id || 'stf-004',
       userIdentifier: actorName,
       userName: actorName,
-      userRole: actor?.role || 'VICE_PRINCIPAL_ACADEMICS',
+      userRole: actor?.role || 'VICE_PRINCIPAL',
       action: 'TIMETABLE_UPDATED' as any,
       targetEntity: `Weekly Timetable: ${arm?.fullName || classArmId}`,
       details: `Updated master school weekly timetable for ${arm?.fullName || classArmId}.`,

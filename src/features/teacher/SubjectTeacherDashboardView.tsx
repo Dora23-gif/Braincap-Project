@@ -452,7 +452,7 @@ export const SubjectTeacherDashboardView: React.FC<SubjectTeacherDashboardViewPr
 
   // Quick message modal
   const [isQuickMessageOpen, setIsQuickMessageOpen] = useState(false);
-  const [messageRecipientRole, setMessageRecipientRole] = useState<'FORM_MASTER' | 'EXAMINATION_OFFICER' | 'VICE_PRINCIPAL_ACADEMICS'>('FORM_MASTER');
+  const [messageRecipientRole, setMessageRecipientRole] = useState<'FORM_MASTER' | 'EXAMINATION_OFFICER' | 'VICE_PRINCIPAL'>('FORM_MASTER');
   const [messageSubject, setMessageSubject] = useState('');
   const [messageContent, setMessageContent] = useState('');
 

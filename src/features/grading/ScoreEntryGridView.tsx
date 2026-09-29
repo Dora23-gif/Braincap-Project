@@ -667,7 +667,6 @@ export const ScoreEntryGridView: React.FC<ScoreEntryGridViewProps> = ({
     user?.activeRole === 'SUPER_ADMIN' ||
     user?.activeRole === 'PRINCIPAL' ||
     user?.activeRole === 'VICE_PRINCIPAL' ||
-    user?.activeRole === 'VICE_PRINCIPAL_ACADEMICS' ||
     user?.activeRole === 'VICE_PRINCIPAL_ADMIN' ||
     user?.activeRole === 'EXAM_OFFICER';
 

@@ -40,7 +40,6 @@ const PrincipalRemarkingView = React.lazy(() => import('./features/principal/Pri
 const PrincipalHonorsProbationView = React.lazy(() => import('./features/principal/PrincipalHonorsProbationView').then(m => ({ default: m.PrincipalHonorsProbationView })));
 
 // Vice Principal views (Lazy-loaded on demand)
-const VPAcademicsDashboardView = React.lazy(() => import('./features/vice-principal/VPAcademicsDashboardView').then(m => ({ default: m.VPAcademicsDashboardView })));
 const VPAdminDashboardView = React.lazy(() => import('./features/vice-principal/VPAdminDashboardView').then(m => ({ default: m.VPAdminDashboardView })));
 
 // Examination Officer views (Lazy-loaded on demand)
@@ -62,18 +61,13 @@ const ROLE_PERMISSIONS: Record<string, ActiveNavView[]> = {
     'admissions-wizard', 'score-entry', 'master-broadsheet', 'attendance-register',
     'psychomotor-matrix', 'report-card', 'parent-portal', 'student-portal',
     'principal-dashboard', 'principal-remarks', 'honors-probation',
-    'vp-academics-dashboard', 'vp-admin-dashboard', 'exam-officer-dashboard',
+    'vp-admin-dashboard', 'exam-officer-dashboard',
     'form-master-dashboard', 'teacher-dashboard', 'communications'
   ],
   PRINCIPAL: [
     'principal-dashboard', 'principal-remarks', 'honors-probation', 'master-broadsheet',
     'report-card', 'academic-rollover', 'student-directory', 'subject-allocations',
     'classes-arms', 'sessions-terms', 'school-settings', 'audit-log', 'communications'
-  ],
-  VICE_PRINCIPAL_ACADEMICS: [
-    'vp-academics-dashboard', 'master-broadsheet', 'subject-allocations', 'score-entry',
-    'honors-probation', 'report-card', 'student-directory', 'classes-arms',
-    'sessions-terms', 'communications'
   ],
   VICE_PRINCIPAL_ADMIN: [
     'vp-admin-dashboard', 'attendance-register', 'student-directory', 'admissions-wizard',
@@ -138,8 +132,6 @@ const AppContent: React.FC = () => {
         return 'user-management';
       case 'PRINCIPAL':
         return 'principal-dashboard';
-      case 'VICE_PRINCIPAL_ACADEMICS':
-        return 'vp-academics-dashboard';
       case 'VICE_PRINCIPAL_ADMIN':
       case 'VICE_PRINCIPAL':
       case 'VICE_PRINCIPAL_STUDENT_AFFAIRS':
@@ -199,8 +191,6 @@ const AppContent: React.FC = () => {
         return <PrincipalRemarkingView />;
       case 'honors-probation':
         return <PrincipalHonorsProbationView />;
-      case 'vp-academics-dashboard':
-        return <VPAcademicsDashboardView />;
       case 'vp-admin-dashboard':
         return <VPAdminDashboardView />;
       case 'exam-officer-dashboard':

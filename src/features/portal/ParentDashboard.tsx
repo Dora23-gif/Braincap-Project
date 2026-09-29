@@ -126,7 +126,7 @@ export const ParentDashboard: React.FC<{ onViewReportCard: (studentId: string) =
 
   // Contact Form Master / Principal Modal State
   const [isInquiryModalOpen, setIsInquiryModalOpen] = useState(false);
-  const [inquiryRecipientRole, setInquiryRecipientRole] = useState<'FORM_MASTER' | 'PRINCIPAL' | 'VICE_PRINCIPAL_ACADEMICS'>('FORM_MASTER');
+  const [inquiryRecipientRole, setInquiryRecipientRole] = useState<'FORM_MASTER' | 'PRINCIPAL' | 'VICE_PRINCIPAL'>('FORM_MASTER');
   const [inquirySubject, setInquirySubject] = useState('');
   const [inquiryMessage, setInquiryMessage] = useState('');
   const [isSendingInquiry, setIsSendingInquiry] = useState(false);
@@ -208,10 +208,10 @@ export const ParentDashboard: React.FC<{ onViewReportCard: (studentId: string) =
       const p = staff.find(s => s.role === 'PRINCIPAL');
       recipientName = p ? p.name : 'Dr. Michael Adebayo';
       recipientId = p ? p.id : 'stf-001';
-    } else if (inquiryRecipientRole === 'VICE_PRINCIPAL_ACADEMICS') {
-      const vp = staff.find(s => s.role === 'VICE_PRINCIPAL_ACADEMICS');
-      recipientName = vp ? vp.name : 'Mrs. Victoria Okafor';
-      recipientId = vp ? vp.id : 'stf-003';
+    } else if (inquiryRecipientRole === 'VICE_PRINCIPAL') {
+      const vp = staff.find(s => s.role === 'VICE_PRINCIPAL' || s.role === 'VICE_PRINCIPAL_ADMIN');
+      recipientName = vp ? vp.name : 'Mrs. Ayodele Tinubu';
+      recipientId = vp ? vp.id : 'stf-004';
     }
 
     sendParentInquiry({
@@ -1047,7 +1047,7 @@ export const ParentDashboard: React.FC<{ onViewReportCard: (studentId: string) =
                   >
                     <option value="FORM_MASTER">Class Form Master ({formMaster.name})</option>
                     <option value="PRINCIPAL">Executive Principal ({staff.find(s => s.role === 'PRINCIPAL')?.name || 'Dr. Michael Adebayo'})</option>
-                    <option value="VICE_PRINCIPAL_ACADEMICS">Vice Principal Academics ({staff.find(s => s.role === 'VICE_PRINCIPAL_ACADEMICS')?.name || 'Mrs. Victoria Okafor'})</option>
+                    <option value="VICE_PRINCIPAL">Vice Principal ({staff.find(s => s.role === 'VICE_PRINCIPAL' || s.role === 'VICE_PRINCIPAL_ADMIN')?.name || 'Mrs. Ayodele Tinubu'})</option>
                   </select>
                 </div>
 
