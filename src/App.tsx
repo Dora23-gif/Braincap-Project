@@ -70,12 +70,12 @@ const ROLE_PERMISSIONS: Record<string, ActiveNavView[]> = {
     'classes-arms', 'sessions-terms', 'school-settings', 'audit-log', 'communications'
   ],
   VICE_PRINCIPAL_ADMIN: [
-    'vp-admin-dashboard', 'attendance-register', 'student-directory', 'admissions-wizard',
+    'vp-admin-dashboard', 'attendance-register', 'student-directory',
     'classes-arms', 'subject-management', 'audit-log', 'report-card', 'communications',
     'master-broadsheet', 'subject-allocations', 'honors-probation'
   ],
   VICE_PRINCIPAL: [
-    'vp-admin-dashboard', 'attendance-register', 'student-directory', 'admissions-wizard',
+    'vp-admin-dashboard', 'attendance-register', 'student-directory',
     'classes-arms', 'subject-management', 'audit-log', 'report-card', 'communications',
     'master-broadsheet', 'subject-allocations', 'honors-probation'
   ],

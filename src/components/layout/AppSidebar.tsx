@@ -214,7 +214,6 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
           title: 'Student Records',
           items: [
             { id: 'student-directory', label: 'Student Directory', icon: Users },
-            { id: 'admissions-wizard', label: 'New Admission', icon: UserPlus, badge: 'New' },
             { id: 'honors-probation', label: 'Academic Performance', icon: Award },
             { id: 'classes-arms', label: 'Classes & Cohorts', icon: Layers },
             { id: 'subject-management', label: 'Subject Management', icon: BookOpen }
