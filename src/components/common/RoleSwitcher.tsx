@@ -15,7 +15,6 @@ const ROLE_META: Record<string, { label: string; icon: React.ComponentType<{ cla
   SUBJECT_TEACHER: { label: 'Subject Teacher', icon: BookOpen, bg: 'bg-blue-50 dark:bg-blue-950/60', text: 'text-blue-700 dark:text-blue-300' },
   TEACHER: { label: 'Subject Teacher', icon: BookOpen, bg: 'bg-blue-50 dark:bg-blue-950/60', text: 'text-blue-700 dark:text-blue-300' },
   FORM_MASTER: { label: 'Form Master / Class Head', icon: UserCheck, bg: 'bg-emerald-50 dark:bg-emerald-950/60', text: 'text-emerald-700 dark:text-emerald-300' },
-  ADMISSIONS_OFFICER: { label: 'Admissions Officer', icon: Users, bg: 'bg-teal-50 dark:bg-teal-950/60', text: 'text-teal-700 dark:text-teal-300' },
   STUDENT: { label: 'Student Portal', icon: GraduationCap, bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-800 dark:text-slate-200' },
   PARENT: { label: 'Parent / Guardian', icon: Users, bg: 'bg-amber-50 dark:bg-amber-950/60', text: 'text-amber-800 dark:text-amber-300' }
 };

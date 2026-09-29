@@ -319,21 +319,8 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
       ];
     }
 
-    if (role === 'ADMISSIONS_OFFICER') {
-      return [
-        {
-          title: 'Admissions & Enrollment',
-          items: [
-            { id: 'admissions-wizard', label: 'New Admission', icon: UserPlus, badge: 'Intake' },
-            { id: 'student-directory', label: 'Student Directory', icon: Users },
-            { id: 'classes-arms', label: 'Classes & Cohorts', icon: Layers }
-          ]
-        }
-      ];
-    }
-
-      return [];
-    };
+    return [];
+  };
 
     const roleGroups = getRoleGroups();
     const hasComms = roleGroups.some(group => group.items.some(item => item.id === 'communications'));

@@ -158,8 +158,7 @@ export const FULL_STAFF: StaffMember[] = [
     "identifier": "STF/2026/004",
     "email": "vp.admin@everest.com",
     "roles": [
-      "VICE_PRINCIPAL_ADMIN",
-      "ADMISSIONS_OFFICER"
+      "VICE_PRINCIPAL_ADMIN"
     ],
     "title": "Vice Principal (Administration & Student Affairs)",
     "status": "ACTIVE",
@@ -18938,8 +18937,7 @@ export const FULL_DEMO_USERS: UserSession[] = [
     "identifier": "STF/2026/004",
     "email": "vp.admin@everest.com",
     "assignedRoles": [
-      "VICE_PRINCIPAL_ADMIN",
-      "ADMISSIONS_OFFICER"
+      "VICE_PRINCIPAL_ADMIN"
     ],
     "activeRole": "VICE_PRINCIPAL_ADMIN",
     "avatarUrl": "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=120&auto=format&fit=crop&q=80",

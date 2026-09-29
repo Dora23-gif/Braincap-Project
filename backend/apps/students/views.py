@@ -206,13 +206,12 @@ class StudentViewSet(viewsets.ModelViewSet):
                     "VICE_PRINCIPAL",
                     "VICE_PRINCIPAL_ADMIN",
                     "VICE_PRINCIPAL_ACADEMICS",
-                    "ADMISSIONS_OFFICER",
                 ],
             )
         )
         if not is_admin:
             return Response(
-                {"detail": "Only Administrative Staff and Admissions Officers can register students."},
+                {"detail": "Only Administrative Staff can register students."},
                 status=status.HTTP_403_FORBIDDEN,
             )
         serializer = self.get_serializer(data=request.data)
@@ -245,7 +244,6 @@ class StudentViewSet(viewsets.ModelViewSet):
                 "VICE_PRINCIPAL_ADMIN",
                 "VICE_PRINCIPAL_ACADEMICS",
                 "VICE_PRINCIPAL_STUDENT_AFFAIRS",
-                "ADMISSIONS_OFFICER",
                 "FORM_MASTER",
                 "EXAM_OFFICER",
             ],
@@ -305,7 +303,6 @@ class StudentViewSet(viewsets.ModelViewSet):
                 "VICE_PRINCIPAL_ADMIN",
                 "VICE_PRINCIPAL_ACADEMICS",
                 "VICE_PRINCIPAL_STUDENT_AFFAIRS",
-                "ADMISSIONS_OFFICER",
                 "FORM_MASTER",
                 "EXAM_OFFICER",
             ],
@@ -349,7 +346,6 @@ class StudentViewSet(viewsets.ModelViewSet):
                 "VICE_PRINCIPAL_ADMIN",
                 "VICE_PRINCIPAL_ACADEMICS",
                 "VICE_PRINCIPAL_STUDENT_AFFAIRS",
-                "ADMISSIONS_OFFICER",
                 "FORM_MASTER",
                 "EXAM_OFFICER",
             ],
@@ -431,7 +427,7 @@ class StudentViewSet(viewsets.ModelViewSet):
     def send_invite(self, request, pk=None):
         """
         POST /api/v1/students/{id}/send-invite/
-        Triggered when SuperAdmin or Admissions Officer clicks 'Send Invite' in the UI.
+        Triggered when SuperAdmin or School Administrator clicks 'Send Invite' in the UI.
         Dispatches the invitation link to the parent's email.
         """
         if not user_has_any_role(
@@ -442,7 +438,6 @@ class StudentViewSet(viewsets.ModelViewSet):
                 "VICE_PRINCIPAL",
                 "VICE_PRINCIPAL_ADMIN",
                 "VICE_PRINCIPAL_ACADEMICS",
-                "ADMISSIONS_OFFICER",
             ],
         ):
             return Response(

@@ -12,7 +12,6 @@ export type RoleType =
   | 'SUBJECT_TEACHER' 
   | 'TEACHER'
   | 'FORM_MASTER' 
-  | 'ADMISSIONS_OFFICER' 
   | 'STUDENT' 
   | 'PARENT'
   | 'ALL';

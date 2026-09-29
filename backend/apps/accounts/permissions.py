@@ -91,7 +91,6 @@ class IsTeacherOrAdmin(permissions.BasePermission):
                 "FORM_MASTER",
                 "SUBJECT_TEACHER",
                 "TEACHER",
-                "ADMISSIONS_OFFICER",
             ],
         )
 
@@ -159,7 +158,6 @@ class ParentAccessOnly(permissions.BasePermission):
                 "FORM_MASTER",
                 "SUBJECT_TEACHER",
                 "TEACHER",
-                "ADMISSIONS_OFFICER",
             ],
         ):
             return True

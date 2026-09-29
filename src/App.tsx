@@ -105,9 +105,6 @@ const ROLE_PERMISSIONS: Record<string, ActiveNavView[]> = {
   TEACHER: [
     'teacher-dashboard', 'score-entry', 'master-broadsheet', 'report-card', 'communications'
   ],
-  ADMISSIONS_OFFICER: [
-    'admissions-wizard', 'student-directory', 'classes-arms', 'communications'
-  ],
   PARENT: [
     'parent-portal', 'student-portal', 'report-card', 'communications'
   ],
@@ -132,8 +129,6 @@ const AppContent: React.FC = () => {
       case 'EXAM_OFFICER':
       case 'EXAMINATION_OFFICER':
         return 'exam-officer-dashboard';
-      case 'ADMISSIONS_OFFICER':
-        return 'admissions-wizard';
       case 'PARENT':
       case 'STUDENT':
         return 'parent-portal';

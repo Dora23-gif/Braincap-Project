@@ -769,7 +769,6 @@ export function adaptStaffFromBackend(d: any): StaffMember {
     'EXAM_OFFICER': 'Chief Examination Officer',
     'FORM_MASTER': 'Form Master',
     'SUBJECT_TEACHER': 'Subject Teacher',
-    'ADMISSIONS_OFFICER': 'Admissions Officer',
   };
 
   const defaultTitle = roleTitleMap[primaryRole] || primaryRole.replace(/_/g, ' ');

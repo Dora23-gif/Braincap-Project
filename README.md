@@ -9,7 +9,7 @@ Built with **React 19**, **TypeScript**, **Tailwind CSS v4**, and **Vite**.
 ## 🌟 Key Capabilities & Architectural Features
 
 ### 1. Role-Based Access Control (RBAC) & Purview Isolation
-- **13 Institutional Roles**: Super Administrator, Principal, Vice Principal Academics, Vice Principal Administration, Exam Officer, Form Master, Subject Teacher, Bursar, Librarian, Guidance Counselor, House Master, Admissions Officer, and Parent.
+- **Institutional Roles**: Super Administrator, Principal, Vice Principal Academics, Vice Principal Administration, Exam Officer, Form Master, Subject Teacher, Bursar, Librarian, Guidance Counselor, House Master, and Parent.
 - **Strict Subject Purview**: Subject Teachers can only enter marks and access rosters for their allocated subjects and class arms.
 - **Custodial Homeroom Arm Isolation**: Form Masters are locked to their assigned pastoral arm for attendance, psychomotor ratings, and terminal broadsheets.
 - **Dual-Role Switching**: Seamlessly switch between active roles (e.g. Subject Teacher and Form Master) while maintaining strict jurisdictional boundaries.

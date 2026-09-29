@@ -16,7 +16,6 @@ export function getRoleLabel(role: RoleType | string | undefined): string {
     case 'FORM_MASTER':           return 'Form Teacher';
     case 'SUBJECT_TEACHER':       return 'Teacher';
     case 'TEACHER':               return 'Teacher';
-    case 'ADMISSIONS_OFFICER':    return 'Admissions Officer';
     case 'PARENT':                return 'Parent';
     case 'STUDENT':               return 'Student';
     default:

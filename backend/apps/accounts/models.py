@@ -31,7 +31,6 @@ class CustomUser(AbstractUser):
         ("EXAM_OFFICER", "Exam Officer"),
         ("FORM_MASTER", "Form Master"),
         ("SUBJECT_TEACHER", "Subject Teacher"),
-        ("ADMISSIONS_OFFICER", "Admissions Officer"),
         ("PARENT", "Parent"),
         ("STUDENT", "Student"),
     ]

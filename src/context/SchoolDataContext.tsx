@@ -1710,7 +1710,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }));
     setScores(prev => [...initialScores, ...prev]);
 
-    // Role notification to Principal & Admissions Officer
+    // Role notification to Principal & Administration
     sendNotification({
       role: 'PRINCIPAL',
       title: 'New Student Admission Registered',
@@ -1718,8 +1718,8 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       category: 'ADMISSION',
       priority: 'NORMAL',
       linkView: 'student-directory',
-      actorName: 'Admissions Office',
-      actorRole: 'ADMISSIONS_OFFICER'
+      actorName: 'Administrative Office',
+      actorRole: 'VICE_PRINCIPAL_ADMIN'
     });
 
     return newStudent;
