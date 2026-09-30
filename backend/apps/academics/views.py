@@ -381,6 +381,19 @@ class ClassLevelViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     filterset_fields = ["section"]
 
+    def destroy(self, request, *args, **kwargs):
+        level = self.get_object()
+        arms = level.arms.all()
+        student_count = sum(a.students.count() for a in arms)
+        if student_count > 0:
+            return Response(
+                {"detail": f"Cannot delete '{level.name}' because {student_count} students are currently enrolled in its classroom arms."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        TeacherAllocation.objects.filter(class_arm__in=arms).delete()
+        arms.delete()
+        return super().destroy(request, *args, **kwargs)
+
 
 class ClassArmViewSet(viewsets.ModelViewSet):
     queryset = ClassArm.objects.select_related("class_level", "form_master").all()
@@ -388,6 +401,28 @@ class ClassArmViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     filterset_fields = ["class_level", "class_level__section"]
     search_fields = ["full_name", "name"]
+
+    def destroy(self, request, *args, **kwargs):
+        arm = self.get_object()
+        student_count = arm.students.count()
+        reassign_id = request.query_params.get("reassign_to")
+        if student_count > 0:
+            if reassign_id:
+                target_arm = ClassArm.objects.filter(pk=reassign_id).first()
+                if not target_arm:
+                    return Response({"detail": "Invalid target class arm for reassignment."}, status=status.HTTP_400_BAD_REQUEST)
+                arm.students.all().update(current_class_arm=target_arm)
+            else:
+                fallback = ClassArm.objects.filter(class_level=arm.class_level).exclude(pk=arm.pk).first()
+                if fallback:
+                    arm.students.all().update(current_class_arm=fallback)
+                else:
+                    return Response(
+                        {"detail": f"Cannot delete '{arm.full_name}' because {student_count} students are currently enrolled. Reassign them first."},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+        TeacherAllocation.objects.filter(class_arm=arm).delete()
+        return super().destroy(request, *args, **kwargs)
 
 
 class SubjectViewSet(viewsets.ModelViewSet):

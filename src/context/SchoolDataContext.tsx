@@ -145,6 +145,8 @@ interface SchoolDataContextType {
   deleteStudent: (studentId: string, reason: string, actor?: { id: string; name: string; role: any }) => void;
   addClassArm: (armData: { classLevelId: string; name: string; formMasterId?: string; formMasterName?: string }, actor?: { id: string; name: string; role: any }) => ClassArm | Promise<ClassArm>;
   addClassLevel: (levelData: { name: string; section: 'JUNIOR' | 'SENIOR'; order?: number }, actor?: { id: string; name: string; role: any }) => ClassLevel | Promise<ClassLevel>;
+  deleteClassArm: (armId: string, actor?: { id: string; name: string; role: any }, options?: { reassignToArmId?: string }) => Promise<{ success: boolean; error?: string }>;
+  deleteClassLevel: (levelId: string, actor?: { id: string; name: string; role: any }) => Promise<{ success: boolean; error?: string }>;
   addSubject: (data: Omit<Subject, 'id'>) => Promise<Subject>;
   updateSubject: (subjectId: string, updates: Partial<Subject>) => Promise<Subject>;
   publishResults: (termId: string, isPublished: boolean) => void;
@@ -1977,6 +1979,164 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       console.warn('Backend class arm creation error, keeping local optimistic:', err);
     }
     return newArm;
+  };
+
+  const deleteClassArm = async (
+    armId: string,
+    actor?: { id: string; name: string; role: any },
+    options?: { reassignToArmId?: string }
+  ): Promise<{ success: boolean; error?: string }> => {
+    const existingArm = classArms.find(
+      a => a.id === armId || resolveArmId(a.id, a.fullName) === resolveArmId(armId) || a.fullName.toLowerCase() === armId.toLowerCase()
+    );
+    if (!existingArm) {
+      return { success: false, error: 'Class arm not found.' };
+    }
+
+    const reassignArm = options?.reassignToArmId
+      ? classArms.find(a => a.id === options.reassignToArmId || resolveArmId(a.id, a.fullName) === resolveArmId(options.reassignToArmId))
+      : undefined;
+
+    // 1. Reassign or unassign students in this arm
+    setStudents(prev =>
+      prev.map(s => {
+        const matches = s.currentClassArmId === existingArm.id ||
+          resolveArmId(s.currentClassArmId, s.currentClassArmName) === resolveArmId(existingArm.id, existingArm.fullName) ||
+          s.currentClassArmName?.toLowerCase() === existingArm.fullName.toLowerCase();
+        if (matches) {
+          return {
+            ...s,
+            currentClassArmId: reassignArm ? reassignArm.id : '',
+            currentClassArmName: reassignArm ? reassignArm.fullName : 'Unassigned',
+          };
+        }
+        return s;
+      })
+    );
+
+    // 2. Unassign Form Master if assigned
+    setStaff(prev =>
+      prev.map(m => {
+        if (m.formMasterArmId === existingArm.id || m.formMasterArmName?.toLowerCase() === existingArm.fullName.toLowerCase()) {
+          return {
+            ...m,
+            formMasterArmId: undefined,
+            formMasterArmName: undefined,
+          };
+        }
+        return m;
+      })
+    );
+
+    // 3. Remove teacher subject allocations for this arm
+    setAllocations(prev =>
+      prev.filter(alloc =>
+        alloc.classArmId !== existingArm.id &&
+        resolveArmId(alloc.classArmId) !== resolveArmId(existingArm.id, existingArm.fullName)
+      )
+    );
+
+    // 4. Remove arm from classArms
+    setClassArms(prev =>
+      prev.filter(
+        a => a.id !== existingArm.id &&
+             resolveArmId(a.id, a.fullName) !== resolveArmId(existingArm.id, existingArm.fullName) &&
+             a.fullName.toLowerCase() !== existingArm.fullName.toLowerCase()
+      )
+    );
+
+    // 5. Add audit log
+    if (actor) {
+      addAuditLog({
+        userId: actor.id,
+        userIdentifier: actor.name,
+        userName: actor.name,
+        userRole: actor.role,
+        action: 'CLASS_ARM_DELETED',
+        targetEntity: `Class Arm: ${existingArm.fullName}`,
+        details: `Deleted class arm "${existingArm.fullName}"${reassignArm ? ` and reassigned students to ${reassignArm.fullName}` : ''}.`,
+        metadata: { classArmId: existingArm.id, fullName: existingArm.fullName, reassignTo: reassignArm?.fullName }
+      });
+    }
+
+    // 6. Sync with backend API
+    try {
+      const pk = resolveArmPk(existingArm.id) || (typeof existingArm.id === 'number' ? existingArm.id : parseInt(String(existingArm.id).replace(/\D/g, ''), 10));
+      if (pk && !isNaN(pk)) {
+        const targetPk = reassignArm ? (resolveArmPk(reassignArm.id) || parseInt(String(reassignArm.id).replace(/\D/g, ''), 10)) : undefined;
+        const query = targetPk ? `?reassign_to=${targetPk}` : '';
+        await api.delete(`/academics/class-arms/${pk}/${query}`);
+      }
+    } catch (err: any) {
+      console.warn('Backend class arm deletion warning (persisted locally):', err);
+    }
+
+    return { success: true };
+  };
+
+  const deleteClassLevel = async (
+    levelId: string,
+    actor?: { id: string; name: string; role: any }
+  ): Promise<{ success: boolean; error?: string }> => {
+    const existingLevel = classLevels.find(
+      l => l.id === levelId || l.name.toLowerCase() === levelId.toLowerCase() || String(l.order) === levelId
+    );
+    if (!existingLevel) {
+      return { success: false, error: 'Class level not found.' };
+    }
+
+    // Find all arms under this level
+    const childArms = classArms.filter(
+      a => a.classLevelId === existingLevel.id ||
+           a.classLevelId === String(existingLevel.order) ||
+           (existingLevel.name && a.fullName?.toLowerCase().startsWith(existingLevel.name.toLowerCase()))
+    );
+
+    // Check if any students are in these arms
+    const childArmIds = new Set(childArms.map(a => a.id));
+    const studentsInLevel = students.filter(s => childArmIds.has(s.currentClassArmId));
+    if (studentsInLevel.length > 0) {
+      return {
+        success: false,
+        error: `Cannot delete "${existingLevel.name}" because ${studentsInLevel.length} students are currently enrolled in its classroom arms. Please delete or reassign the students/arms first.`
+      };
+    }
+
+    // Remove child arms
+    for (const arm of childArms) {
+      await deleteClassArm(arm.id, actor);
+    }
+
+    // Remove level from state
+    setClassLevels(prev =>
+      prev.filter(l => l.id !== existingLevel.id && l.name.toLowerCase() !== existingLevel.name.toLowerCase())
+    );
+
+    // Add audit log
+    if (actor) {
+      addAuditLog({
+        userId: actor.id,
+        userIdentifier: actor.name,
+        userName: actor.name,
+        userRole: actor.role,
+        action: 'CLASS_LEVEL_DELETED',
+        targetEntity: `Class Level: ${existingLevel.name}`,
+        details: `Deleted academic class level "${existingLevel.name}" and removed all its arms.`,
+        metadata: { classLevelId: existingLevel.id, levelName: existingLevel.name }
+      });
+    }
+
+    // Sync with backend API
+    try {
+      const pk = parseInt(String(existingLevel.id).replace(/\D/g, ''), 10);
+      if (pk && !isNaN(pk)) {
+        await api.delete(`/academics/class-levels/${pk}/`);
+      }
+    } catch (err: any) {
+      console.warn('Backend class level deletion warning (persisted locally):', err);
+    }
+
+    return { success: true };
   };
 
   const addSubject = async (data: Omit<Subject, 'id'>): Promise<Subject> => {
@@ -3861,6 +4021,8 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         deleteStudent,
         addClassArm,
         addClassLevel,
+        deleteClassArm,
+        deleteClassLevel,
         addSubject,
         updateSubject,
         publishResults,
