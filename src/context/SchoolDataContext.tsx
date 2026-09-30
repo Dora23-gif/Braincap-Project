@@ -149,6 +149,7 @@ interface SchoolDataContextType {
   deleteClassLevel: (levelId: string, actor?: { id: string; name: string; role: any }) => Promise<{ success: boolean; error?: string }>;
   addSubject: (data: Omit<Subject, 'id'>) => Promise<Subject>;
   updateSubject: (subjectId: string, updates: Partial<Subject>) => Promise<Subject>;
+  deleteSubject: (subjectId: string, actor?: { id: string; name: string; role: any }) => Promise<{ success: boolean; error?: string }>;
   publishResults: (termId: string, isPublished: boolean) => void;
   setActiveTerm: (termId: string) => void;
   getStudentDossier: (studentId: string, termId?: string) => StudentTerminalDossier | null;
@@ -2227,6 +2228,65 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
+  const deleteSubject = async (
+    subjectId: string,
+    actor?: { id: string; name: string; role: any }
+  ): Promise<{ success: boolean; error?: string }> => {
+    const existing = subjects.find(
+      s => s.id === subjectId || s.code.toUpperCase() === subjectId.toUpperCase() || (s.backendId && String(s.backendId) === String(subjectId))
+    );
+    if (!existing) {
+      return { success: false, error: 'Subject not found.' };
+    }
+
+    // 1. Remove from subjects list
+    setSubjects(prev => prev.filter(s => s.id !== existing.id && s.code.toUpperCase() !== existing.code.toUpperCase()));
+
+    // 2. Remove teacher subject allocations for this subject
+    setAllocations(prev =>
+      prev.filter(alloc => alloc.subjectId !== existing.id && resolveSubjectId(alloc.subjectId) !== resolveSubjectId(existing.id))
+    );
+
+    // 3. Remove from students' registeredSubjectIds
+    setStudents(prev =>
+      prev.map(st => {
+        if (st.registeredSubjectIds && st.registeredSubjectIds.length > 0) {
+          return {
+            ...st,
+            registeredSubjectIds: st.registeredSubjectIds.filter(
+              id => id !== existing.id && resolveSubjectId(id) !== resolveSubjectId(existing.id) && id !== existing.code
+            )
+          };
+        }
+        return st;
+      })
+    );
+
+    // 4. Add audit log
+    addAuditLog({
+      userId: actor?.id || authUser?.id || 'admin',
+      userIdentifier: actor?.name || authUser?.identifier || 'ADMIN',
+      userName: actor?.name || authUser?.name || 'Administrator',
+      userRole: actor?.role || authUser?.activeRole || 'SUPER_ADMIN',
+      action: 'SETTINGS_UPDATED',
+      targetEntity: `Subject: ${existing.name} (${existing.code})`,
+      details: `Deleted academic subject "${existing.name}" (${existing.code}).`,
+      metadata: { subjectId: existing.id, code: existing.code, name: existing.name }
+    });
+
+    // 5. Backend sync
+    const targetPk = existing.backendId || resolveSubjectPk(existing.code) || resolveSubjectPk(existing.id);
+    if (targetPk) {
+      try {
+        await api.delete(`/academics/subjects/${targetPk}/`);
+      } catch (err: any) {
+        console.warn('Backend subject deletion warning (persisted locally):', err);
+      }
+    }
+
+    return { success: true };
+  };
+
   const publishResults = async (termId: string, isPublished: boolean) => {
     setTerms(prev => prev.map(t => t.id === termId ? { ...t, isResultsPublished: isPublished } : t));
     const termPk = resolveTermPk(termId);
@@ -4025,6 +4085,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         deleteClassLevel,
         addSubject,
         updateSubject,
+        deleteSubject,
         publishResults,
         setActiveTerm,
         getStudentDossier,

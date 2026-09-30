@@ -8,7 +8,9 @@ import {
   Pencil,
   CheckCircle2,
   AlertCircle,
-  X
+  X,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import { FuturisticPageShell } from '../../components/common/FuturisticPageShell';
 import { DoubleBezelCard } from '../../components/common/DoubleBezelCard';
@@ -16,7 +18,7 @@ import { ModalPortal } from '../../components/common/ModalPortal';
 import type { Subject, SubjectGroup } from '../../types';
 
 export const SubjectManagementView: React.FC = () => {
-  const { subjects, addSubject, updateSubject } = useSchoolData();
+  const { subjects, addSubject, updateSubject, deleteSubject } = useSchoolData();
   const { user } = useAuth();
 
   const canManage =
@@ -52,6 +54,11 @@ export const SubjectManagementView: React.FC = () => {
   const [editError, setEditError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Delete Subject Modal State
+  const [subjectToDelete, setSubjectToDelete] = useState<Subject | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   // Success Toast
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -84,6 +91,37 @@ export const SubjectManagementView: React.FC = () => {
     setEditApplicableTo(subject.applicableTo || 'ALL');
     setEditGroup(subject.group || 'GENERAL_ELECTIVE');
     setEditError(null);
+  };
+
+  // Open Delete Modal for subject
+  const handleOpenDelete = (subject: Subject) => {
+    setSubjectToDelete(subject);
+    setDeleteError(null);
+  };
+
+  // Confirm Delete Subject
+  const handleConfirmDelete = async () => {
+    if (!subjectToDelete) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await deleteSubject(subjectToDelete.id, {
+        id: user?.id || 'stf-001',
+        name: user?.name || 'Administrator',
+        role: user?.activeRole || 'SUPER_ADMIN'
+      });
+      if (!res.success) {
+        setDeleteError(res.error || 'Failed to delete subject.');
+        setIsDeleting(false);
+        return;
+      }
+      showToast(`Subject "${subjectToDelete.name}" (${subjectToDelete.code}) was deleted.`);
+      setSubjectToDelete(null);
+    } catch (err: any) {
+      setDeleteError(err?.message || 'An error occurred while deleting the subject.');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   // Submit Add Subject
@@ -331,13 +369,26 @@ export const SubjectManagementView: React.FC = () => {
 
                       <td className="py-3.5 px-4 sm:px-6 text-right">
                         {canManage ? (
-                          <button
-                            onClick={() => handleOpenEdit(subject)}
-                            className="touch-target px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-amber-50 dark:bg-slate-800 dark:hover:bg-amber-950/40 text-slate-700 dark:text-slate-300 hover:text-amber-800 dark:hover:text-amber-300 border border-slate-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-700 text-xs font-bold transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
-                          >
-                            <Pencil className="w-3 h-3 text-amber-500" />
-                            <span>Edit</span>
-                          </button>
+                          <div className="flex items-center justify-end gap-1.5 sm:gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEdit(subject)}
+                              className="touch-target px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-amber-50 dark:bg-slate-800 dark:hover:bg-amber-950/40 text-slate-700 dark:text-slate-300 hover:text-amber-800 dark:hover:text-amber-300 border border-slate-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-700 text-xs font-bold transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+                              title={`Edit ${subject.name}`}
+                            >
+                              <Pencil className="w-3 h-3 text-amber-500" />
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenDelete(subject)}
+                              className="touch-target px-2.5 sm:px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/80 hover:border-rose-300 dark:hover:border-rose-700 text-xs font-bold transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+                              title={`Delete ${subject.name}`}
+                            >
+                              <Trash2 className="w-3 h-3 text-rose-600 dark:text-rose-400" />
+                              <span>Delete</span>
+                            </button>
+                          </div>
                         ) : (
                           <span className="text-slate-400 text-xs">Read-Only</span>
                         )}
@@ -597,6 +648,82 @@ export const SubjectManagementView: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </ModalPortal>
+      )}
+
+      {/* Delete Subject Confirmation Modal */}
+      {subjectToDelete && (
+        <ModalPortal isOpen={!!subjectToDelete} onClose={() => !isDeleting && setSubjectToDelete(null)} maxWidthClass="max-w-md">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 sm:p-7 space-y-4 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900/80 text-rose-600 dark:text-rose-400 flex items-center justify-center shadow-xs">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">Delete Academic Subject</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Decommission curriculum subject</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setSubjectToDelete(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {deleteError && (
+              <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-xs text-rose-700 dark:text-rose-300 rounded-xl flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+                <span>{deleteError}</span>
+              </div>
+            )}
+
+            {/* Subject Summary Card */}
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-sm text-slate-900 dark:text-white">{subjectToDelete.name}</span>
+                <span className="font-mono font-bold text-xs px-2 py-0.5 rounded bg-slate-200/80 dark:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-600">
+                  {subjectToDelete.code}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                <span>Category: <strong className="text-slate-700 dark:text-slate-200">{subjectToDelete.category || 'General'}</strong></span>
+                <span>&bull;</span>
+                <span>Level: <strong className="text-slate-700 dark:text-slate-200">{subjectToDelete.applicableTo || 'All'}</strong></span>
+              </div>
+            </div>
+
+            <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-xl text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <p className="leading-relaxed">
+                Deleting this subject will remove it from the school curriculum, cancel any active teacher allocations for it, and unregister it from enrolled student records.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setSubjectToDelete(null)}
+                className="px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleConfirmDelete}
+                className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50 shadow-md hover:shadow-rose-600/20"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{isDeleting ? 'Deleting...' : 'Delete Subject'}</span>
+              </button>
+            </div>
           </div>
         </ModalPortal>
       )}
