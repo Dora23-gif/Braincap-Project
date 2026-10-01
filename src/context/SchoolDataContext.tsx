@@ -260,108 +260,9 @@ interface SchoolDataContextType {
 
 const SchoolDataContext = createContext<SchoolDataContextType | undefined>(undefined);
 
-const DATA_VERSION = 'v17_notifications_comms_live';
+const DATA_VERSION = 'v18_clean_messages_state';
 
-export const INITIAL_PORTAL_MESSAGES: PortalMessage[] = [
-  {
-    id: 'msg-001',
-    threadId: 'th-executive-directives',
-    senderId: 'stf-001',
-    senderName: 'Dr. Michael Adebayo',
-    senderRole: 'PRINCIPAL',
-    senderAvatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-    recipientId: 'ALL',
-    recipientName: 'All Academic Staff & Officers',
-    recipientRole: 'ALL',
-    subject: 'Executive Directive: Second Term Examination Protocol & Marksheet Locking',
-    content: 'Esteemed Faculty and Academic Officers,\n\nAs we enter the Second Term examination period, all continuous assessments (CA1, CA2, assignments, and practical projects) must be entered and locked in the EIS Portal by Friday at 17:00.\n\nThe Examination Officer and Vice Principals will commence broadsheet verification and terminal sealing immediately after. Ensure strict confidentiality, accuracy, and zero score disparity. Thank you for your continued dedication to academic excellence.\n\nWarm regards,\nDr. Michael Adebayo\nPrincipal & Head of School',
-    createdAt: '2026-03-24T08:30:00.000Z',
-    isRead: true,
-    readAt: '2026-03-24T09:00:00.000Z',
-    priority: 'OFFICIAL_DIRECTIVE'
-  },
-  {
-    id: 'msg-002',
-    threadId: 'th-admin-vp-sync',
-    senderId: 'admin-001',
-    senderName: 'Engr. Olatunji Adeleke',
-    senderRole: 'SUPER_ADMIN',
-    senderAvatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-    recipientId: 'stf-004',
-    recipientName: 'Mrs. Ayodele Tinubu',
-    recipientRole: 'VICE_PRINCIPAL',
-    subject: 'Security Audit & SSS 3 Timetable Generation Synchronization',
-    content: 'Good morning Mrs. Tinubu. I noticed the revised timetable for Senior Secondary has been published. Please verify that the double periods for Physics practicals in Laboratory Alpha do not conflict with Chemistry sessions on Thursdays. Let me know if any access adjustments are required on the server ledger.',
-    createdAt: '2026-03-24T09:15:00.000Z',
-    isRead: true,
-    readAt: '2026-03-24T09:45:00.000Z',
-    priority: 'NORMAL'
-  },
-  {
-    id: 'msg-003',
-    threadId: 'th-admin-vp-sync',
-    senderId: 'stf-004',
-    senderName: 'Mrs. Ayodele Tinubu',
-    senderRole: 'VICE_PRINCIPAL',
-    senderAvatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150',
-    recipientId: 'admin-001',
-    recipientName: 'Engr. Olatunji Adeleke',
-    recipientRole: 'SUPER_ADMIN',
-    subject: 'Re: Security Audit & SSS 3 Timetable Generation Synchronization',
-    content: 'Good day Engr. Adeleke. The laboratory schedule has been cross-referenced with the Science Department head. Lab Alpha is allocated exclusively to Chemistry on Tuesdays and Physics on Thursdays. There are no clashes. Thank you for flagging!',
-    createdAt: '2026-03-24T10:10:00.000Z',
-    isRead: false,
-    priority: 'NORMAL'
-  },
-  {
-    id: 'msg-004',
-    threadId: 'th-parent-olympiad-inquiry',
-    senderId: 'par-001',
-    senderName: 'Dr. Kingsley Adeleke',
-    senderRole: 'PARENT',
-    recipientId: 'stf-001',
-    recipientName: 'Dr. Michael Adebayo',
-    recipientRole: 'PRINCIPAL',
-    subject: 'Inquiry Regarding National Mathematics Olympiad & Mock Exam Conflict',
-    content: 'Dear Principal Adebayo,\n\nMy ward, Favour Adeleke (SSS 2 Gold), has been invited to represent the state at the National Mathematics Olympiad preliminaries on April 14th. This coincides with the general Mathematics mock exam on the school exam timetable.\n\nCould we arrange for an authorized special sitting or reschedule for him so that his terminal continuous assessment is not affected? We appreciate the school\'s mentorship.\n\nRespectfully,\nDr. Kingsley Adeleke',
-    createdAt: '2026-03-24T11:00:00.000Z',
-    isRead: false,
-    priority: 'URGENT',
-    relatedEntity: { type: 'STUDENT', id: 'std-001', name: 'Favour Adeleke' }
-  },
-  {
-    id: 'msg-005',
-    threadId: 'th-formmaster-teacher-chase',
-    senderId: 'stf-002',
-    senderName: 'Mr. Chukwuma Eze',
-    senderRole: 'FORM_MASTER',
-    recipientId: 'stf-004',
-    recipientName: 'Mrs. Folashade Alabi',
-    recipientRole: 'TEACHER',
-    subject: 'SSS 2 Gold: Outstanding Mathematics Marksheet Submission',
-    content: 'Good afternoon Mrs. Alabi,\n\nAs Form Master of SSS 2 Gold, I am finalizing the pastoral evaluations and class broadsheet. We are awaiting the final CA2 component for Mathematics to proceed with arm seal endorsement. Please submit your marksheet endorsement as soon as possible today.\n\nThank you,\nMr. Chukwuma Eze',
-    createdAt: '2026-03-24T12:30:00.000Z',
-    isRead: false,
-    priority: 'NORMAL',
-    relatedEntity: { type: 'CLASS_ARM', id: 'arm-sss2-gold', name: 'SSS 2 Gold' }
-  },
-  {
-    id: 'msg-006',
-    threadId: 'th-exam-hall-invigilation',
-    senderId: 'stf-005',
-    senderName: 'Mr. Babatunde Sanusi',
-    senderRole: 'EXAMINATION_OFFICER',
-    recipientId: 'stf-004',
-    recipientName: 'Mrs. Folashade Alabi',
-    recipientRole: 'TEACHER',
-    subject: 'Chief Invigilator Duty - Main Exam Hall Alpha (Mathematics)',
-    content: 'Dear Mrs. Alabi,\n\nPlease be reminded that you have been rostered as Chief Invigilator for the Mathematics General examination on April 14 in Main Exam Hall Alpha. Please report to the Exam Control Office 30 minutes prior to paper commencement to sign out the encrypted question packets.\n\nMr. Babatunde Sanusi\nExamination Officer',
-    createdAt: '2026-03-24T13:00:00.000Z',
-    isRead: false,
-    priority: 'URGENT',
-    relatedEntity: { type: 'EXAM', id: 'exam-001', name: 'Mathematics (General)' }
-  }
-];
+export const INITIAL_PORTAL_MESSAGES: PortalMessage[] = [];
 
 export const INITIAL_APP_NOTIFICATIONS: AppNotification[] = [
   {
@@ -906,23 +807,15 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
       if (messagesRes && messagesRes.status === 'fulfilled') {
         const raw = (messagesRes.value as any)?.results || messagesRes.value;
-        if (Array.isArray(raw) && raw.length > 0) {
-          const liveMessages = raw.map(adaptPortalMessageFromBackend);
-          setPortalMessages(prev => {
-            const current = [...prev];
-            for (const lm of liveMessages) {
-              const idx = current.findIndex(
-                m => m.id === lm.id || (m.threadId === lm.threadId && m.subject === lm.subject && m.createdAt === lm.createdAt)
-              );
-              if (idx >= 0) {
-                current[idx] = { ...current[idx], ...lm };
-              } else {
-                current.unshift(lm);
-              }
-            }
-            try { localStorage.setItem('eis_portal_messages', JSON.stringify(current)); } catch (e) {}
-            return current;
-          });
+        if (Array.isArray(raw)) {
+          if (raw.length === 0) {
+            setPortalMessages([]);
+            try { localStorage.setItem('eis_portal_messages', JSON.stringify([])); } catch (e) {}
+          } else {
+            const liveMessages = raw.map(adaptPortalMessageFromBackend);
+            setPortalMessages(liveMessages);
+            try { localStorage.setItem('eis_portal_messages', JSON.stringify(liveMessages)); } catch (e) {}
+          }
         }
       }
 

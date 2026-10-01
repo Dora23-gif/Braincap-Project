@@ -817,25 +817,7 @@ export const INITIAL_WEEKLY_TIMETABLES: Record<string, DayTimetable[]> = {
   ]
 };
 
-export const INITIAL_PARENT_INQUIRIES: ParentInquiry[] = [
-  {
-    id: 'inq-001',
-    studentId: 'std-041',
-    studentName: 'Oluwaseun Emmanuel Adeyemi',
-    classArmName: 'SSS 2 Gold',
-    parentId: 'prt-001',
-    parentName: 'Chief & Mrs. T. Adeyemi',
-    recipientStaffId: 'STF/2026/018',
-    recipientStaffName: 'Dr. Michael Adebayo',
-    recipientRole: 'Form Master / Senior Physics Teacher',
-    subject: 'Inquiry regarding WAEC Physics Practical Apparatus & Textbooks',
-    message: 'Good day Dr. Adebayo. We noticed Oluwaseun scored 8/10 in his mechanics project. Does he require any specialized laboratory drafting set or supplemental textbook for his 3rd Term electricity practicals?',
-    createdAt: '2026-03-22T14:15:00Z',
-    status: 'RESOLVED',
-    staffReply: 'Good day Chief Adeyemi. Oluwaseun is excelling in physics practicals. The school laboratory is fully outfitted with all optical benches and electrical resistance boards. A standard Nelkon & Parker Physics textbook is sufficient.',
-    repliedAt: '2026-03-23T09:30:00Z'
-  }
-];
+export const INITIAL_PARENT_INQUIRIES: ParentInquiry[] = [];
 
 
 
