@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useSchoolData } from '../../context/SchoolDataContext';
+import { RoleType } from '../../types';
 import { getRoleLabel, getShortName } from '../../lib/userDisplay';
 import {
   Layers,
@@ -108,16 +109,26 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   if (!user) return null;
 
   const currentUserId = user.id || user.staffId || '';
-  const currentUserRole = user.activeRole || '';
+  const currentUserRole = (user.activeRole || user.role || 'ALL') as RoleType;
   const msgList = Array.isArray(portalMessages) ? portalMessages : [];
-  const unreadCount = msgList.filter(
-    m =>
-      !m.isRead &&
-      (m.recipientId === currentUserId ||
-        m.recipientRole === currentUserRole ||
-        m.recipientId === 'ALL' ||
-        m.recipientRole === 'ALL')
-  ).length;
+  const unreadCount = msgList.filter(m => {
+    if (m.isRead) return false;
+    if (m.senderId === currentUserId) return false;
+    if (m.recipientId && m.recipientId !== 'ALL' && (m.recipientId === currentUserId || (user.staffId && m.recipientId === user.staffId))) {
+      return true;
+    }
+    const targetRoles = m.relatedEntity?.targetRoles;
+    if (Array.isArray(targetRoles) && targetRoles.length > 0) {
+      return targetRoles.includes(currentUserRole) || (Array.isArray(user.assignedRoles) && user.assignedRoles.some((r: any) => targetRoles.includes(r)));
+    }
+    const targetUsers = m.relatedEntity?.targetIndividualIds;
+    if (Array.isArray(targetUsers) && targetUsers.length > 0) {
+      return targetUsers.includes(currentUserId) || (user.staffId && targetUsers.includes(user.staffId));
+    }
+    if (m.recipientRole === currentUserRole) return true;
+    if ((m.recipientRole === 'ALL' || m.recipientId === 'ALL') && !targetRoles) return true;
+    return false;
+  }).length;
 
   interface NavItem {
     id: ActiveNavView;

@@ -612,6 +612,9 @@ export interface PortalMessage {
     id?: string;
     label?: string;
     name?: string;
+    targetRoles?: RoleType[];
+    targetIndividualIds?: string[];
+    audienceSummary?: string;
   };
 }
 

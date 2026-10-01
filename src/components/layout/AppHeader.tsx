@@ -4,6 +4,7 @@ import { useSchoolData } from '../../context/SchoolDataContext';
 import { StatusBeacon } from '../common/StatusBeacon';
 import { RoleSwitcher } from '../common/RoleSwitcher';
 import { ThemeToggle } from '../common/ThemeToggle';
+import { RoleType } from '../../types';
 import { Menu, Bell, MessageSquare, CheckCheck, Send, AlertTriangle } from 'lucide-react';
 
 interface AppHeaderProps {
@@ -26,18 +27,28 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onToggleSidebar, onNavigat
   const notifRef = useRef<HTMLDivElement>(null);
 
   const currentUserId = user?.id || user?.staffId || '';
-  const currentUserRole = user?.activeRole || '';
+  const currentUserRole = (user?.activeRole || user?.role || 'ALL') as RoleType;
 
   // Calculate unread messages intended for this user or their role
   const msgList = Array.isArray(portalMessages) ? portalMessages : [];
-  const unreadMessages = msgList.filter(
-    m =>
-      !m.isRead &&
-      (m.recipientId === currentUserId ||
-        m.recipientRole === currentUserRole ||
-        m.recipientId === 'ALL' ||
-        m.recipientRole === 'ALL')
-  );
+  const unreadMessages = msgList.filter(m => {
+    if (m.isRead) return false;
+    if (m.senderId === currentUserId) return false;
+    if (m.recipientId && m.recipientId !== 'ALL' && (m.recipientId === currentUserId || (user?.staffId && m.recipientId === user.staffId))) {
+      return true;
+    }
+    const targetRoles = m.relatedEntity?.targetRoles;
+    if (Array.isArray(targetRoles) && targetRoles.length > 0) {
+      return targetRoles.includes(currentUserRole) || (Array.isArray(user?.assignedRoles) && user.assignedRoles.some((r: any) => targetRoles.includes(r)));
+    }
+    const targetUsers = m.relatedEntity?.targetIndividualIds;
+    if (Array.isArray(targetUsers) && targetUsers.length > 0) {
+      return targetUsers.includes(currentUserId) || (user?.staffId && targetUsers.includes(user.staffId));
+    }
+    if (m.recipientRole === currentUserRole) return true;
+    if ((m.recipientRole === 'ALL' || m.recipientId === 'ALL') && !targetRoles) return true;
+    return false;
+  });
 
   // Latest messages for dropdown preview
   const recentMessages = msgList.slice(0, 5);
@@ -298,12 +309,17 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onToggleSidebar, onNavigat
                       </div>
                     ) : (
                       recentMessages.map(msg => {
+                        const targetRoles = msg.relatedEntity?.targetRoles;
+                        const isTargetedRole = Array.isArray(targetRoles) && targetRoles.length > 0
+                          ? targetRoles.includes(currentUserRole) || (Array.isArray(user?.assignedRoles) && user.assignedRoles.some((r: any) => targetRoles.includes(r)))
+                          : msg.recipientRole === currentUserRole || ((msg.recipientRole === 'ALL' || msg.recipientId === 'ALL') && !targetRoles);
+
                         const isUnread =
                           !msg.isRead &&
+                          msg.senderId !== currentUserId &&
                           (msg.recipientId === currentUserId ||
-                            msg.recipientRole === currentUserRole ||
-                            msg.recipientId === 'ALL' ||
-                            msg.recipientRole === 'ALL');
+                            (user?.staffId && msg.recipientId === user.staffId) ||
+                            isTargetedRole);
 
                         return (
                           <div

@@ -32,7 +32,8 @@ import {
   ParentInquiry,
   PortalMessage,
   AppNotification,
-  NotificationCategory
+  NotificationCategory,
+  RoleType
 } from '../types';
 import {
   INITIAL_SESSIONS,
@@ -3774,37 +3775,87 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     setPortalMessages(prev => [newMessage, ...prev]);
 
-    // Live backend persistence
-    api.post('/communications/messages/', {
-      thread_id: newMessage.threadId,
-      recipientId: messageData.recipientId,
-      recipientRole: messageData.recipientRole,
-      recipientName: messageData.recipientName,
-      subject: messageData.subject,
-      content: messageData.content,
-      priority: messageData.priority,
-      relatedEntity: messageData.relatedEntity
-    }).then((res: any) => {
-      if (res && res.id) {
-        setPortalMessages(prev => prev.map(m => m.id === newMessage.id ? { ...m, id: String(res.id) } : m));
-      }
-    }).catch(err => {
-      console.warn('Backend message persistence fallback:', err);
-    });
+    // Live backend persistence supporting multiple roles and individuals
+    const targetRoles: RoleType[] = (messageData.relatedEntity?.targetRoles && Array.isArray(messageData.relatedEntity.targetRoles) && messageData.relatedEntity.targetRoles.length > 0)
+      ? messageData.relatedEntity.targetRoles
+      : [messageData.recipientRole];
 
-    // Auto-dispatch role notification
-    sendNotification({
-      userId: messageData.recipientId !== 'ALL' ? messageData.recipientId : undefined,
-      role: messageData.recipientRole,
-      title: `New Message from ${messageData.senderName}`,
-      message: `${messageData.subject}: ${messageData.content.slice(0, 80)}${messageData.content.length > 80 ? '...' : ''}`,
-      category: messageData.priority === 'OFFICIAL_DIRECTIVE' ? 'DIRECTIVE' : 'COMMUNICATION',
-      priority: messageData.priority === 'OFFICIAL_DIRECTIVE' ? 'CRITICAL' : messageData.priority === 'URGENT' ? 'URGENT' : 'NORMAL',
-      linkView: 'communications',
-      linkId: newMessage.threadId,
-      actorName: messageData.senderName,
-      actorRole: messageData.senderRole
-    });
+    const targetIndividuals: string[] = (messageData.relatedEntity?.targetIndividualIds && Array.isArray(messageData.relatedEntity.targetIndividualIds) && messageData.relatedEntity.targetIndividualIds.length > 0)
+      ? messageData.relatedEntity.targetIndividualIds
+      : (messageData.recipientId && messageData.recipientId !== 'ALL' ? [messageData.recipientId] : []);
+
+    if (targetIndividuals.length > 0 && targetRoles.length === 0) {
+      targetIndividuals.forEach(indId => {
+        api.post('/communications/messages/', {
+          thread_id: newMessage.threadId,
+          recipientId: indId,
+          recipientRole: messageData.recipientRole,
+          recipientName: messageData.recipientName,
+          subject: messageData.subject,
+          content: messageData.content,
+          priority: messageData.priority,
+          relatedEntity: messageData.relatedEntity
+        }).then((res: any) => {
+          if (res && res.id) {
+            setPortalMessages(prev => prev.map(m => m.id === newMessage.id ? { ...m, id: String(res.id) } : m));
+          }
+        }).catch(err => {
+          console.warn('Backend message persistence fallback:', err);
+        });
+      });
+    } else {
+      // Post one entry per target role so backend DRF role filtering delivers to each selected role
+      targetRoles.forEach(r => {
+        api.post('/communications/messages/', {
+          thread_id: newMessage.threadId,
+          recipientId: 'ALL',
+          recipientRole: r,
+          recipientName: messageData.recipientName,
+          subject: messageData.subject,
+          content: messageData.content,
+          priority: messageData.priority,
+          relatedEntity: messageData.relatedEntity
+        }).then((res: any) => {
+          if (res && res.id) {
+            setPortalMessages(prev => prev.map(m => m.id === newMessage.id ? { ...m, id: String(res.id) } : m));
+          }
+        }).catch(err => {
+          console.warn('Backend message persistence fallback:', err);
+        });
+      });
+    }
+
+    // Auto-dispatch role notifications for each target role or individual
+    if (targetIndividuals.length > 0) {
+      targetIndividuals.forEach(indId => {
+        sendNotification({
+          userId: indId,
+          role: messageData.recipientRole,
+          title: `New Message from ${messageData.senderName}`,
+          message: `${messageData.subject}: ${messageData.content.slice(0, 80)}${messageData.content.length > 80 ? '...' : ''}`,
+          category: messageData.priority === 'OFFICIAL_DIRECTIVE' ? 'DIRECTIVE' : 'COMMUNICATION',
+          priority: messageData.priority === 'OFFICIAL_DIRECTIVE' ? 'CRITICAL' : messageData.priority === 'URGENT' ? 'URGENT' : 'NORMAL',
+          linkView: 'communications',
+          linkId: newMessage.threadId,
+          actorName: messageData.senderName,
+          actorRole: messageData.senderRole
+        });
+      });
+    } else {
+      targetRoles.forEach(r => {
+        sendNotification({
+          role: r,
+          title: `New Message from ${messageData.senderName}`,
+          message: `${messageData.subject}: ${messageData.content.slice(0, 80)}${messageData.content.length > 80 ? '...' : ''}`,
+          category: messageData.priority === 'OFFICIAL_DIRECTIVE' ? 'DIRECTIVE' : 'COMMUNICATION',
+          priority: messageData.priority === 'OFFICIAL_DIRECTIVE' ? 'CRITICAL' : messageData.priority === 'URGENT' ? 'URGENT' : 'NORMAL',
+          linkView: 'communications',
+          linkId: newMessage.threadId,
+          actorName: messageData.senderName,
+          actorRole: messageData.senderRole
+        });
+      });
+    }
 
     if (messageData.priority === 'OFFICIAL_DIRECTIVE' || messageData.priority === 'URGENT') {
       addAuditLog({

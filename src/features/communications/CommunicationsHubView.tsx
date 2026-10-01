@@ -15,8 +15,43 @@ import {
   Trash2,
   CheckCheck,
   X,
-  Sparkles
+  Sparkles,
+  Users,
+  UserCheck,
+  Check,
+  ShieldCheck,
+  AlertCircle,
+  Ban,
+  UserPlus
 } from 'lucide-react';
+
+export interface RoleOption {
+  role: RoleType;
+  label: string;
+  category: 'STAFF' | 'EXTERNAL';
+  desc: string;
+  colorClass: string;
+}
+
+export const ROLE_OPTIONS: RoleOption[] = [
+  { role: 'PRINCIPAL', label: 'Principal & Head of School', category: 'STAFF', desc: 'Executive Head & Leadership', colorClass: 'text-amber-700 bg-amber-50 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800' },
+  { role: 'VICE_PRINCIPAL', label: 'Vice Principal', category: 'STAFF', desc: 'Academic & Admin VP', colorClass: 'text-blue-700 bg-blue-50 border-blue-300 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800' },
+  { role: 'EXAMINATION_OFFICER', label: 'Exam Officer', category: 'STAFF', desc: 'Schedules & Assessment Operations', colorClass: 'text-purple-700 bg-purple-50 border-purple-300 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800' },
+  { role: 'FORM_MASTER', label: 'Form Masters', category: 'STAFF', desc: 'Class Leadership & Pastoral Care', colorClass: 'text-emerald-700 bg-emerald-50 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800' },
+  { role: 'SUBJECT_TEACHER', label: 'Subject Teachers', category: 'STAFF', desc: 'Instructional Teaching Faculty', colorClass: 'text-indigo-700 bg-indigo-50 border-indigo-300 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800' },
+  { role: 'SUPER_ADMIN', label: 'Super Administrator', category: 'STAFF', desc: 'System Configuration & Security', colorClass: 'text-rose-700 bg-rose-50 border-rose-300 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800' },
+  { role: 'PARENT', label: 'Parents / Guardians', category: 'EXTERNAL', desc: 'Registered Wards & Families', colorClass: 'text-teal-700 bg-teal-50 border-teal-300 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800' },
+  { role: 'STUDENT', label: 'Students', category: 'EXTERNAL', desc: 'Enrolled Pupils', colorClass: 'text-cyan-700 bg-cyan-50 border-cyan-300 dark:bg-cyan-950/40 dark:text-cyan-300 dark:border-cyan-800' },
+];
+
+const STAFF_ROLES: RoleType[] = [
+  'PRINCIPAL',
+  'VICE_PRINCIPAL',
+  'EXAMINATION_OFFICER',
+  'FORM_MASTER',
+  'SUBJECT_TEACHER',
+  'SUPER_ADMIN'
+];
 
 interface CommunicationsHubViewProps {
   initialThreadId?: string;
@@ -32,7 +67,8 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
     markAllMessagesAsRead,
     deleteMessage,
     staff,
-    parents
+    parents,
+    students
   } = useSchoolData();
 
   const [activeTab, setActiveTab] = useState<'INBOX' | 'SENT' | 'DIRECTIVES'>('INBOX');
@@ -40,10 +76,16 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
   const [priorityFilter, setPriorityFilter] = useState<'ALL' | 'NORMAL' | 'URGENT' | 'OFFICIAL_DIRECTIVE'>('ALL');
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(initialThreadId || null);
 
-  // Compose Modal State
+  // Compose Modal State: Multi-role and multi-individual
   const [isComposeOpen, setIsComposeOpen] = useState(false);
-  const [composeRecipientRole, setComposeRecipientRole] = useState<RoleType>('ALL');
-  const [composeRecipientId, setComposeRecipientId] = useState<string>('ALL');
+  const [selectedRoles, setSelectedRoles] = useState<RoleType[]>([
+    'PRINCIPAL',
+    'VICE_PRINCIPAL',
+    'FORM_MASTER',
+    'SUBJECT_TEACHER'
+  ]);
+  const [selectedIndividualIds, setSelectedIndividualIds] = useState<string[]>([]);
+  const [individualSearchQuery, setIndividualSearchQuery] = useState('');
   const [composeSubject, setComposeSubject] = useState('');
   const [composePriority, setComposePriority] = useState<'NORMAL' | 'URGENT' | 'OFFICIAL_DIRECTIVE'>('NORMAL');
   const [composeContent, setComposeContent] = useState('');
@@ -63,10 +105,19 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
   const currentUserRole = (user?.role || user?.activeRole || 'SUBJECT_TEACHER') as RoleType;
   const currentUserAvatar = user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150';
 
+  // Extract all roles possessed by the current user (e.g. dual-role Form Master + Subject Teacher, or activeRole)
+  const currentUserRoles = useMemo(() => {
+    const roles: string[] = [];
+    if (user?.role) roles.push(user.role);
+    if (user?.activeRole) roles.push(user.activeRole);
+    if (Array.isArray((user as any)?.assignedRoles)) roles.push(...(user as any).assignedRoles);
+    if (Array.isArray((user as any)?.roles)) roles.push(...(user as any).roles);
+    return Array.from(new Set(roles));
+  }, [user]);
+
   // Group messages by threadId
   const threadsMap = useMemo(() => {
     const map = new Map<string, PortalMessage[]>();
-    // Sort all messages latest first
     const sorted = [...portalMessages].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     sorted.forEach(msg => {
       const existing = map.get(msg.threadId) || [];
@@ -76,6 +127,38 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
     return map;
   }, [portalMessages]);
 
+  // Check if a message is intended for the current user (respecting multi-role and role exclusions)
+  const isMessageForCurrentUser = (m: PortalMessage): boolean => {
+    // 1. Direct recipient match by user id / staff id
+    if (m.recipientId && m.recipientId !== 'ALL' && (m.recipientId === currentUserId || (user?.staffId && m.recipientId === user.staffId))) {
+      return true;
+    }
+
+    // 2. Multi-role targeting with role exclusions
+    const targetRoles = m.relatedEntity?.targetRoles;
+    if (Array.isArray(targetRoles) && targetRoles.length > 0) {
+      const roleMatch = targetRoles.some(r => currentUserRoles.includes(r));
+      const indMatch = Array.isArray(m.relatedEntity?.targetIndividualIds) && m.relatedEntity.targetIndividualIds.includes(currentUserId);
+      return roleMatch || indMatch;
+    }
+
+    // 3. Multi-individual targeting
+    const targetUsers = m.relatedEntity?.targetIndividualIds;
+    if (Array.isArray(targetUsers) && targetUsers.length > 0) {
+      return targetUsers.includes(currentUserId) || (Boolean(user?.staffId) && targetUsers.includes(user!.staffId!));
+    }
+
+    // 4. Legacy single recipientRole match
+    if (m.recipientRole && currentUserRoles.includes(m.recipientRole)) {
+      return true;
+    }
+    if (m.recipientRole === 'ALL' || m.recipientId === 'ALL') {
+      return true;
+    }
+
+    return false;
+  };
+
   // Filter threads according to activeTab and user role/identity
   const filteredThreads = useMemo(() => {
     const threadsArray: { threadId: string; messages: PortalMessage[]; latestMessage: PortalMessage }[] = [];
@@ -83,36 +166,24 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
     threadsMap.forEach((msgs, thId) => {
       const latest = msgs[0];
 
-      // Tab filtering
       let tabMatch = true;
       if (activeTab === 'INBOX') {
-        // Inbox includes messages where user is recipient directly, or recipient is their role, or recipient is ALL (and not sent by current user)
-        const hasIncoming = msgs.some(
-          m =>
-            m.recipientId === currentUserId ||
-            String(m.recipientRole) === String(currentUserRole) ||
-            m.recipientId === 'ALL' ||
-            String(m.recipientRole) === 'ALL'
-        );
+        const hasIncoming = msgs.some(m => isMessageForCurrentUser(m));
         tabMatch = hasIncoming;
       } else if (activeTab === 'SENT') {
-        // Sent tab: any thread with at least one message sent by current user
         const hasSent = msgs.some(m => m.senderId === currentUserId || m.senderName === currentUserName);
         tabMatch = hasSent;
       } else if (activeTab === 'DIRECTIVES') {
-        // Directives tab: any thread with OFFICIAL_DIRECTIVE or URGENT
-        const hasDirective = msgs.some(m => m.priority === 'OFFICIAL_DIRECTIVE' || m.priority === 'URGENT');
+        const hasDirective = msgs.some(m => (m.priority === 'OFFICIAL_DIRECTIVE' || m.priority === 'URGENT') && isMessageForCurrentUser(m));
         tabMatch = hasDirective;
       }
 
       if (!tabMatch) return;
 
-      // Priority filter
       if (priorityFilter !== 'ALL' && latest.priority !== priorityFilter) {
         return;
       }
 
-      // Search filter
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchesContent = msgs.some(
@@ -129,14 +200,13 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
     });
 
     return threadsArray;
-  }, [threadsMap, activeTab, priorityFilter, searchQuery, currentUserId, currentUserRole, currentUserName]);
+  }, [threadsMap, activeTab, priorityFilter, searchQuery, currentUserId, currentUserRoles, currentUserName]);
 
   // Selected thread messages
   const activeThreadMessages = useMemo(() => {
     if (!selectedThreadId) return null;
     const msgs = threadsMap.get(selectedThreadId);
     if (!msgs) return null;
-    // For conversation view, order chronologically (oldest first)
     return [...msgs].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   }, [threadsMap, selectedThreadId]);
 
@@ -151,98 +221,132 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
   React.useEffect(() => {
     if (selectedThreadId && activeThreadMessages) {
       activeThreadMessages.forEach(msg => {
-        if (!msg.isRead && (msg.recipientId === currentUserId || msg.recipientRole === currentUserRole || msg.recipientRole === 'ALL')) {
+        if (!msg.isRead && isMessageForCurrentUser(msg)) {
           markMessageAsRead(msg.id);
         }
       });
     }
-  }, [selectedThreadId, activeThreadMessages, currentUserId, currentUserRole, markMessageAsRead]);
+  }, [selectedThreadId, activeThreadMessages, currentUserId, currentUserRoles, markMessageAsRead]);
 
-  // Available recipients list for Compose Modal
-  const candidateRecipients = useMemo(() => {
-    if (composeRecipientRole === 'ALL') {
-      return [{ id: 'ALL', name: 'All Institutional Users & Broadcast', role: 'ALL' }];
-    }
-    if (composeRecipientRole === 'PARENT') {
-      return [
-        { id: 'ALL', name: 'All Registered Parents / Guardians (Broadcast)', role: 'PARENT' },
-        ...parents.map(p => {
-          const parentName = (p as any).fullName || p.fatherName || p.motherName || (p as any).name || (p as any).email || 'Parent';
-          const wardCount = p.wardIds?.length || (p as any).wards?.length || 1;
-          return {
-            id: p.id,
-            name: `${parentName} (${wardCount} ${wardCount === 1 ? 'Ward' : 'Wards'})`,
-            role: 'PARENT'
-          };
-        })
-      ];
-    }
-    // For staff roles
-    const matchingStaff = staff.filter(s => {
-      const sRole = String(s.role || '');
-      const sRoles = Array.isArray((s as any).roles) ? (s as any).roles : [];
-      const sTitle = String((s as any).title || '').toUpperCase();
-      const compRole = String(composeRecipientRole);
+  // Master directory of all individual accounts across Staff, Parents, and Students
+  const allAvailableIndividuals = useMemo(() => {
+    const list: { id: string; name: string; role: RoleType; category: 'STAFF' | 'PARENT' | 'STUDENT'; subtitle: string }[] = [];
 
-      if (compRole === 'PRINCIPAL') {
-        return sRole === 'PRINCIPAL' || sRoles.includes('PRINCIPAL') || sTitle.includes('PRINCIPAL');
-      }
-      if (compRole === 'VICE_PRINCIPAL' || compRole === 'VICE_PRINCIPAL_ADMIN' || compRole === 'VICE_PRINCIPAL_STUDENT_AFFAIRS') {
-        return sRole.includes('VICE_PRINCIPAL') || sRoles.some((r: string) => r.includes('VICE_PRINCIPAL')) || sTitle.includes('VICE PRINCIPAL');
-      }
-      if (compRole === 'EXAMINATION_OFFICER' || compRole === 'EXAM_OFFICER') {
-        return sRole === 'EXAM_OFFICER' || sRole === 'EXAMINATION_OFFICER' || sRoles.includes('EXAM_OFFICER') || sRoles.includes('EXAMINATION_OFFICER') || sTitle.includes('EXAM');
-      }
-      if (compRole === 'FORM_MASTER') {
-        return sRole === 'FORM_MASTER' || sRoles.includes('FORM_MASTER') || Boolean((s as any).formMasterArmId) || Boolean((s as any).formMasterClassArmId) || sTitle.includes('FORM');
-      }
-      if (compRole === 'TEACHER' || compRole === 'SUBJECT_TEACHER') {
-        return sRole === 'SUBJECT_TEACHER' || sRole === 'TEACHER' || sRoles.includes('TEACHER') || sRoles.includes('SUBJECT_TEACHER') || sRoles.includes('STAFF');
-      }
-      if (compRole === 'SUPER_ADMIN') {
-        return sRole === 'SUPER_ADMIN' || sRoles.includes('SUPER_ADMIN') || sTitle.includes('ADMIN');
-      }
-      return false;
+    // 1. Staff Members
+    (staff || []).forEach(s => {
+      const extra = (s as any).formMasterArmName || (s as any).title || s.staffId || '';
+      list.push({
+        id: s.id,
+        name: s.name,
+        role: (s.role || 'SUBJECT_TEACHER') as RoleType,
+        category: 'STAFF',
+        subtitle: `Staff • ${s.title || s.role || 'Faculty'}${extra ? ` (${extra})` : ''}`
+      });
     });
 
-    return [
-      { id: 'ALL', name: `All ${composeRecipientRole.replace(/_/g, ' ')}s (Broadcast)`, role: composeRecipientRole },
-      ...matchingStaff.map(s => {
-        const extra = (s as any).formMasterArmName || (s as any).title || s.staffId || '';
-        return {
-          id: s.id,
-          name: `${s.name} ${extra ? `(${extra})` : ''}`,
-          role: s.role
-        };
-      })
-    ];
-  }, [composeRecipientRole, staff, parents]);
+    // 2. Parents / Guardians
+    (parents || []).forEach(p => {
+      const parentName = (p as any).fullName || p.fatherName || p.motherName || (p as any).name || (p as any).email || 'Parent';
+      const wardCount = p.wardIds?.length || (p as any).wards?.length || 1;
+      list.push({
+        id: p.id,
+        name: parentName,
+        role: 'PARENT',
+        category: 'PARENT',
+        subtitle: `Parent • ${wardCount} ${wardCount === 1 ? 'Ward' : 'Wards'}`
+      });
+    });
 
-  // Apply Quick Template to Compose Modal
+    // 3. Students
+    (students || []).forEach(st => {
+      list.push({
+        id: st.id,
+        name: st.name || `${st.firstName} ${st.lastName}`,
+        role: 'STUDENT',
+        category: 'STUDENT',
+        subtitle: `Student • ${st.admissionNumber || ''} (${st.currentClassArmName || ''})`
+      });
+    });
+
+    return list;
+  }, [staff, parents, students]);
+
+  // Filtered candidate individuals based on search
+  const filteredCandidates = useMemo(() => {
+    if (!individualSearchQuery.trim()) {
+      return allAvailableIndividuals.slice(0, 15);
+    }
+    const q = individualSearchQuery.toLowerCase();
+    return allAvailableIndividuals.filter(
+      cand => cand.name.toLowerCase().includes(q) || cand.subtitle.toLowerCase().includes(q) || cand.role.toLowerCase().includes(q)
+    ).slice(0, 25);
+  }, [allAvailableIndividuals, individualSearchQuery]);
+
+  // Toggle role in selectedRoles
+  const handleToggleRole = (role: RoleType) => {
+    setSelectedRoles(prev => {
+      if (prev.includes(role)) {
+        return prev.filter(r => r !== role);
+      } else {
+        return [...prev, role];
+      }
+    });
+  };
+
+  // Quick Select Presets
+  const handleSelectAllStaff = () => {
+    setSelectedRoles([...STAFF_ROLES]);
+  };
+
+  const handleSelectAllPortal = () => {
+    setSelectedRoles(ROLE_OPTIONS.map(ro => ro.role));
+  };
+
+  const handleClearAllRoles = () => {
+    setSelectedRoles([]);
+  };
+
+  // Toggle individual selection
+  const handleAddIndividual = (id: string) => {
+    if (!selectedIndividualIds.includes(id)) {
+      setSelectedIndividualIds(prev => [...prev, id]);
+    }
+    setIndividualSearchQuery('');
+  };
+
+  const handleRemoveIndividual = (id: string) => {
+    setSelectedIndividualIds(prev => prev.filter(i => i !== id));
+  };
+
+  // Quick Templates
   const applyTemplate = (templateType: string) => {
     if (templateType === 'MARKSHEET_REMINDER') {
-      setComposeRecipientRole('SUBJECT_TEACHER');
+      setSelectedRoles(['SUBJECT_TEACHER', 'FORM_MASTER']);
+      setSelectedIndividualIds([]);
       setComposePriority('URGENT');
       setComposeSubject('Reminder: Outstanding Marksheet Submission & CA Endorsement');
       setComposeContent(
         'Dear Colleague,\n\nPlease be reminded that Continuous Assessment (CA1, CA2, project) and terminal exam marks are due for submission. Kindly log into the portal and complete your subject marksheets today to allow for terminal broadsheet compilation.\n\nThank you for your prompt compliance.'
       );
     } else if (templateType === 'EXAM_BRIEFING') {
-      setComposeRecipientRole('SUBJECT_TEACHER');
+      setSelectedRoles(['PRINCIPAL', 'VICE_PRINCIPAL', 'EXAMINATION_OFFICER', 'SUBJECT_TEACHER', 'FORM_MASTER']);
+      setSelectedIndividualIds([]);
       setComposePriority('URGENT');
       setComposeSubject('Notice: Exam Hall Invigilation Roster & Security Protocol');
       setComposeContent(
         'Dear Faculty Member,\n\nYou have been assigned to invigilation duty for the upcoming terminal examinations. Please inspect your scheduled shift under your staff portal and report to the Examination Control Room 30 minutes prior to session commencement to receive sealed exam packets.\n\nStrict invigilation standards must be maintained at all times.'
       );
     } else if (templateType === 'EXECUTIVE_DIRECTIVE') {
-      setComposeRecipientRole('ALL');
+      setSelectedRoles([...STAFF_ROLES]);
+      setSelectedIndividualIds([]);
       setComposePriority('OFFICIAL_DIRECTIVE');
       setComposeSubject('Executive Circular: Academic Calendar & Examination Operations');
       setComposeContent(
         'Executive Management Directive:\n\nAll departments and academic offices are hereby instructed to adhere strictly to the published end-of-term academic schedule. Results approvals and pastoral remarking must conclude within 48 hours of exam completion.\n\nBy Order of the Principal & Executive Council.'
       );
     } else if (templateType === 'PARENT_COMMUNICATION') {
-      setComposeRecipientRole('PARENT');
+      setSelectedRoles(['PARENT']);
+      setSelectedIndividualIds([]);
       setComposePriority('NORMAL');
       setComposeSubject('Institutional Update: Terminal Examination Schedule & Academic Progress');
       setComposeContent(
@@ -251,17 +355,45 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
     }
   };
 
+  // Targeted & Excluded Roles computation for real-time validation & badge display
+  const targetedRolesList = useMemo(() => {
+    return ROLE_OPTIONS.filter(ro => selectedRoles.includes(ro.role));
+  }, [selectedRoles]);
+
+  const excludedRolesList = useMemo(() => {
+    return ROLE_OPTIONS.filter(ro => !selectedRoles.includes(ro.role));
+  }, [selectedRoles]);
+
   const handleSendCompose = (e: React.FormEvent) => {
     e.preventDefault();
     if (!composeSubject.trim() || !composeContent.trim()) return;
 
-    let targetRecipientName = 'All Portal Users';
-    const foundTarget = candidateRecipients.find(r => r.id === composeRecipientId);
-    if (foundTarget) {
-      targetRecipientName = foundTarget.name;
+    if (selectedRoles.length === 0 && selectedIndividualIds.length === 0) {
+      showNotification('Please select at least one recipient role group or individual account.');
+      return;
+    }
+
+    // Build audience summary
+    let audienceSummary = '';
+    if (selectedRoles.length === ROLE_OPTIONS.length) {
+      audienceSummary = 'All Portal Users (Global Broadcast)';
+    } else if (selectedRoles.length > 0) {
+      audienceSummary = targetedRolesList.map(r => r.label).join(', ');
+    }
+
+    if (selectedIndividualIds.length > 0) {
+      const indNames = selectedIndividualIds
+        .map(id => allAvailableIndividuals.find(ind => ind.id === id)?.name || id)
+        .slice(0, 3)
+        .join(', ');
+      const extraCount = selectedIndividualIds.length - 3;
+      const indSummary = extraCount > 0 ? `${indNames} +${extraCount} more` : indNames;
+      audienceSummary = audienceSummary ? `${audienceSummary} • Individual(s): ${indSummary}` : `Direct: ${indSummary}`;
     }
 
     const newThreadId = `th-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+    const primaryRole: RoleType = selectedRoles.length === 1 ? selectedRoles[0] : 'ALL';
+    const primaryRecipientId = selectedRoles.length === 0 && selectedIndividualIds.length === 1 ? selectedIndividualIds[0] : 'ALL';
 
     sendMessage({
       threadId: newThreadId,
@@ -269,19 +401,25 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
       senderName: currentUserName,
       senderRole: currentUserRole,
       senderAvatarUrl: currentUserAvatar,
-      recipientId: composeRecipientId,
-      recipientName: targetRecipientName,
-      recipientRole: composeRecipientRole as RoleType,
+      recipientId: primaryRecipientId,
+      recipientName: audienceSummary,
+      recipientRole: primaryRole,
       subject: composeSubject.trim(),
       content: composeContent.trim(),
-      priority: composePriority
+      priority: composePriority,
+      relatedEntity: {
+        type: 'GENERAL',
+        targetRoles: selectedRoles,
+        targetIndividualIds: selectedIndividualIds,
+        audienceSummary: audienceSummary
+      }
     });
 
     setIsComposeOpen(false);
     setComposeSubject('');
     setComposeContent('');
     setSelectedThreadId(newThreadId);
-    showNotification(`Message dispatched successfully to ${targetRecipientName}!`);
+    showNotification(`Message dispatched successfully to ${audienceSummary}!`);
   };
 
   const handleSendReply = (e: React.FormEvent) => {
@@ -301,15 +439,8 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
 
   // Calculate total unread messages for current user
   const totalUnreadCount = useMemo(() => {
-    return portalMessages.filter(
-      m =>
-        !m.isRead &&
-        (m.recipientId === currentUserId ||
-          String(m.recipientRole) === String(currentUserRole) ||
-          m.recipientId === 'ALL' ||
-          String(m.recipientRole) === 'ALL')
-    ).length;
-  }, [portalMessages, currentUserId, currentUserRole]);
+    return portalMessages.filter(m => !m.isRead && isMessageForCurrentUser(m)).length;
+  }, [portalMessages, currentUserId, currentUserRoles]);
 
   return (
     <div className="space-y-6">
@@ -721,52 +852,219 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
           </div>
 
           <form onSubmit={handleSendCompose} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Recipient Role */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                  Recipient Role Group <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  value={composeRecipientRole}
-                  onChange={e => {
-                    const newRole = e.target.value as any;
-                    setComposeRecipientRole(newRole);
-                    setComposeRecipientId('ALL');
-                  }}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-slate-850 outline-none transition"
-                >
-                  <option value="ALL">All Roles / Global Broadcast</option>
-                  <option value="PRINCIPAL">Principal & Head of School</option>
-                  <option value="VICE_PRINCIPAL">Vice Principal</option>
-                  <option value="EXAMINATION_OFFICER">Examination Officer</option>
-                  <option value="FORM_MASTER">Form Masters</option>
-                  <option value="TEACHER">Subject Teachers</option>
-                  <option value="PARENT">Parents / Guardians</option>
-                  <option value="SUPER_ADMIN">Super Administrator</option>
-                </select>
+            {/* 1. Multi-Role Recipient Selection */}
+            <div className="space-y-2.5 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <Users className="w-4 h-4 text-indigo-500" />
+                    <span>Target Recipient Role Groups</span>
+                    <span className="text-rose-500">*</span>
+                  </label>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Select one or multiple roles to receive this communication. Roles not selected are strictly excluded.
+                  </p>
+                </div>
+
+                {/* Quick Presets */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={handleSelectAllStaff}
+                    className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:text-indigo-300 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 transition flex items-center gap-1"
+                    title="Select Principal, Vice Principal, Form Masters, Teachers, Exam Officer, Super Admin (Excludes Parents & Students)"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>All Staff Only (Exclude Parents)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSelectAllPortal}
+                    className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition"
+                  >
+                    All Portal Users
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleClearAllRoles}
+                    className="px-2 py-1 text-[11px] font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition"
+                  >
+                    Clear
+                  </button>
+                </div>
               </div>
 
-              {/* Specific Recipient Individual */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                  Specific Individual <span className="text-slate-400 font-normal">(Optional)</span>
-                </label>
-                <select
-                  value={composeRecipientId}
-                  onChange={e => setComposeRecipientId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-slate-850 outline-none transition"
-                >
-                  {candidateRecipients.map(cand => (
-                    <option key={cand.id} value={cand.id}>
-                      {cand.name}
-                    </option>
-                  ))}
-                </select>
+              {/* Role Toggle Chips */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                {ROLE_OPTIONS.map(opt => {
+                  const isSelected = selectedRoles.includes(opt.role);
+                  return (
+                    <button
+                      key={opt.role}
+                      type="button"
+                      onClick={() => handleToggleRole(opt.role)}
+                      className={`flex items-start gap-2.5 p-2.5 rounded-xl border text-left transition-all ${
+                        isSelected
+                          ? 'bg-white dark:bg-slate-850 border-indigo-600 dark:border-indigo-500 shadow-sm ring-1 ring-indigo-500/30'
+                          : 'bg-white/60 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 opacity-60 hover:opacity-100 hover:border-slate-300'
+                      }`}
+                    >
+                      <div
+                        className={`w-4 h-4 mt-0.5 rounded flex items-center justify-center shrink-0 transition-colors ${
+                          isSelected
+                            ? 'bg-indigo-600 text-white'
+                            : 'border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
+                        }`}
+                      >
+                        {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold text-slate-900 dark:text-white truncate">
+                          {opt.label}
+                        </div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                          {opt.desc}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Live Target & Exclusion Summary Bar */}
+              <div className="mt-2 pt-2 border-t border-slate-200/60 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-medium">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>
+                    <strong>Targeting:</strong>{' '}
+                    {targetedRolesList.length > 0
+                      ? targetedRolesList.map(r => r.label).join(', ')
+                      : 'None selected'}
+                  </span>
+                </div>
+
+                {excludedRolesList.length > 0 && (
+                  <div className="flex items-center gap-1.5 text-rose-600 dark:text-rose-400 font-medium bg-rose-50 dark:bg-rose-950/40 px-2 py-0.5 rounded-md border border-rose-200/80 dark:border-rose-900/50">
+                    <Ban className="w-3 h-3 shrink-0" />
+                    <span>
+                      <strong>Excluded:</strong> {excludedRolesList.map(r => r.label).join(', ')}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Priority & Subject */}
+            {/* 2. Specific Individual Accounts Multi-Select */}
+            <div className="space-y-2 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <UserPlus className="w-3.5 h-3.5 text-indigo-500" />
+                  <span>Specific Individual Accounts</span>
+                  <span className="text-slate-400 font-normal text-[11px]">(Optional — Target specific persons directly)</span>
+                </label>
+                {selectedIndividualIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedIndividualIds([])}
+                    className="text-[11px] text-rose-500 hover:text-rose-600 font-medium transition"
+                  >
+                    Clear Selected ({selectedIndividualIds.length})
+                  </button>
+                )}
+              </div>
+
+              {/* Selected Individuals Chips */}
+              {selectedIndividualIds.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 p-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 min-h-[38px]">
+                  {selectedIndividualIds.map(id => {
+                    const person = allAvailableIndividuals.find(p => p.id === id);
+                    if (!person) return null;
+                    return (
+                      <span
+                        key={id}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 animate-in fade-in duration-100"
+                      >
+                        <UserCheck className="w-3 h-3 text-indigo-500" />
+                        <span>{person.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveIndividual(id)}
+                          className="hover:text-rose-600 p-0.5 rounded transition"
+                          title="Remove recipient"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Individual Search & Add Dropdown */}
+              <div className="relative">
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Search faculty, form masters, parents, or students by name..."
+                      value={individualSearchQuery}
+                      onChange={e => setIndividualSearchQuery(e.target.value)}
+                      className="w-full pl-8 pr-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                    />
+                    {individualSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setIndividualSearchQuery('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Candidate Dropdown when searching */}
+                {individualSearchQuery.trim() && (
+                  <div className="absolute left-0 right-0 top-full mt-1.5 max-h-48 overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-30 p-1.5 space-y-0.5">
+                    {filteredCandidates.length > 0 ? (
+                      filteredCandidates.map(cand => {
+                        const isAdded = selectedIndividualIds.includes(cand.id);
+                        return (
+                          <button
+                            key={cand.id}
+                            type="button"
+                            onClick={() => handleAddIndividual(cand.id)}
+                            disabled={isAdded}
+                            className={`w-full text-left px-3 py-1.5 rounded-lg text-xs flex items-center justify-between transition ${
+                              isAdded
+                                ? 'opacity-40 cursor-not-allowed bg-slate-50 dark:bg-slate-800'
+                                : 'hover:bg-indigo-50 dark:hover:bg-indigo-950/60 text-slate-900 dark:text-white'
+                            }`}
+                          >
+                            <div className="min-w-0">
+                              <span className="font-semibold">{cand.name}</span>
+                              <span className="text-[10px] text-slate-500 dark:text-slate-400 ml-2">
+                                {cand.subtitle}
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium">
+                              {isAdded ? 'Added' : '+ Add'}
+                            </span>
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <div className="p-3 text-center text-xs text-slate-400">
+                        No individuals found matching &quot;{individualSearchQuery}&quot;
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 3. Priority & Subject */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="md:col-span-1 space-y-1.5">
                 <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
@@ -790,7 +1088,7 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
                 <input
                   type="text"
                   required
-                  placeholder="e.g., SSS 2 Gold: Final Marksheet Submission Deadline"
+                  placeholder="e.g., Academic Staff Briefing: Examination Hall Roster & Protocol"
                   value={composeSubject}
                   onChange={e => setComposeSubject(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-slate-850 outline-none transition"
@@ -798,14 +1096,14 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
               </div>
             </div>
 
-            {/* Message Body */}
+            {/* 4. Message Content */}
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
                 Message Content / Directive Instructions <span className="text-rose-500">*</span>
               </label>
               <textarea
                 required
-                rows={3}
+                rows={4}
                 placeholder="Enter detailed directives, instructions, or queries..."
                 value={composeContent}
                 onChange={e => setComposeContent(e.target.value)}
@@ -824,7 +1122,8 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
               </button>
               <button
                 type="submit"
-                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md hover:shadow-indigo-500/20 transition flex items-center gap-2"
+                disabled={selectedRoles.length === 0 && selectedIndividualIds.length === 0}
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-md hover:shadow-indigo-500/20 transition flex items-center gap-2"
               >
                 <Send className="w-4 h-4" />
                 <span>Transmit Message</span>
