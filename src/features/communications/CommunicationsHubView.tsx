@@ -658,7 +658,7 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
 
       {/* Compose New Message / Directive Modal */}
       <ModalPortal isOpen={isComposeOpen} onClose={() => setIsComposeOpen(false)} maxWidthClass="max-w-2xl">
-        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 sm:p-7 space-y-5 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-5 sm:p-7 space-y-4 max-h-[85vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
           <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-3.5">
               <div className="w-11 h-11 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/80 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm">
@@ -805,7 +805,7 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
               </label>
               <textarea
                 required
-                rows={5}
+                rows={3}
                 placeholder="Enter detailed directives, instructions, or queries..."
                 value={composeContent}
                 onChange={e => setComposeContent(e.target.value)}
