@@ -110,6 +110,21 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 
   const currentUserId = user.id || user.staffId || '';
   const currentUserRole = (user.activeRole || user.role || 'ALL') as RoleType;
+
+  const normalizeRole = (role?: string | null): string => {
+    if (!role) return '';
+    const r = String(role).trim().toUpperCase();
+    if (r.startsWith('VICE_PRINCIPAL')) return 'VICE_PRINCIPAL';
+    if (r === 'EXAM_OFFICER' || r === 'EXAMINATION_OFFICER') return 'EXAMINATION_OFFICER';
+    if (r === 'TEACHER' || r === 'SUBJECT_TEACHER') return 'SUBJECT_TEACHER';
+    if (r === 'SUPER_ADMIN' || r === 'ADMIN') return 'SUPER_ADMIN';
+    if (r === 'FORM_MASTER') return 'FORM_MASTER';
+    if (r === 'PRINCIPAL') return 'PRINCIPAL';
+    if (r === 'PARENT') return 'PARENT';
+    if (r === 'STUDENT') return 'STUDENT';
+    return r;
+  };
+
   const msgList = Array.isArray(portalMessages) ? portalMessages : [];
   const unreadCount = msgList.filter(m => {
     if (m.isRead) return false;
@@ -119,13 +134,15 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     }
     const targetRoles = m.relatedEntity?.targetRoles;
     if (Array.isArray(targetRoles) && targetRoles.length > 0) {
-      return targetRoles.includes(currentUserRole) || (Array.isArray(user.assignedRoles) && user.assignedRoles.some((r: any) => targetRoles.includes(r)));
+      const normTargets = targetRoles.map(normalizeRole);
+      const userRolesList = [currentUserRole, ...(user.assignedRoles || [])].map(normalizeRole);
+      return normTargets.some(nt => userRolesList.includes(nt));
     }
     const targetUsers = m.relatedEntity?.targetIndividualIds;
     if (Array.isArray(targetUsers) && targetUsers.length > 0) {
       return targetUsers.includes(currentUserId) || (user.staffId && targetUsers.includes(user.staffId));
     }
-    if (m.recipientRole === currentUserRole) return true;
+    if (normalizeRole(m.recipientRole) === normalizeRole(currentUserRole)) return true;
     if ((m.recipientRole === 'ALL' || m.recipientId === 'ALL') && !targetRoles) return true;
     return false;
   }).length;

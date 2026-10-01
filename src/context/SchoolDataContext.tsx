@@ -814,8 +814,18 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             try { localStorage.setItem('eis_portal_messages', JSON.stringify([])); } catch (e) {}
           } else {
             const liveMessages = raw.map(adaptPortalMessageFromBackend);
-            setPortalMessages(liveMessages);
-            try { localStorage.setItem('eis_portal_messages', JSON.stringify(liveMessages)); } catch (e) {}
+            // Deduplicate incoming backend messages by threadId + senderId + content
+            const uniqueLive: PortalMessage[] = [];
+            const seen = new Set<string>();
+            liveMessages.forEach(m => {
+              const key = `${m.threadId}-${m.senderId}-${m.content.trim()}`;
+              if (!seen.has(key)) {
+                seen.add(key);
+                uniqueLive.push(m);
+              }
+            });
+            setPortalMessages(uniqueLive);
+            try { localStorage.setItem('eis_portal_messages', JSON.stringify(uniqueLive)); } catch (e) {}
           }
         }
       }
@@ -3784,46 +3794,47 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       ? messageData.relatedEntity.targetIndividualIds
       : (messageData.recipientId && messageData.recipientId !== 'ALL' ? [messageData.recipientId] : []);
 
-    if (targetIndividuals.length > 0 && targetRoles.length === 0) {
-      targetIndividuals.forEach(indId => {
-        api.post('/communications/messages/', {
-          thread_id: newMessage.threadId,
-          recipientId: indId,
-          recipientRole: messageData.recipientRole,
-          recipientName: messageData.recipientName,
-          subject: messageData.subject,
-          content: messageData.content,
-          priority: messageData.priority,
-          relatedEntity: messageData.relatedEntity
-        }).then((res: any) => {
-          if (res && res.id) {
-            setPortalMessages(prev => prev.map(m => m.id === newMessage.id ? { ...m, id: String(res.id) } : m));
-          }
-        }).catch(err => {
-          console.warn('Backend message persistence fallback:', err);
-        });
-      });
-    } else {
-      // Post one entry per target role so backend DRF role filtering delivers to each selected role
-      targetRoles.forEach(r => {
-        api.post('/communications/messages/', {
-          thread_id: newMessage.threadId,
-          recipientId: 'ALL',
-          recipientRole: r,
-          recipientName: messageData.recipientName,
-          subject: messageData.subject,
-          content: messageData.content,
-          priority: messageData.priority,
-          relatedEntity: messageData.relatedEntity
-        }).then((res: any) => {
-          if (res && res.id) {
-            setPortalMessages(prev => prev.map(m => m.id === newMessage.id ? { ...m, id: String(res.id) } : m));
-          }
-        }).catch(err => {
-          console.warn('Backend message persistence fallback:', err);
-        });
-      });
-    }
+    // Expand role aliases so targetRoles matches any backend/frontend representation
+    const expandedTargetRoles: RoleType[] = [];
+    targetRoles.forEach(r => {
+      const rStr = String(r).toUpperCase();
+      if (rStr.startsWith('VICE_PRINCIPAL')) {
+        expandedTargetRoles.push('VICE_PRINCIPAL', 'VICE_PRINCIPAL_ADMIN', 'VICE_PRINCIPAL_STUDENT_AFFAIRS');
+      } else if (rStr === 'EXAM_OFFICER' || rStr === 'EXAMINATION_OFFICER') {
+        expandedTargetRoles.push('EXAM_OFFICER', 'EXAMINATION_OFFICER');
+      } else if (rStr === 'TEACHER' || rStr === 'SUBJECT_TEACHER') {
+        expandedTargetRoles.push('SUBJECT_TEACHER', 'TEACHER');
+      } else {
+        expandedTargetRoles.push(r);
+      }
+    });
+    const uniqueTargetRoles = Array.from(new Set(expandedTargetRoles));
+
+    const primaryRecipientRole = targetRoles.length === 1 ? targetRoles[0] : (targetRoles.length > 0 ? 'ALL' : messageData.recipientRole);
+    const primaryRecipientId = targetIndividuals.length === 1 && targetRoles.length === 0 ? targetIndividuals[0] : (messageData.recipientId || 'ALL');
+
+    // Post EXACTLY ONCE to backend API
+    api.post('/communications/messages/', {
+      thread_id: newMessage.threadId,
+      recipientId: primaryRecipientId,
+      recipientRole: primaryRecipientRole,
+      recipientName: messageData.recipientName,
+      subject: messageData.subject,
+      content: messageData.content,
+      priority: messageData.priority,
+      relatedEntity: {
+        ...messageData.relatedEntity,
+        targetRoles: uniqueTargetRoles,
+        targetIndividualIds: targetIndividuals,
+        audienceSummary: messageData.recipientName
+      }
+    }).then((res: any) => {
+      if (res && res.id) {
+        setPortalMessages(prev => prev.map(m => m.id === newMessage.id ? { ...m, id: String(res.id) } : m));
+      }
+    }).catch(err => {
+      console.warn('Backend message persistence fallback:', err);
+    });
 
     // Auto-dispatch role notifications for each target role or individual
     if (targetIndividuals.length > 0) {
@@ -3841,7 +3852,9 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           actorRole: messageData.senderRole
         });
       });
-    } else {
+    }
+
+    if (targetRoles.length > 0) {
       targetRoles.forEach(r => {
         sendNotification({
           role: r,

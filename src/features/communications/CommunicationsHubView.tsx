@@ -29,19 +29,35 @@ export interface RoleOption {
   role: RoleType;
   label: string;
   category: 'STAFF' | 'EXTERNAL';
-  desc: string;
-  colorClass: string;
 }
 
+export const normalizeRole = (role?: string | null): string => {
+  if (!role) return '';
+  const r = String(role).trim().toUpperCase();
+  if (r.startsWith('VICE_PRINCIPAL')) return 'VICE_PRINCIPAL';
+  if (r === 'EXAM_OFFICER' || r === 'EXAMINATION_OFFICER') return 'EXAMINATION_OFFICER';
+  if (r === 'TEACHER' || r === 'SUBJECT_TEACHER') return 'SUBJECT_TEACHER';
+  if (r === 'SUPER_ADMIN' || r === 'ADMIN') return 'SUPER_ADMIN';
+  if (r === 'FORM_MASTER') return 'FORM_MASTER';
+  if (r === 'PRINCIPAL') return 'PRINCIPAL';
+  if (r === 'PARENT') return 'PARENT';
+  if (r === 'STUDENT') return 'STUDENT';
+  return r;
+};
+
+export const rolesMatch = (r1?: string | null, r2?: string | null): boolean => {
+  return normalizeRole(r1) === normalizeRole(r2);
+};
+
 export const ROLE_OPTIONS: RoleOption[] = [
-  { role: 'PRINCIPAL', label: 'Principal & Head of School', category: 'STAFF', desc: 'Executive Head & Leadership', colorClass: 'text-amber-700 bg-amber-50 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800' },
-  { role: 'VICE_PRINCIPAL', label: 'Vice Principal', category: 'STAFF', desc: 'Academic & Admin VP', colorClass: 'text-blue-700 bg-blue-50 border-blue-300 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800' },
-  { role: 'EXAMINATION_OFFICER', label: 'Exam Officer', category: 'STAFF', desc: 'Schedules & Assessment Operations', colorClass: 'text-purple-700 bg-purple-50 border-purple-300 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800' },
-  { role: 'FORM_MASTER', label: 'Form Masters', category: 'STAFF', desc: 'Class Leadership & Pastoral Care', colorClass: 'text-emerald-700 bg-emerald-50 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800' },
-  { role: 'SUBJECT_TEACHER', label: 'Subject Teachers', category: 'STAFF', desc: 'Instructional Teaching Faculty', colorClass: 'text-indigo-700 bg-indigo-50 border-indigo-300 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800' },
-  { role: 'SUPER_ADMIN', label: 'Super Administrator', category: 'STAFF', desc: 'System Configuration & Security', colorClass: 'text-rose-700 bg-rose-50 border-rose-300 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800' },
-  { role: 'PARENT', label: 'Parents / Guardians', category: 'EXTERNAL', desc: 'Registered Wards & Families', colorClass: 'text-teal-700 bg-teal-50 border-teal-300 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800' },
-  { role: 'STUDENT', label: 'Students', category: 'EXTERNAL', desc: 'Enrolled Pupils', colorClass: 'text-cyan-700 bg-cyan-50 border-cyan-300 dark:bg-cyan-950/40 dark:text-cyan-300 dark:border-cyan-800' },
+  { role: 'PRINCIPAL', label: 'Principal', category: 'STAFF' },
+  { role: 'VICE_PRINCIPAL', label: 'Vice Principal', category: 'STAFF' },
+  { role: 'EXAMINATION_OFFICER', label: 'Exam Officer', category: 'STAFF' },
+  { role: 'FORM_MASTER', label: 'Form Masters', category: 'STAFF' },
+  { role: 'SUBJECT_TEACHER', label: 'Subject Teachers', category: 'STAFF' },
+  { role: 'SUPER_ADMIN', label: 'Super Admin', category: 'STAFF' },
+  { role: 'PARENT', label: 'Parents / Guardians', category: 'EXTERNAL' },
+  { role: 'STUDENT', label: 'Students', category: 'EXTERNAL' },
 ];
 
 const STAFF_ROLES: RoleType[] = [
@@ -76,14 +92,9 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
   const [priorityFilter, setPriorityFilter] = useState<'ALL' | 'NORMAL' | 'URGENT' | 'OFFICIAL_DIRECTIVE'>('ALL');
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(initialThreadId || null);
 
-  // Compose Modal State: Multi-role and multi-individual
+  // Compose Modal State: Starts completely unclicked (empty) by default so the user is in full control
   const [isComposeOpen, setIsComposeOpen] = useState(false);
-  const [selectedRoles, setSelectedRoles] = useState<RoleType[]>([
-    'PRINCIPAL',
-    'VICE_PRINCIPAL',
-    'FORM_MASTER',
-    'SUBJECT_TEACHER'
-  ]);
+  const [selectedRoles, setSelectedRoles] = useState<RoleType[]>([]);
   const [selectedIndividualIds, setSelectedIndividualIds] = useState<string[]>([]);
   const [individualSearchQuery, setIndividualSearchQuery] = useState('');
   const [composeSubject, setComposeSubject] = useState('');
@@ -115,30 +126,44 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
     return Array.from(new Set(roles));
   }, [user]);
 
-  // Group messages by threadId
+  // Group messages by threadId and deduplicate identical message entries within each thread
   const threadsMap = useMemo(() => {
     const map = new Map<string, PortalMessage[]>();
     const sorted = [...portalMessages].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     sorted.forEach(msg => {
       const existing = map.get(msg.threadId) || [];
-      existing.push(msg);
-      map.set(msg.threadId, existing);
+      // Deduplicate messages with identical content and sender within thread
+      const isDuplicate = existing.some(
+        ex => ex.id === msg.id || (
+          ex.senderId === msg.senderId &&
+          ex.content.trim() === msg.content.trim() &&
+          Math.abs(new Date(ex.createdAt).getTime() - new Date(msg.createdAt).getTime()) < 10000
+        )
+      );
+      if (!isDuplicate) {
+        existing.push(msg);
+        map.set(msg.threadId, existing);
+      }
     });
     return map;
   }, [portalMessages]);
 
-  // Check if a message is intended for the current user (respecting multi-role and role exclusions)
+  // Check if a message is intended for the current user (respecting multi-role, role aliases, and exclusions)
   const isMessageForCurrentUser = (m: PortalMessage): boolean => {
     // 1. Direct recipient match by user id / staff id
     if (m.recipientId && m.recipientId !== 'ALL' && (m.recipientId === currentUserId || (user?.staffId && m.recipientId === user.staffId))) {
       return true;
     }
 
-    // 2. Multi-role targeting with role exclusions
+    // 2. Multi-role targeting with role exclusions & alias normalization
     const targetRoles = m.relatedEntity?.targetRoles;
     if (Array.isArray(targetRoles) && targetRoles.length > 0) {
-      const roleMatch = targetRoles.some(r => currentUserRoles.includes(r));
-      const indMatch = Array.isArray(m.relatedEntity?.targetIndividualIds) && m.relatedEntity.targetIndividualIds.includes(currentUserId);
+      const normTargets = targetRoles.map(normalizeRole);
+      const roleMatch = currentUserRoles.some(ur => normTargets.includes(normalizeRole(ur)));
+      const indMatch = Array.isArray(m.relatedEntity?.targetIndividualIds) && (
+        m.relatedEntity.targetIndividualIds.includes(currentUserId) ||
+        (Boolean(user?.staffId) && m.relatedEntity.targetIndividualIds.includes(user!.staffId!))
+      );
       return roleMatch || indMatch;
     }
 
@@ -148,8 +173,8 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
       return targetUsers.includes(currentUserId) || (Boolean(user?.staffId) && targetUsers.includes(user!.staffId!));
     }
 
-    // 4. Legacy single recipientRole match
-    if (m.recipientRole && currentUserRoles.includes(m.recipientRole)) {
+    // 4. Legacy single recipientRole match with alias normalization
+    if (m.recipientRole && currentUserRoles.some(ur => rolesMatch(ur, m.recipientRole))) {
       return true;
     }
     if (m.recipientRole === 'ALL' || m.recipientId === 'ALL') {
@@ -894,8 +919,8 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
                 </div>
               </div>
 
-              {/* Role Toggle Chips */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+              {/* Role Toggle Chips - Clean, compact, elegant pill buttons */}
+              <div className="flex flex-wrap gap-2 pt-1">
                 {ROLE_OPTIONS.map(opt => {
                   const isSelected = selectedRoles.includes(opt.role);
                   return (
@@ -903,29 +928,22 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
                       key={opt.role}
                       type="button"
                       onClick={() => handleToggleRole(opt.role)}
-                      className={`flex items-start gap-2.5 p-2.5 rounded-xl border text-left transition-all ${
+                      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all cursor-pointer ${
                         isSelected
-                          ? 'bg-white dark:bg-slate-850 border-indigo-600 dark:border-indigo-500 shadow-sm ring-1 ring-indigo-500/30'
-                          : 'bg-white/60 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 opacity-60 hover:opacity-100 hover:border-slate-300'
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm shadow-indigo-600/20'
+                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-350 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-750'
                       }`}
                     >
                       <div
-                        className={`w-4 h-4 mt-0.5 rounded flex items-center justify-center shrink-0 transition-colors ${
+                        className={`w-3.5 h-3.5 rounded flex items-center justify-center shrink-0 transition-colors ${
                           isSelected
-                            ? 'bg-indigo-600 text-white'
-                            : 'border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
+                            ? 'bg-white text-indigo-600'
+                            : 'border border-slate-300 dark:border-slate-600'
                         }`}
                       >
-                        {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                        {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                       </div>
-                      <div className="min-w-0">
-                        <div className="text-xs font-semibold text-slate-900 dark:text-white truncate">
-                          {opt.label}
-                        </div>
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                          {opt.desc}
-                        </div>
-                      </div>
+                      <span>{opt.label}</span>
                     </button>
                   );
                 })}

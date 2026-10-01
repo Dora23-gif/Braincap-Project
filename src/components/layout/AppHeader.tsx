@@ -29,6 +29,20 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onToggleSidebar, onNavigat
   const currentUserId = user?.id || user?.staffId || '';
   const currentUserRole = (user?.activeRole || user?.role || 'ALL') as RoleType;
 
+  const normalizeRole = (role?: string | null): string => {
+    if (!role) return '';
+    const r = String(role).trim().toUpperCase();
+    if (r.startsWith('VICE_PRINCIPAL')) return 'VICE_PRINCIPAL';
+    if (r === 'EXAM_OFFICER' || r === 'EXAMINATION_OFFICER') return 'EXAMINATION_OFFICER';
+    if (r === 'TEACHER' || r === 'SUBJECT_TEACHER') return 'SUBJECT_TEACHER';
+    if (r === 'SUPER_ADMIN' || r === 'ADMIN') return 'SUPER_ADMIN';
+    if (r === 'FORM_MASTER') return 'FORM_MASTER';
+    if (r === 'PRINCIPAL') return 'PRINCIPAL';
+    if (r === 'PARENT') return 'PARENT';
+    if (r === 'STUDENT') return 'STUDENT';
+    return r;
+  };
+
   // Calculate unread messages intended for this user or their role
   const msgList = Array.isArray(portalMessages) ? portalMessages : [];
   const unreadMessages = msgList.filter(m => {
@@ -39,13 +53,15 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onToggleSidebar, onNavigat
     }
     const targetRoles = m.relatedEntity?.targetRoles;
     if (Array.isArray(targetRoles) && targetRoles.length > 0) {
-      return targetRoles.includes(currentUserRole) || (Array.isArray(user?.assignedRoles) && user.assignedRoles.some((r: any) => targetRoles.includes(r)));
+      const normTargets = targetRoles.map(normalizeRole);
+      const userRolesList = [currentUserRole, ...(user?.assignedRoles || [])].map(normalizeRole);
+      return normTargets.some(nt => userRolesList.includes(nt));
     }
     const targetUsers = m.relatedEntity?.targetIndividualIds;
     if (Array.isArray(targetUsers) && targetUsers.length > 0) {
       return targetUsers.includes(currentUserId) || (user?.staffId && targetUsers.includes(user.staffId));
     }
-    if (m.recipientRole === currentUserRole) return true;
+    if (normalizeRole(m.recipientRole) === normalizeRole(currentUserRole)) return true;
     if ((m.recipientRole === 'ALL' || m.recipientId === 'ALL') && !targetRoles) return true;
     return false;
   });
@@ -311,8 +327,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onToggleSidebar, onNavigat
                       recentMessages.map(msg => {
                         const targetRoles = msg.relatedEntity?.targetRoles;
                         const isTargetedRole = Array.isArray(targetRoles) && targetRoles.length > 0
-                          ? targetRoles.includes(currentUserRole) || (Array.isArray(user?.assignedRoles) && user.assignedRoles.some((r: any) => targetRoles.includes(r)))
-                          : msg.recipientRole === currentUserRole || ((msg.recipientRole === 'ALL' || msg.recipientId === 'ALL') && !targetRoles);
+                          ? targetRoles.map(normalizeRole).some(nt => [currentUserRole, ...(user?.assignedRoles || [])].map(normalizeRole).includes(nt))
+                          : normalizeRole(msg.recipientRole) === normalizeRole(currentUserRole) || ((msg.recipientRole === 'ALL' || msg.recipientId === 'ALL') && !targetRoles);
 
                         const isUnread =
                           !msg.isRead &&

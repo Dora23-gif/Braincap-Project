@@ -26,19 +26,26 @@ class PortalMessageViewSet(viewsets.ModelViewSet):
             return PortalMessage.objects.none()
 
         active_role = getattr(user, "active_role", "")
-        if user.is_superuser or user.is_staff or active_role in ["SUPER_ADMIN", "PRINCIPAL", "VICE_PRINCIPAL_ADMIN", "VICE_PRINCIPAL"]:
+        user_roles = set(getattr(user, "roles", []) or [])
+        if active_role:
+            user_roles.add(active_role)
+            if active_role.startswith("VICE_PRINCIPAL"):
+                user_roles.update(["VICE_PRINCIPAL", "VICE_PRINCIPAL_ADMIN", "VICE_PRINCIPAL_STUDENT_AFFAIRS"])
+            if active_role in ["EXAM_OFFICER", "EXAMINATION_OFFICER"]:
+                user_roles.update(["EXAM_OFFICER", "EXAMINATION_OFFICER"])
+            if active_role in ["TEACHER", "SUBJECT_TEACHER"]:
+                user_roles.update(["TEACHER", "SUBJECT_TEACHER"])
+
+        if user.is_superuser or user.is_staff or active_role in ["SUPER_ADMIN", "PRINCIPAL"]:
             return self.queryset
 
-        user_roles = getattr(user, "roles", [])
-        query = Q(sender=user) | Q(recipient_user=user) | Q(recipient_role="ALL")
-        if active_role:
-            query |= Q(recipient_role=active_role)
-            if active_role in ["TEACHER", "SUBJECT_TEACHER"]:
-                query |= Q(recipient_role="TEACHER") | Q(recipient_role="SUBJECT_TEACHER")
-            if active_role in ["EXAM_OFFICER", "EXAMINATION_OFFICER"]:
-                query |= Q(recipient_role="EXAM_OFFICER") | Q(recipient_role="EXAMINATION_OFFICER")
+        query = Q(sender=user) | Q(recipient_user=user)
         for r in user_roles:
             query |= Q(recipient_role=r)
+            query |= Q(related_entity__icontains=f'"{r}"')
+
+        # Global broadcasts (only if not restricted by targetRoles or if targetRoles is empty)
+        query |= (Q(recipient_role="ALL") & (Q(related_entity__isnull=True) | ~Q(related_entity__icontains='"targetRoles"')))
 
         return self.queryset.filter(query).distinct()
 
@@ -56,14 +63,23 @@ class PortalMessageViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], url_path="inbox")
     def inbox(self, request):
         user = request.user
-        user_roles = getattr(user, "roles", [])
         active_role = getattr(user, "active_role", "")
-
-        query = Q(recipient_user=user) | Q(recipient_role="ALL")
+        user_roles = set(getattr(user, "roles", []) or [])
         if active_role:
-            query |= Q(recipient_role=active_role)
+            user_roles.add(active_role)
+            if active_role.startswith("VICE_PRINCIPAL"):
+                user_roles.update(["VICE_PRINCIPAL", "VICE_PRINCIPAL_ADMIN", "VICE_PRINCIPAL_STUDENT_AFFAIRS"])
+            if active_role in ["EXAM_OFFICER", "EXAMINATION_OFFICER"]:
+                user_roles.update(["EXAM_OFFICER", "EXAMINATION_OFFICER"])
+            if active_role in ["TEACHER", "SUBJECT_TEACHER"]:
+                user_roles.update(["TEACHER", "SUBJECT_TEACHER"])
+
+        query = Q(recipient_user=user)
         for r in user_roles:
             query |= Q(recipient_role=r)
+            query |= Q(related_entity__icontains=f'"{r}"')
+
+        query |= (Q(recipient_role="ALL") & (Q(related_entity__isnull=True) | ~Q(related_entity__icontains='"targetRoles"')))
 
         messages = self.queryset.filter(query).distinct()
         page = self.paginate_queryset(messages)
