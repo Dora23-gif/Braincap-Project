@@ -814,17 +814,18 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
 
       {/* Compose New Message / Directive Modal */}
       <ModalPortal isOpen={isComposeOpen} onClose={() => setIsComposeOpen(false)} maxWidthClass="max-w-2xl">
-        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-5 sm:p-7 space-y-4 max-h-[85vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-3.5">
-              <div className="w-11 h-11 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/80 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm">
-                <Send className="w-5 h-5" />
+        <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[85vh] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+          {/* Sticky Modal Header */}
+          <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 sm:py-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 z-10">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/80 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm shrink-0">
+                <Send className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
-              <div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
-                  Dispatch New Message or Executive Directive
+              <div className="min-w-0">
+                <h3 className="text-sm sm:text-base md:text-lg font-bold text-slate-900 dark:text-white tracking-tight truncate">
+                  Dispatch Message / Directive
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 truncate hidden xs:block sm:block">
                   Transmitted across the unified EIS ledger with real-time receipt notification
                 </p>
               </div>
@@ -832,51 +833,52 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
             <button
               type="button"
               onClick={() => setIsComposeOpen(false)}
-              className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition"
+              className="p-1.5 sm:p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition shrink-0 ml-2"
+              aria-label="Close dialog"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Quick Templates Bar */}
-          <div className="p-3.5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200/70 dark:border-slate-800">
-            <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-2 uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-              <span>Quick Institutional Templates</span>
+          {/* Scrollable Form Body */}
+          <form id="compose-message-form" onSubmit={handleSendCompose} className="flex-1 overflow-y-auto p-3.5 sm:p-6 space-y-4 overscroll-contain">
+            {/* Quick Templates Bar */}
+            <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/70 dark:border-slate-800">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-2 uppercase tracking-wider">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                <span>Quick Institutional Templates</span>
+              </div>
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => applyTemplate('MARKSHEET_REMINDER')}
+                  className="whitespace-nowrap px-2.5 py-1 text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg shadow-2xs transition shrink-0"
+                >
+                  📋 Marksheet Reminder
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyTemplate('EXAM_BRIEFING')}
+                  className="whitespace-nowrap px-2.5 py-1 text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg shadow-2xs transition shrink-0"
+                >
+                  📝 Exam Duty Briefing
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyTemplate('EXECUTIVE_DIRECTIVE')}
+                  className="whitespace-nowrap px-2.5 py-1 text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg shadow-2xs transition shrink-0"
+                >
+                  ⚖️ Executive Directive
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyTemplate('PARENT_COMMUNICATION')}
+                  className="whitespace-nowrap px-2.5 py-1 text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg shadow-2xs transition shrink-0"
+                >
+                  👨‍👩‍👧 Parent Advisory
+                </button>
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => applyTemplate('MARKSHEET_REMINDER')}
-                className="px-3 py-1.5 text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl shadow-xs transition"
-              >
-                📋 Marksheet Reminder
-              </button>
-              <button
-                type="button"
-                onClick={() => applyTemplate('EXAM_BRIEFING')}
-                className="px-3 py-1.5 text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl shadow-xs transition"
-              >
-                📝 Exam Duty Briefing
-              </button>
-              <button
-                type="button"
-                onClick={() => applyTemplate('EXECUTIVE_DIRECTIVE')}
-                className="px-3 py-1.5 text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl shadow-xs transition"
-              >
-                ⚖️ Executive Directive
-              </button>
-              <button
-                type="button"
-                onClick={() => applyTemplate('PARENT_COMMUNICATION')}
-                className="px-3 py-1.5 text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl shadow-xs transition"
-              >
-                👨‍👩‍👧 Parent Advisory
-              </button>
-            </div>
-          </div>
-
-          <form onSubmit={handleSendCompose} className="space-y-4">
             {/* 1. Multi-Role Recipient Selection */}
             <div className="space-y-2.5 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -1128,26 +1130,41 @@ export const CommunicationsHubView: React.FC<CommunicationsHubViewProps> = ({ in
                 className="w-full p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-normal text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-slate-850 outline-none resize-none transition"
               />
             </div>
+          </form>
 
-            {/* Action Buttons */}
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+          {/* Sticky Bottom Action Bar */}
+          <div className="px-4 py-3 sm:px-6 sm:py-3.5 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0 z-10">
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+              {selectedRoles.length > 0 || selectedIndividualIds.length > 0 ? (
+                <span className="text-indigo-600 dark:text-indigo-400 font-medium">
+                  Ready: {selectedRoles.length} role{selectedRoles.length === 1 ? '' : 's'}
+                  {selectedIndividualIds.length > 0 ? `, ${selectedIndividualIds.length} direct` : ''}
+                </span>
+              ) : (
+                <span className="text-amber-600 dark:text-amber-400 font-medium">
+                  Select recipient(s)
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => setIsComposeOpen(false)}
-                className="px-4 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition"
+                className="px-3.5 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl transition"
               >
                 Cancel
               </button>
               <button
                 type="submit"
+                form="compose-message-form"
                 disabled={selectedRoles.length === 0 && selectedIndividualIds.length === 0}
-                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-md hover:shadow-indigo-500/20 transition flex items-center gap-2"
+                className="px-4 sm:px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-md hover:shadow-indigo-500/20 transition flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed"
               >
-                <Send className="w-4 h-4" />
+                <Send className="w-3.5 h-3.5" />
                 <span>Transmit Message</span>
               </button>
             </div>
-          </form>
+          </div>
         </div>
       </ModalPortal>
     </div>
